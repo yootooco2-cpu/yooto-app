@@ -6,9 +6,13 @@
  * ces mêmes contrats.
  */
 
-/** Source de données brute (Supabase aujourd'hui, REST/cache/IA demain). */
-export interface EntityDataSource<T> {
-  list(): Promise<T[]>;
+/**
+ * Source de données brute (Supabase aujourd'hui, REST/cache/IA demain).
+ * `Q` = critères de requête optionnels (recherche/filtres/distance). `Q = void`
+ * par défaut → les entités sans critères ne changent pas.
+ */
+export interface EntityDataSource<T, Q = void> {
+  list(query?: Q): Promise<T[]>;
   getById(id: string): Promise<T | null>;
 }
 
@@ -20,7 +24,7 @@ export interface EntityCache<T> {
 }
 
 /** Orchestrateur consommé par l'UI : source distante + cache + fallback local. */
-export interface EntityRepository<T> {
-  list(): Promise<T[]>;
+export interface EntityRepository<T, Q = void> {
+  list(query?: Q): Promise<T[]>;
   getById(id: string): Promise<T | null>;
 }

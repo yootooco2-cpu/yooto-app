@@ -5,12 +5,18 @@ export { buildRecommendationReasons, getMerchantTags } from './insights';
 export { merchantsToMapMarkers } from './toMapMarkers';
 export { getMerchantRepository } from './repository';
 export { useMerchant, useMerchants, merchantKeys } from './queries';
+export {
+  applyMerchantQueryLocal,
+  buildSupabaseMerchantQuery,
+  withDistance,
+} from './merchantQuery';
 export { mapMerchantRow, merchantRowSchema, parseMerchantRow, type MerchantRow } from './schema';
 export type {
   Merchant,
   MerchantCategory,
   MerchantDataSource,
   MerchantId,
+  MerchantQuery,
   MerchantRepository,
 } from './types';
 export type { QuickFilter, QuickFilterId } from './filters';

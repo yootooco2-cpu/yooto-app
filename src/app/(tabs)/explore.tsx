@@ -16,17 +16,9 @@ import {
   merchantsToMapMarkers,
   QUICK_FILTERS,
   useMerchants,
-  type Merchant,
+  type MerchantQuery,
   type QuickFilterId,
 } from '@/features/merchants';
-
-function matchesFilters(merchant: Merchant, filters: QuickFilterId[]): boolean {
-  if (filters.includes('open') && !merchant.isOpenNow) return false;
-  if (filters.includes('producers') && !merchant.isProducer) return false;
-  if (filters.includes('accessible') && !merchant.isAccessible) return false;
-  if (filters.includes('rewards') && !merchant.hasRewards) return false;
-  return true;
-}
 
 export default function ExploreScreen() {
   const router = useRouter();
@@ -34,7 +26,8 @@ export default function ExploreScreen() {
   const [filters, setFilters] = useState<QuickFilterId[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const location = useLocationPermission();
-  const { data: merchants, isLoading, isError, refetch } = useMerchants();
+
+  const nearbyActive = filters.includes('nearby');
 
   const toggleFilter = (id: QuickFilterId) => {
     const willEnable = !filters.includes(id);
@@ -47,16 +40,21 @@ export default function ExploreScreen() {
     }
   };
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return (merchants ?? []).filter((merchant) => {
-      if (q && !`${merchant.name} ${merchant.description}`.toLowerCase().includes(q)) return false;
-      return matchesFilters(merchant, filters);
-    });
-  }, [merchants, query, filters]);
+  // La recherche + les filtres + la position descendent dans le repository
+  // (datasource serveur OU fallback local — même sémantique).
+  const merchantQuery = useMemo<MerchantQuery>(
+    () => ({
+      search: query.trim() || undefined,
+      filters,
+      near: nearbyActive ? (location.coordinates ?? undefined) : undefined,
+    }),
+    [query, filters, nearbyActive, location.coordinates],
+  );
+
+  const { data, isLoading, isError, refetch } = useMerchants(merchantQuery);
+  const results = useMemo(() => data ?? [], [data]);
 
   const markers = useMemo(() => merchantsToMapMarkers(results), [results]);
-  const nearbyActive = filters.includes('nearby');
 
   return (
     <YScreen scroll>
