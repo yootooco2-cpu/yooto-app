@@ -1,6 +1,7 @@
 import { createEntityRepository } from '@/lib/data/createEntityRepository';
 import { createSupabaseDataSource } from '@/lib/supabase/datasource';
 
+import { parseMerchants, reportMerchantIssues } from './merchantLoader';
 import { buildSupabaseMerchantQuery, withDistance } from './merchantQuery';
 import { parseMerchantRow } from './schema';
 import { localMerchantDataSource } from './selectors';
@@ -18,6 +19,12 @@ export function getMerchantRepository(): MerchantRepository {
   const remoteBase = createSupabaseDataSource<Merchant, MerchantQuery>({
     table: 'merchants',
     parse: parseMerchantRow,
+    // Parsing résilient ligne par ligne : une ligne invalide est ignorée, pas la liste.
+    parseList: (rows) => {
+      const result = parseMerchants(rows);
+      reportMerchantIssues(result, 'supabase');
+      return result.merchants;
+    },
     buildQuery: buildSupabaseMerchantQuery,
   });
 

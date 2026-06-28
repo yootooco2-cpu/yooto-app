@@ -10,8 +10,10 @@ export type SupabaseSelectBuilder = ReturnType<ReturnType<SupabaseClient['from']
 interface SupabaseDataSourceConfig<T, Q> {
   /** Nom de la table Supabase. */
   table: string;
-  /** Valide + mappe une ligne brute (snake_case) vers l'entité (camelCase). */
+  /** Valide + mappe une ligne brute unitaire (utilisé par `getById`). */
   parse: (row: unknown) => T;
+  /** Parsing RÉSILIENT d'un lot (ignore les lignes invalides) pour `list`. */
+  parseList?: (rows: unknown[]) => T[];
   /** Traducteur critères → PostgREST (fourni par le domaine, garde `lib` agnostique). */
   buildQuery?: (builder: SupabaseSelectBuilder, query: Q) => SupabaseSelectBuilder;
 }
@@ -36,7 +38,8 @@ export function createSupabaseDataSource<T, Q = void>(
       }
       const { data, error } = await builder;
       if (error) throw new Error(`Supabase ${config.table}.list: ${error.message}`);
-      return (data ?? []).map((row) => config.parse(row));
+      const rows = data ?? [];
+      return config.parseList ? config.parseList(rows) : rows.map((row) => config.parse(row));
     },
     async getById(id) {
       const { data, error } = await client

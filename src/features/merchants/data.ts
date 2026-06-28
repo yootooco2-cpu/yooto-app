@@ -1,13 +1,4 @@
-import type { Merchant, MerchantCategory } from './types';
-
-/** Libellés lisibles par catégorie. */
-export const CATEGORY_LABELS: Record<MerchantCategory, string> = {
-  producer: 'Producteur',
-  grocery: 'Épicerie',
-  restaurant: 'Restaurant',
-  shop: 'Boutique',
-  service: 'Service',
-};
+import type { Merchant } from './types';
 
 /**
  * Commerces de démonstration (données 100 % locales).

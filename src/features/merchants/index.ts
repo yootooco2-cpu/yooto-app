@@ -1,4 +1,9 @@
-export { CATEGORY_LABELS, DEMO_MERCHANTS } from './data';
+export { DEMO_MERCHANTS } from './data';
+export {
+  CATEGORY_LABELS,
+  MERCHANT_CATEGORIES,
+  normalizeMerchantCategory,
+} from './categories';
 export { QUICK_FILTERS } from './filters';
 export { getMerchantById, localMerchantDataSource } from './selectors';
 export { buildRecommendationReasons, getMerchantTags } from './insights';
@@ -10,6 +15,12 @@ export {
   buildSupabaseMerchantQuery,
   withDistance,
 } from './merchantQuery';
+export {
+  parseMerchants,
+  reportMerchantIssues,
+  type MerchantImportIssue,
+  type MerchantLoadResult,
+} from './merchantLoader';
 export { mapMerchantRow, merchantRowSchema, parseMerchantRow, type MerchantRow } from './schema';
 export type {
   Merchant,
