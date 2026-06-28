@@ -11,14 +11,37 @@ import { spacing } from '@/design/tokens/spacing';
 import {
   buildRecommendationReasons,
   CATEGORY_LABELS,
-  getMerchantById,
   getMerchantTags,
+  useMerchant,
 } from '@/features/merchants';
 
 export default function MerchantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const merchant = getMerchantById(id);
+  const { data: merchant, isLoading, isError, refetch } = useMerchant(id);
+
+  if (isLoading) {
+    return (
+      <YScreen center>
+        <YText variant="body" color="muted">
+          Chargement du commerce…
+        </YText>
+      </YScreen>
+    );
+  }
+
+  if (isError) {
+    return (
+      <YScreen center>
+        <YText variant="title">Une erreur est survenue</YText>
+        <YText variant="body" color="muted">
+          Impossible de charger ce commerce. Vérifie ta connexion, puis réessaie.
+        </YText>
+        <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
+        <YButton label="Retour à l’exploration" variant="ghost" onPress={() => router.replace('/explore')} />
+      </YScreen>
+    );
+  }
 
   if (!merchant) {
     return (

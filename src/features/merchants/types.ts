@@ -1,3 +1,4 @@
+import type { EntityDataSource, EntityRepository } from '@/lib/data/types';
 import type { MapCoordinate } from '@/features/map';
 
 export type MerchantCategory = 'producer' | 'grocery' | 'restaurant' | 'shop' | 'service';
@@ -24,12 +25,8 @@ export interface Merchant {
 
 export type MerchantId = Merchant['id'];
 
-/**
- * Contrat d'accès aux commerces.
- * Aujourd'hui : implémentation locale synchrone sur les données de démo.
- * Demain : implémentation Supabase (asynchrone) — d'où la signature `Promise`.
- */
-export interface MerchantRepository {
-  list(): Promise<Merchant[]>;
-  getById(id: MerchantId): Promise<Merchant | null>;
-}
+/** Source de données commerces (Supabase, local…) — spécialisation générique. */
+export type MerchantDataSource = EntityDataSource<Merchant>;
+
+/** Repository commerces consommé par l'UI — spécialisation générique. */
+export type MerchantRepository = EntityRepository<Merchant>;
