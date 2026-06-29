@@ -71,11 +71,13 @@ function readOpenNow(raw: unknown): boolean | undefined {
 
 /** Mappe une ligne DB validée vers l'entité `Merchant` (conversions centralisées). */
 export function mapMerchantRow(row: MerchantRow): Merchant {
+  // `category` (Google) puis fallback `merchant_type`, normalisé en bucket canonique.
+  const category = normalizeMerchantCategory(row.category ?? row.merchant_type ?? '');
+
   return {
     id: row.id,
     name: row.name,
-    // `category` (Google) puis fallback `merchant_type`, normalisé en bucket canonique.
-    category: normalizeMerchantCategory(row.category ?? row.merchant_type ?? ''),
+    category,
     // Description : accroche → specialite → signature_tags → ''.
     description: firstText(row.accroche, row.specialite, row.signature_tags, row.description),
     coordinates: { latitude: row.latitude, longitude: row.longitude },
@@ -84,7 +86,10 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     distanceLabel: row.distance_label ?? '—',
     // « Ouvert » réel via opening_hours.open_now, fallback booléen historique.
     isOpenNow: readOpenNow(row.opening_hours) ?? row.is_open_now ?? false,
-    isProducer: row.is_producer ?? false,
+    // Producteur : champ `is_producer` s'il existe un jour, sinon dérivé de la catégorie.
+    isProducer: row.is_producer ?? category === 'producer',
+    // PMR : aucune donnée fiable en base (pas de colonne accessibilité, signature_tags vides).
+    // On ne marque JAMAIS un commerce accessible sans donnée fiable → toujours false ici.
     isAccessible: row.is_accessible ?? false,
     hasRewards: row.has_rewards ?? false,
     // Éco : UNIQUEMENT le vrai score (eco_score_v2). `eco_score` étant une constante

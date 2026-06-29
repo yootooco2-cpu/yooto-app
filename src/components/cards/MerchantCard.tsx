@@ -3,13 +3,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { YCard } from '@/components/ui/YCard';
 import { YText } from '@/components/ui/YText';
+import { colors } from '@/design/tokens/colors';
+import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
-import {
-  CATEGORY_LABELS,
-  getMerchantCoverPhoto,
-  getMerchantTags,
-  type Merchant,
-} from '@/features/merchants';
+import { CATEGORY_LABELS, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
 
 type Props = {
   merchant: Merchant;
@@ -17,61 +14,77 @@ type Props = {
   onPress?: () => void;
 };
 
-export function MerchantCard({ merchant, selected = false, onPress }: Props) {
-  const tags = getMerchantTags(merchant);
+const THUMB_SIZE = 96;
 
+export function MerchantCard({ merchant, selected = false, onPress }: Props) {
   // Distance si connue (≠ « — »), sinon la ville.
   const hasDistance = merchant.distanceLabel !== '—' && merchant.distanceLabel.length > 0;
-  const rightLabel = hasDistance ? merchant.distanceLabel : (merchant.city ?? '');
+  const place = hasDistance ? merchant.distanceLabel : merchant.city;
 
   const meta = [CATEGORY_LABELS[merchant.category]];
+  if (place) meta.push(place);
   if (typeof merchant.rating === 'number') meta.push(`★ ${merchant.rating.toFixed(1)}`);
-  if (typeof merchant.ecoScore === 'number') meta.push(`Éco ${merchant.ecoScore}`);
 
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
-      <YCard variant={selected ? 'surface' : 'outline'} elevation={selected ? 'sm' : 'none'}>
-        <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={120} />
+      <YCard
+        variant={selected ? 'surface' : 'outline'}
+        elevation={selected ? 'sm' : 'none'}
+        padding="md">
+        <View style={styles.row}>
+          <View style={styles.thumb}>
+            <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={THUMB_SIZE} rounded={radii.md} />
+          </View>
 
-        <View style={styles.header}>
-          <YText variant="subtitle" style={styles.title}>
-            {merchant.name}
-          </YText>
-          {rightLabel ? (
-            <YText variant="caption" color="primary">
-              {rightLabel}
+          <View style={styles.info}>
+            <YText variant="subtitle" numberOfLines={1}>
+              {merchant.name}
             </YText>
-          ) : null}
+
+            <YText variant="caption" color="muted" numberOfLines={1}>
+              {meta.join(' · ')}
+            </YText>
+
+            {merchant.description ? (
+              <YText variant="caption" color="muted" numberOfLines={2}>
+                {merchant.description}
+              </YText>
+            ) : null}
+
+            {merchant.isOpenNow ? (
+              <View style={styles.openBadge}>
+                <YText variant="caption" color="primary">
+                  Ouvert
+                </YText>
+              </View>
+            ) : null}
+          </View>
         </View>
-
-        <YText variant="caption" color="muted">
-          {meta.join(' · ')}
-        </YText>
-
-        {merchant.description ? (
-          <YText variant="body" color="muted">
-            {merchant.description}
-          </YText>
-        ) : null}
-
-        {tags.length > 0 ? (
-          <YText variant="caption" color="accent">
-            {tags.join(' · ')}
-          </YText>
-        ) : null}
       </YCard>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
-  title: {
-    flexShrink: 1,
+  thumb: {
+    width: THUMB_SIZE,
+  },
+  info: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  openBadge: {
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
 });
