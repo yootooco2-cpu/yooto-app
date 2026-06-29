@@ -7,9 +7,12 @@ export {
 export { QUICK_FILTERS } from './filters';
 export { getMerchantById, localMerchantDataSource } from './selectors';
 export { buildRecommendationReasons, getMerchantTags } from './insights';
+export { getMerchantCoverPhoto } from './photos';
 export { merchantsToMapMarkers } from './toMapMarkers';
 export { getMerchantRepository } from './repository';
 export { useMerchant, useMerchants, merchantKeys } from './queries';
+export { useMerchantSearch } from './useMerchantSearch';
+export { useMerchantSearchStore } from './searchStore';
 export {
   applyMerchantQueryLocal,
   buildSupabaseMerchantQuery,

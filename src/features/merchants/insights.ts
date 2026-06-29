@@ -20,10 +20,12 @@ export function buildRecommendationReasons(merchant: Merchant): string[] {
   if (merchant.isProducer) {
     reasons.push('Producteur local en vente directe : circuit court et juste rémunération.');
   }
-  if (merchant.ecoScore >= 90) {
-    reasons.push(`Score écologique excellent (${merchant.ecoScore}/100).`);
-  } else if (merchant.ecoScore >= 80) {
-    reasons.push(`Bon score écologique (${merchant.ecoScore}/100).`);
+  if (typeof merchant.ecoScore === 'number') {
+    if (merchant.ecoScore >= 90) {
+      reasons.push(`Score écologique excellent (${merchant.ecoScore}/100).`);
+    } else if (merchant.ecoScore >= 80) {
+      reasons.push(`Bon score écologique (${merchant.ecoScore}/100).`);
+    }
   }
   if (merchant.hasRewards) {
     reasons.push('Tu cumules des récompenses YOOTOO à chaque visite.');

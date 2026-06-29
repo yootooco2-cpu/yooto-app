@@ -12,10 +12,10 @@ import type { MapRegion } from './types';
  * passe JAMAIS par ici ni par le bundle.
  */
 
-/** Région par défaut (Lyon — cohérente avec les données de démo). */
+/** Région par défaut YOOTOO — zone prioritaire Quissac / Gard / Montpellier. */
 const DEFAULT_REGION: MapRegion = {
-  center: { latitude: 45.764, longitude: 4.8357 },
-  zoom: 13,
+  center: { latitude: 43.83, longitude: 4.0 },
+  zoom: 9,
 };
 
 const DEFAULT_STYLE_URL = 'mapbox://styles/mapbox/streets-v12';

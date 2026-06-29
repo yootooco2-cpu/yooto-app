@@ -2,7 +2,7 @@ import { createEntityRepository } from '@/lib/data/createEntityRepository';
 import { createSupabaseDataSource } from '@/lib/supabase/datasource';
 
 import { parseMerchants, reportMerchantIssues } from './merchantLoader';
-import { buildSupabaseMerchantQuery, withDistance } from './merchantQuery';
+import { applyMerchantQueryLocal } from './merchantQuery';
 import { parseMerchantRow } from './schema';
 import { localMerchantDataSource } from './selectors';
 import type { Merchant, MerchantDataSource, MerchantQuery, MerchantRepository } from './types';
@@ -25,11 +25,13 @@ export function getMerchantRepository(): MerchantRepository {
       reportMerchantIssues(result, 'supabase');
       return result.merchants;
     },
-    buildQuery: buildSupabaseMerchantQuery,
+    // Pas de filtrage serveur : les colonnes is_open_now/is_producer/is_accessible
+    // n'existent pas dans la table réelle (erreur 42703). Recherche/filtres/distance
+    // sont appliqués côté client via applyMerchantQueryLocal (sémantique unique).
   });
 
   const remote: MerchantDataSource | null = remoteBase && {
-    list: async (query) => withDistance(await remoteBase.list(query), query?.near, query?.radiusKm),
+    list: async (query) => applyMerchantQueryLocal(await remoteBase.list(), query),
     getById: (id) => remoteBase.getById(id),
   };
 

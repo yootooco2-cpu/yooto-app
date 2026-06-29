@@ -5,11 +5,10 @@ export interface QuickFilter {
   label: string;
 }
 
-/** Filtres rapides de l'écran Explorer. */
+/** Filtres rapides (« Récompenses » retiré de l'UI — source partagée). */
 export const QUICK_FILTERS: QuickFilter[] = [
   { id: 'nearby', label: 'Autour de moi' },
   { id: 'open', label: 'Ouvert maintenant' },
   { id: 'producers', label: 'Producteurs' },
   { id: 'accessible', label: 'Accessible PMR' },
-  { id: 'rewards', label: 'Récompenses' },
 ];

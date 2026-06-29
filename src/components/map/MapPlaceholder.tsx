@@ -13,37 +13,78 @@ type Props = {
   selectedId?: string | null;
   onSelectMarker?: (id: string) => void;
   userLocation?: MapCoordinate | null;
+  /** Remplit la hauteur disponible (flex) au lieu de la hauteur fixe. */
+  fill?: boolean;
 };
+
+/** Nombre maximum de pins rendus dans le placeholder (anti-surcharge). */
+const MAX_PINS = 40;
+/** Marge intérieure (%) pour ne pas coller les pins aux bords. */
+const PAD = 10;
+
+interface BBox {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+function computeBBox(markers: MapMarker[]): BBox {
+  const lats = markers.map((m) => m.coordinate.latitude);
+  const lngs = markers.map((m) => m.coordinate.longitude);
+  return {
+    minLat: Math.min(...lats),
+    maxLat: Math.max(...lats),
+    minLng: Math.min(...lngs),
+    maxLng: Math.max(...lngs),
+  };
+}
+
+/** Position (%) d'un marqueur : `placeholderPosition` (démo) sinon projection bbox. */
+function projectMarker(marker: MapMarker, bbox: BBox): { x: number; y: number } {
+  if (marker.placeholderPosition) return marker.placeholderPosition;
+  const latSpan = bbox.maxLat - bbox.minLat || 1;
+  const lngSpan = bbox.maxLng - bbox.minLng || 1;
+  const span = 100 - 2 * PAD;
+  const x = PAD + ((marker.coordinate.longitude - bbox.minLng) / lngSpan) * span;
+  // latitude haute = haut de la carte → on inverse l'axe y
+  const y = PAD + ((bbox.maxLat - marker.coordinate.latitude) / latSpan) * span;
+  return { x, y };
+}
 
 /**
  * Implémentation de secours du Cartographic Engine — 100 % web-safe, sans
- * dépendance carto. Utilisée tant qu'aucun provider (Mapbox GL JS / rnmapbox)
- * n'est branché, ou en l'absence de token. Rend des `MapMarker` génériques via
- * leur `placeholderPosition`.
+ * dépendance carto. Projette les marqueurs depuis leurs coordonnées (bbox) et
+ * plafonne le nombre de pins pour rester lisible avec des centaines de commerces.
  */
-export function MapPlaceholder({ markers, selectedId, onSelectMarker, userLocation }: Props) {
+export function MapPlaceholder({ markers, selectedId, onSelectMarker, userLocation, fill }: Props) {
+  const visible = markers.slice(0, MAX_PINS);
+  const hidden = markers.length - visible.length;
+  const bbox = visible.length > 0 ? computeBBox(visible) : null;
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, fill ? styles.fill : styles.fixedHeight]}>
       {/* Décor évoquant une carte (parcs, axes) sans librairie */}
       <View style={[styles.blob, styles.blobA]} />
       <View style={[styles.blob, styles.blobB]} />
       <View style={[styles.road, styles.roadH]} />
       <View style={[styles.road, styles.roadV]} />
 
-      {markers.map((marker) => {
-        const position = marker.placeholderPosition;
-        if (!position) return null;
-        return (
-          <MapMarkerPin
-            key={marker.id}
-            x={position.x}
-            y={position.y}
-            label={marker.label ?? ''}
-            active={marker.id === selectedId}
-            onPress={() => onSelectMarker?.(marker.id)}
-          />
-        );
-      })}
+      {bbox
+        ? visible.map((marker) => {
+            const position = projectMarker(marker, bbox);
+            return (
+              <MapMarkerPin
+                key={marker.id}
+                x={position.x}
+                y={position.y}
+                label={marker.label ?? ''}
+                active={marker.id === selectedId}
+                onPress={() => onSelectMarker?.(marker.id)}
+              />
+            );
+          })
+        : null}
 
       {userLocation ? (
         <View style={styles.userDot}>
@@ -64,18 +105,31 @@ export function MapPlaceholder({ markers, selectedId, onSelectMarker, userLocati
           Carte interactive · Mapbox bientôt
         </YText>
       </View>
+
+      {hidden > 0 ? (
+        <View style={styles.countBadge}>
+          <YText variant="caption" color="muted">
+            +{hidden} autres commerces
+          </YText>
+        </View>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    height: 280,
     borderRadius: radii.xl,
     overflow: 'hidden',
     backgroundColor: '#EEF3EC',
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  fixedHeight: {
+    height: 280,
+  },
+  fill: {
+    flex: 1,
   },
   blob: {
     position: 'absolute',
@@ -146,6 +200,17 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: spacing.sm,
     left: spacing.sm,
+    backgroundColor: colors.surface,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  countBadge: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    right: spacing.sm,
     backgroundColor: colors.surface,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,

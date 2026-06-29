@@ -70,16 +70,11 @@ export function buildSupabaseMerchantQuery(
   const search = query.search?.trim();
   if (search) {
     // Colonne UNIQUE → jamais de `.or()` avec texte utilisateur (anti-injection).
-    // Fallback temporaire sur `name` tant que `search_text`/FTS n'existent pas (Phase B).
     b = b.ilike('name', `%${search}%`);
   }
 
-  const filters = query.filters ?? [];
-  if (filters.includes('open')) b = b.eq('is_open_now', true);
-  if (filters.includes('producers')) b = b.eq('is_producer', true);
-  if (filters.includes('accessible')) b = b.eq('is_accessible', true);
-  if (filters.includes('rewards')) b = b.eq('has_rewards', true);
-
-  // `near`/`radiusKm` : distance gérée côté client en Phase A (PostGIS = Phase B).
+  // NB : les filtres booléens (is_open_now/is_producer/is_accessible) NE SONT PAS
+  // appliqués ici — ces colonnes n'existent pas dans la table réelle (erreur 42703).
+  // Ils sont gérés côté client (applyMerchantQueryLocal), de même que la distance.
   return b;
 }

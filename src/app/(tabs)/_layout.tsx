@@ -6,6 +6,31 @@ import { colors } from '@/design/tokens/colors';
 const homeIcon = require('@/assets/images/tabIcons/home.png') as ImageSourcePropType;
 const exploreIcon = require('@/assets/images/tabIcons/explore.png') as ImageSourcePropType;
 
+/** Icône « liste de commerces » composée de Views (aucun asset requis, web-safe). */
+function MerchantsIcon({ color, size }: { color: ColorValue; size: number }) {
+  const bar = (width: number) => ({
+    width,
+    height: size * 0.12,
+    borderRadius: size * 0.06,
+    marginVertical: size * 0.05,
+    backgroundColor: color,
+  });
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        paddingLeft: size * 0.14,
+      }}>
+      <View style={bar(size * 0.72)} />
+      <View style={bar(size * 0.56)} />
+      <View style={bar(size * 0.64)} />
+    </View>
+  );
+}
+
 /** Icône « personne » composée de Views (aucun asset/package requis, web-safe). */
 function ProfileIcon({ color, size }: { color: ColorValue; size: number }) {
   return (
@@ -64,7 +89,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explorer',
+          title: 'Carte',
           tabBarIcon: ({ color, size }) => (
             <Image
               source={exploreIcon}
@@ -72,6 +97,13 @@ export default function TabsLayout() {
               resizeMode="contain"
             />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="merchants"
+        options={{
+          title: 'Commerçants',
+          tabBarIcon: ({ color, size }) => <MerchantsIcon color={color} size={size} />,
         }}
       />
       <Tabs.Screen

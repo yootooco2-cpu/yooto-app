@@ -22,7 +22,7 @@ export function YChip({ label, active = false, onPress }: Props) {
         active ? styles.active : styles.inactive,
         pressed && styles.pressed,
       ]}>
-      <YText variant="caption" color={active ? 'inverse' : 'default'}>
+      <YText variant="caption" color={active ? 'inverse' : 'default'} numberOfLines={1}>
         {label}
       </YText>
     </Pressable>
@@ -31,7 +31,13 @@ export function YChip({ label, active = false, onPress }: Props) {
 
 const styles = StyleSheet.create({
   chip: {
-    paddingVertical: spacing.sm,
+    // Reste compact dans un scroll horizontal : pas d'étirement vertical (cross-axis),
+    // pas de rétrécissement, label sur une seule ligne.
+    alignSelf: 'center',
+    flexShrink: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     borderWidth: 1,

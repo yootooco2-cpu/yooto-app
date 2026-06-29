@@ -12,15 +12,25 @@ export interface Merchant {
   category: MerchantCategory;
   description: string;
   coordinates: MapCoordinate;
-  /** Libellé de distance pré-calculé pour la démo (ex. « 320 m »). */
+  /** Ville (affichée quand la distance est inconnue). */
+  city?: string;
+  /** Libellé de distance (« 320 m ») ou « — » si inconnue. */
   distanceLabel: string;
   isOpenNow: boolean;
   isProducer: boolean;
   /** Accessible aux personnes à mobilité réduite. */
   isAccessible: boolean;
   hasRewards: boolean;
-  /** Score écologique 0–100. */
-  ecoScore: number;
+  /** Score écologique significatif (ex. eco_score_v2). Absent = non affiché. */
+  ecoScore?: number;
+  /** Note (ex. google_rating), si disponible. */
+  rating?: number;
+  /** Photo de couverture principale. */
+  coverPhotoUrl?: string;
+  /** Photo secondaire (fallback). */
+  photoUrl?: string;
+  /** Galerie de photos. */
+  galleryPhotos?: string[];
   /** Position relative (%) sur la carte placeholder en attendant un provider. */
   pin: { x: number; y: number };
   /** Distance à l'utilisateur (km) — dérivée côté client quand le GPS est actif. */

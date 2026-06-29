@@ -15,6 +15,8 @@ type Props = PropsWithChildren<{
   scroll?: boolean;
   /** Padding intérieur (clé de l'échelle d'espacement). */
   padding?: keyof typeof spacing;
+  /** Espacement vertical entre les enfants (clé de l'échelle). */
+  gap?: keyof typeof spacing;
   /** Centre le contenu verticalement (ignoré si scroll). */
   center?: boolean;
   style?: ViewStyle;
@@ -24,12 +26,13 @@ export function YScreen({
   children,
   scroll = false,
   padding = 'lg',
+  gap = 'lg',
   center = false,
   style,
 }: Props) {
   const contentStyle: ViewStyle = {
     padding: spacing[padding],
-    gap: spacing.lg,
+    gap: spacing[gap],
   };
 
   return (

@@ -1,9 +1,15 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { YCard } from '@/components/ui/YCard';
 import { YText } from '@/components/ui/YText';
 import { spacing } from '@/design/tokens/spacing';
-import { CATEGORY_LABELS, getMerchantTags, type Merchant } from '@/features/merchants';
+import {
+  CATEGORY_LABELS,
+  getMerchantCoverPhoto,
+  getMerchantTags,
+  type Merchant,
+} from '@/features/merchants';
 
 type Props = {
   merchant: Merchant;
@@ -14,25 +20,39 @@ type Props = {
 export function MerchantCard({ merchant, selected = false, onPress }: Props) {
   const tags = getMerchantTags(merchant);
 
+  // Distance si connue (≠ « — »), sinon la ville.
+  const hasDistance = merchant.distanceLabel !== '—' && merchant.distanceLabel.length > 0;
+  const rightLabel = hasDistance ? merchant.distanceLabel : (merchant.city ?? '');
+
+  const meta = [CATEGORY_LABELS[merchant.category]];
+  if (typeof merchant.rating === 'number') meta.push(`★ ${merchant.rating.toFixed(1)}`);
+  if (typeof merchant.ecoScore === 'number') meta.push(`Éco ${merchant.ecoScore}`);
+
   return (
     <Pressable accessibilityRole="button" onPress={onPress}>
       <YCard variant={selected ? 'surface' : 'outline'} elevation={selected ? 'sm' : 'none'}>
+        <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={120} />
+
         <View style={styles.header}>
           <YText variant="subtitle" style={styles.title}>
             {merchant.name}
           </YText>
-          <YText variant="caption" color="primary">
-            {merchant.distanceLabel}
-          </YText>
+          {rightLabel ? (
+            <YText variant="caption" color="primary">
+              {rightLabel}
+            </YText>
+          ) : null}
         </View>
 
         <YText variant="caption" color="muted">
-          {CATEGORY_LABELS[merchant.category]} · Éco {merchant.ecoScore}
+          {meta.join(' · ')}
         </YText>
 
-        <YText variant="body" color="muted">
-          {merchant.description}
-        </YText>
+        {merchant.description ? (
+          <YText variant="body" color="muted">
+            {merchant.description}
+          </YText>
+        ) : null}
 
         {tags.length > 0 ? (
           <YText variant="caption" color="accent">

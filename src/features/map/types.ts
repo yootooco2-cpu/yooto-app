@@ -57,6 +57,8 @@ export interface MapEngineProps {
   selectedId?: string | null;
   onSelectMarker?: (id: string) => void;
   userLocation?: MapCoordinate | null;
+  /** Remplit la hauteur disponible (flex) au lieu d'une hauteur fixe. */
+  fill?: boolean;
   // --- Coutures futures (S5) ---
   camera?: MapRegion;
   onRegionChange?: (region: MapRegion) => void;

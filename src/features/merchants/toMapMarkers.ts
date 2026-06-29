@@ -13,7 +13,10 @@ export function merchantsToMapMarkers(merchants: Merchant[]): MapMarker<Merchant
     coordinate: merchant.coordinates,
     kind: 'merchant',
     label: String(index + 1),
-    placeholderPosition: merchant.pin,
+    // `pin` n'est significatif que pour les données de démo. Pour les données réelles
+    // (pin absent → {0,0}), on laisse le placeholder dériver la position des coordonnées.
+    placeholderPosition:
+      merchant.pin.x !== 0 || merchant.pin.y !== 0 ? merchant.pin : undefined,
     data: merchant,
   }));
 }
