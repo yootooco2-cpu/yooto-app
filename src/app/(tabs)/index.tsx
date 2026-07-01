@@ -1,30 +1,75 @@
-import { YButton } from '@/components/ui/YButton';
-import { YCard } from '@/components/ui/YCard';
+import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
+import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
+
+import { HomeHero } from '@/components/home/HomeHero';
+import { MerchantCarousel } from '@/components/home/MerchantCarousel';
 import { YScreen } from '@/components/ui/YScreen';
-import { YText } from '@/components/ui/YText';
+import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
+import { useMerchants, useMerchantSearchStore } from '@/features/merchants';
+
+function greetingForNow(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bonjour';
+  if (hour < 18) return 'Bon après-midi';
+  return 'Bonsoir';
+}
 
 export default function HomeScreen() {
+  const router = useRouter();
+  const { data } = useMerchants();
+  const merchants = useMemo(() => data ?? [], [data]);
+
+  const scrollY = useSharedValue(0);
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
+
+  const userLocation = useMerchantSearchStore((s) => s.userLocation);
+  const preferences = usePreferences();
+  const discoveryContext = useMemo(
+    () => buildDiscoveryContext({ userLocation, preferences }),
+    [userLocation, preferences],
+  );
+
+  // Ranking éditorial des sections d'accueil (ordre uniquement) : priorise vraies photos +
+  // catégories attractives, déprioris élevages/toilettage/pompes funèbres/services techniques
+  // /sans-photo. « Recommandés » garde la pertinence du Discovery Engine comme base.
+  const sections = useMemo(
+    () =>
+      buildHomeSections(merchants, {
+        context: discoveryContext,
+        limits: { recommendedToday: 8, nearbyProducers: 8, toDiscover: 8 },
+      }),
+    [merchants, discoveryContext],
+  );
+
   return (
-    <YScreen center>
-      <YText variant="caption" color="primary">
-        YOOTOO · GreenTech locale
-      </YText>
+    <YScreen scroll gap="lg" padding="lg" onScroll={scrollHandler}>
+      <HomeHero
+        greeting={greetingForNow()}
+        onExplore={() => router.push('/explore')}
+        scrollY={scrollY}
+      />
 
-      <YText variant="title">Mieux consommer. Soutenir le local. Être récompensé.</YText>
-
-      <YText variant="body" color="muted">
-        YOOTOO t’aide à découvrir les commerces indépendants autour de toi, suivre ton budget et
-        réduire ton impact écologique grâce à une carte intelligente.
-      </YText>
-
-      <YCard>
-        <YText variant="subtitle">Première mission</YText>
-        <YText variant="body" color="muted">
-          Active ta position pour découvrir les commerces responsables proches de toi.
-        </YText>
-      </YCard>
-
-      <YButton label="Découvrir autour de moi" fullWidth />
+      <MerchantCarousel
+        title="Recommandés aujourd'hui"
+        subtitle="Les mieux notés près de vous"
+        merchants={sections.recommendedToday}
+        delay={60}
+      />
+      <MerchantCarousel
+        title="Producteurs proches"
+        subtitle="Circuit court & vente directe"
+        merchants={sections.nearbyProducers}
+        delay={120}
+      />
+      <MerchantCarousel
+        title="À découvrir"
+        subtitle="Une sélection à explorer"
+        merchants={sections.toDiscover}
+        delay={180}
+      />
     </YScreen>
   );
 }
