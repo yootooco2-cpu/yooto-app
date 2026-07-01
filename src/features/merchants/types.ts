@@ -1,4 +1,5 @@
 import type { EntityDataSource, EntityRepository } from '@/lib/data/types';
+import type { ResolvedIntent } from '@/features/discovery';
 import type { MapCoordinate } from '@/features/map';
 
 import type { QuickFilterId } from './filters';
@@ -31,6 +32,25 @@ export interface Merchant {
   photoUrl?: string;
   /** Galerie de photos. */
   galleryPhotos?: string[];
+  /** Nombre de photos disponibles. */
+  photoCount?: number;
+  // --- Coordonnées & contact (fiche détaillée) ---
+  address?: string;
+  postalCode?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  instagram?: string;
+  facebook?: string;
+  googleMapsUrl?: string;
+  /** Nombre d'avis Google. */
+  reviewCount?: number;
+  /** Horaires lisibles (weekday_text). */
+  openingHours?: string[];
+  /** Scores internes (non affichés comme score brut). */
+  localScore?: number;
+  partnerPotential?: number;
+  status?: string;
   /** Position relative (%) sur la carte placeholder en attendant un provider. */
   pin: { x: number; y: number };
   /** Distance à l'utilisateur (km) — dérivée côté client quand le GPS est actif. */
@@ -47,6 +67,8 @@ export interface MerchantQuery {
   near?: MapCoordinate;
   /** Rayon max (km) — filtrage distance côté client en Phase A. */
   radiusKm?: number;
+  /** Intention déduite de la recherche (élargit le filtrage). */
+  intent?: ResolvedIntent;
 }
 
 /** Source de données commerces (Supabase, local…) — spécialisation générique. */

@@ -1,14 +1,12 @@
-import { type PropsWithChildren } from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { type ComponentProps, type PropsWithChildren, type ReactNode } from 'react';
+import { SafeAreaView, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import Animated from 'react-native-reanimated';
 
 import { colors } from '@/design/tokens/colors';
+import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
+
+type AnimatedScrollProps = ComponentProps<typeof Animated.ScrollView>;
 
 type Props = PropsWithChildren<{
   /** Active le défilement vertical du contenu. */
@@ -19,6 +17,10 @@ type Props = PropsWithChildren<{
   gap?: keyof typeof spacing;
   /** Centre le contenu verticalement (ignoré si scroll). */
   center?: boolean;
+  /** Barre d'action flottante ancrée en bas (CTA premium). */
+  footer?: ReactNode;
+  /** Handler de scroll Reanimated (active un Animated.ScrollView pour la parallaxe). */
+  onScroll?: AnimatedScrollProps['onScroll'];
   style?: ViewStyle;
 }>;
 
@@ -28,6 +30,8 @@ export function YScreen({
   padding = 'lg',
   gap = 'lg',
   center = false,
+  footer,
+  onScroll,
   style,
 }: Props) {
   const contentStyle: ViewStyle = {
@@ -38,16 +42,28 @@ export function YScreen({
   return (
     <SafeAreaView style={styles.screen}>
       {scroll ? (
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, contentStyle, style]}
-          showsVerticalScrollIndicator={false}>
-          {children}
-        </ScrollView>
+        onScroll ? (
+          <Animated.ScrollView
+            contentContainerStyle={[styles.scrollContent, contentStyle, style]}
+            showsVerticalScrollIndicator={false}
+            onScroll={onScroll}
+            scrollEventThrottle={16}>
+            {children}
+          </Animated.ScrollView>
+        ) : (
+          <ScrollView
+            contentContainerStyle={[styles.scrollContent, contentStyle, style]}
+            showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+        )
       ) : (
         <View style={[styles.container, center && styles.centered, contentStyle, style]}>
           {children}
         </View>
       )}
+
+      {footer ? <View style={styles.footer}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
@@ -65,5 +81,18 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+  },
+  footer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    ...shadows.lg,
   },
 });
