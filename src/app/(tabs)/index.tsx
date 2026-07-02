@@ -6,6 +6,7 @@ import { HomeHero } from '@/components/home/HomeHero';
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
 import { YScreen } from '@/components/ui/YScreen';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
+import { CategoryMegaMenu } from '@/features/discovery/components/CategoryMegaMenu';
 import { useMerchants, useMerchantSearchStore } from '@/features/merchants';
 
 function greetingForNow(): string {
@@ -26,6 +27,9 @@ export default function HomeScreen() {
   });
 
   const userLocation = useMerchantSearchStore((s) => s.userLocation);
+  const setSearch = useMerchantSearchStore((s) => s.setSearch);
+  const activeFilters = useMerchantSearchStore((s) => s.activeFilters);
+  const toggleFilter = useMerchantSearchStore((s) => s.toggleFilter);
   const preferences = usePreferences();
   const discoveryContext = useMemo(
     () => buildDiscoveryContext({ userLocation, preferences }),
@@ -50,6 +54,20 @@ export default function HomeScreen() {
         greeting={greetingForNow()}
         onExplore={() => router.push('/explore')}
         scrollY={scrollY}
+      />
+
+      {/* Méga-menu de découverte par catégories (sous le hero — pas de barre de recherche
+          sur l'Accueil). Une sélection injecte la query dans la recherche existante. */}
+      <CategoryMegaMenu
+        onSelectSubcategory={(_category, subcategory) => {
+          setSearch(subcategory.query);
+          router.push('/merchants');
+        }}
+        onViewAllNearby={() => {
+          if (!activeFilters.includes('nearby')) toggleFilter('nearby');
+          router.push('/merchants');
+        }}
+        onViewMap={() => router.push('/explore')}
       />
 
       <MerchantCarousel
