@@ -12,8 +12,11 @@ export interface Merchant {
   name: string;
   category: MerchantCategory;
   /** Catégorie brute (Google `category`/`merchant_type`, minuscule) avant normalisation.
-   *  Utilisée uniquement par le ranking éditorial de l'accueil (catégories sensibles). */
+   *  Utilisée par le ranking éditorial (catégories sensibles) et l'attribution cryptogramme. */
   rawCategory?: string;
+  /** `merchant_type` YOOTOO brut (minuscule) — source de secours pour le cryptogramme
+   *  quand la catégorie Google est générique. */
+  rawMerchantType?: string;
   description: string;
   coordinates: MapCoordinate;
   /** Ville (affichée quand la distance est inconnue). */

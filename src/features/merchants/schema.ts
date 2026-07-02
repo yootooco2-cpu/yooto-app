@@ -73,6 +73,7 @@ function readOpenNow(raw: unknown): boolean | undefined {
 export function mapMerchantRow(row: MerchantRow): Merchant {
   // `category` (Google) puis fallback `merchant_type`, normalisé en bucket canonique.
   const rawCategory = (row.category ?? row.merchant_type ?? '').trim().toLowerCase();
+  const rawMerchantType = (row.merchant_type ?? '').trim().toLowerCase();
   const category = normalizeMerchantCategory(rawCategory);
 
   return {
@@ -80,6 +81,7 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     name: row.name,
     category,
     rawCategory: rawCategory || undefined,
+    rawMerchantType: rawMerchantType || undefined,
     // Description : accroche → specialite → signature_tags → ''.
     description: firstText(row.accroche, row.specialite, row.signature_tags, row.description),
     coordinates: { latitude: row.latitude, longitude: row.longitude },
