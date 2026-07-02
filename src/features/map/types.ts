@@ -31,6 +31,16 @@ export interface MapMarker<TData = unknown> {
   coordinate: MapCoordinate;
   kind: string;
   label?: string;
+  /** Vignette à afficher sur le marqueur (cover photo). */
+  imageUrl?: string | null;
+  /** Attributs d'affichage / clustering (agnostiques du domaine). */
+  title?: string;
+  category?: string;
+  /** Identité visuelle (cryptogramme officiel) — chaîne agnostique fournie par l'adaptateur. */
+  cryptogramId?: string;
+  rating?: number;
+  open?: boolean;
+  producer?: boolean;
   /** Position relative en % (0–100) pour le rendu placeholder sans provider. */
   placeholderPosition?: { x: number; y: number };
   data?: TData;

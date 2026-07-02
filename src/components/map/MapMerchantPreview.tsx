@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { YButton } from '@/components/ui/YButton';
@@ -22,7 +23,7 @@ export function MapMerchantPreview({ merchant, onPress, onClose }: Props) {
   if (typeof merchant.rating === 'number') meta.push(`★ ${merchant.rating.toFixed(1)}`);
 
   return (
-    <View style={styles.card}>
+    <Animated.View style={styles.card} entering={FadeInDown.duration(220)}>
       <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8} style={styles.close}>
         <YText variant="subtitle" color="muted">
           ✕
@@ -51,14 +52,14 @@ export function MapMerchantPreview({ merchant, onPress, onClose }: Props) {
       </View>
 
       <YButton label="Voir la fiche" onPress={onPress} fullWidth />
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radii.lg,
+    borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,

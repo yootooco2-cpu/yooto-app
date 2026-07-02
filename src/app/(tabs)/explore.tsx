@@ -20,7 +20,7 @@ export default function MapScreen() {
   const selectedMerchant = results.find((merchant) => merchant.id === selectedId) ?? null;
 
   return (
-    <YScreen gap="sm" padding="md">
+    <YScreen gap="sm" padding="lg">
       <YSearchBar value={query} onChangeText={setQuery} />
 
       <ScrollView
@@ -40,7 +40,7 @@ export default function MapScreen() {
 
       {nearbyActive && location.status === 'denied' ? (
         <YText variant="caption" color="muted">
-          Localisation indisponible — active-la pour trier par distance.
+          Localisation indisponible — activez-la pour trier par distance.
         </YText>
       ) : null}
 
@@ -55,7 +55,7 @@ export default function MapScreen() {
           <YCard variant="outline">
             <YText variant="subtitle">Impossible de charger les commerces</YText>
             <YText variant="body" color="muted">
-              Vérifie ta connexion, puis réessaie.
+              Vérifiez votre connexion, puis réessayez.
             </YText>
             <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
           </YCard>
