@@ -72,12 +72,14 @@ function readOpenNow(raw: unknown): boolean | undefined {
 /** Mappe une ligne DB validée vers l'entité `Merchant` (conversions centralisées). */
 export function mapMerchantRow(row: MerchantRow): Merchant {
   // `category` (Google) puis fallback `merchant_type`, normalisé en bucket canonique.
-  const category = normalizeMerchantCategory(row.category ?? row.merchant_type ?? '');
+  const rawCategory = (row.category ?? row.merchant_type ?? '').trim().toLowerCase();
+  const category = normalizeMerchantCategory(rawCategory);
 
   return {
     id: row.id,
     name: row.name,
     category,
+    rawCategory: rawCategory || undefined,
     // Description : accroche → specialite → signature_tags → ''.
     description: firstText(row.accroche, row.specialite, row.signature_tags, row.description),
     coordinates: { latitude: row.latitude, longitude: row.longitude },

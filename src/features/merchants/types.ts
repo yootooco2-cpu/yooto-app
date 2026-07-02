@@ -11,6 +11,9 @@ export interface Merchant {
   id: string;
   name: string;
   category: MerchantCategory;
+  /** Catégorie brute (Google `category`/`merchant_type`, minuscule) avant normalisation.
+   *  Utilisée uniquement par le ranking éditorial de l'accueil (catégories sensibles). */
+  rawCategory?: string;
   description: string;
   coordinates: MapCoordinate;
   /** Ville (affichée quand la distance est inconnue). */

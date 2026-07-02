@@ -65,6 +65,25 @@ const ATTRACTIVE_TERMS = [
 // Quality-producer keywords (extra bonus on top of the producer base).
 const PREMIUM_PRODUCER_TERMS = ['domaine', 'vignoble', 'vigneron', 'viticulteur'] as const
 
+// Low-appeal / sensitive RAW categories (Google `category`/`merchant_type`) — these lose
+// granularity once normalized to a bucket (e.g. `pet_care` → `shop`), so a merchant whose
+// NAME lacks a keyword would otherwise escape the penalty. Matched on `merchant.rawCategory`.
+// Producers (farm/ranch/vineyard/winery) are intentionally NOT here — they are valued.
+const SENSITIVE_RAW_CATEGORIES = new Set<string>([
+  'pet_care',
+  'pet_store',
+  'local_pet',
+  'pet_boarding_service',
+  'dog_park',
+  'veterinary_care',
+  'locksmith',
+  'funeral_home',
+  'plumber',
+  'general_contractor',
+  'roofing_contractor',
+  'painter',
+])
+
 // Low-appeal / sensitive keywords for a discovery feed (penalty, never removal).
 const SENSITIVE_TERMS = [
   'elevage',
@@ -110,8 +129,11 @@ export function editorialScore(merchant: Merchant): number {
   else score += W.noPhotoPenalty
 
   // 2/4. Category appeal. Sensitive wins over everything; else attractive keyword; else a
-  // bucket-level nudge (so a photo-less "service" merchant still sinks).
-  const isSensitive = SENSITIVE_TERMS.some((t) => haystack.includes(t))
+  // bucket-level nudge (so a photo-less "service" merchant still sinks). Sensitivity is
+  // triggered by a name/description keyword OR a sensitive RAW category — penalty applied
+  // once (no double).
+  const rawSensitive = merchant.rawCategory ? SENSITIVE_RAW_CATEGORIES.has(merchant.rawCategory) : false
+  const isSensitive = rawSensitive || SENSITIVE_TERMS.some((t) => haystack.includes(t))
   const isAttractive = ATTRACTIVE_TERMS.some((t) => haystack.includes(t))
   if (isSensitive) {
     score += W.sensitivePenalty
@@ -196,12 +218,28 @@ export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSections
     })
     .slice(0, limitP)
 
-  // « À découvrir » : the next best editorially, excluding the two sections above.
+  // « À découvrir » : the next best editorially, excluding the two sections above, with a
+  // diversity cap (max 2 per bucket) so premium producers/domaines don't monopolize it.
   const used = new Set<string>([...recommendedToday, ...nearbyProducers].map((m) => m.id))
-  const toDiscover = [...merchants]
-    .sort(byEditorial)
-    .filter((m) => !used.has(m.id))
-    .slice(0, limitD)
+  const candidates = [...merchants].sort(byEditorial).filter((m) => !used.has(m.id))
+  const MAX_PER_BUCKET = 2
+  const bucketCount = new Map<Merchant['category'], number>()
+  const toDiscover: Merchant[] = []
+  for (const m of candidates) {
+    if (toDiscover.length >= limitD) break
+    const n = bucketCount.get(m.category) ?? 0
+    if (n >= MAX_PER_BUCKET) continue
+    bucketCount.set(m.category, n + 1)
+    toDiscover.push(m)
+  }
+  // Fallback: fill up to the limit by editorial order if the cap left us short.
+  if (toDiscover.length < limitD) {
+    const picked = new Set(toDiscover.map((m) => m.id))
+    for (const m of candidates) {
+      if (toDiscover.length >= limitD) break
+      if (!picked.has(m.id)) toDiscover.push(m)
+    }
+  }
 
   return { recommendedToday, nearbyProducers, toDiscover }
 }
