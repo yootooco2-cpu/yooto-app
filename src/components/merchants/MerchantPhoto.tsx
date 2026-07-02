@@ -9,20 +9,25 @@ type Props = {
   uri: string | null;
   height: number;
   rounded?: number;
+  /** Clé de recyclage (id commerce) pour un défilement de liste fluide. */
+  recyclingKey?: string;
 };
 
 /**
  * Photo de commerce (expo-image) avec fallback YOOTOO élégant si `uri` est null.
- * Web + natif. `contentFit="cover"`.
+ * - `cachePolicy="memory-disk"` + `recyclingKey` → chargement progressif & cache.
+ * - `transition` → fondu doux à l'apparition. `contentFit="cover"`. Web + natif.
  */
-export function MerchantPhoto({ uri, height, rounded = radii.lg }: Props) {
+export function MerchantPhoto({ uri, height, rounded = radii.lg, recyclingKey }: Props) {
   if (uri) {
     return (
       <Image
         source={uri}
-        style={{ width: '100%', height, borderRadius: rounded }}
+        style={{ width: '100%', height, borderRadius: rounded, backgroundColor: colors.border }}
         contentFit="cover"
-        transition={150}
+        transition={220}
+        cachePolicy="memory-disk"
+        recyclingKey={recyclingKey}
       />
     );
   }
