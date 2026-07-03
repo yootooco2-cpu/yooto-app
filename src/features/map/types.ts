@@ -86,6 +86,11 @@ export interface MapEngineProps {
   userAccuracy?: number | null;
   /** Jeton de recentrage : à chaque incrément, la carte vole vers l'utilisateur. */
   recenterToken?: number;
+  /**
+   * Caméra initiale (centre + zoom) restaurée pour la session. Si fournie, la carte s'ouvre
+   * exactement dessus (pas de Montpellier→restore) et le cadrage auto (`fit`) est neutralisé.
+   */
+  initialCamera?: MapRegion;
   /** Remplit la hauteur disponible (flex) au lieu d'une hauteur fixe. */
   fill?: boolean;
   /**
