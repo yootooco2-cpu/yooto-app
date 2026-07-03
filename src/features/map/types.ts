@@ -82,6 +82,10 @@ export interface MapEngineProps {
   selectedId?: string | null;
   onSelectMarker?: (id: string) => void;
   userLocation?: MapCoordinate | null;
+  /** Précision (m) du fix utilisateur → halo de précision (optionnel). */
+  userAccuracy?: number | null;
+  /** Jeton de recentrage : à chaque incrément, la carte vole vers l'utilisateur. */
+  recenterToken?: number;
   /** Remplit la hauteur disponible (flex) au lieu d'une hauteur fixe. */
   fill?: boolean;
   /**

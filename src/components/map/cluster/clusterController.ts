@@ -2,6 +2,7 @@ import type { GeoJSONSource, Map as MapboxMap, MapMouseEvent, Marker as MapboxMa
 
 import { colors } from '@/design/tokens/colors';
 import { getMapConfig, type MapCoordinate, type MapMarker } from '@/features/map';
+import { accuracyToHaloPx } from '@/features/location/mapLocation';
 import {
   buildMerchantFeatureCollection,
   isPlausibleCoordinate,
@@ -51,7 +52,7 @@ export class MapClusterController {
   }
 
   /** Met à jour les données (commerces + position) sans recharger la carte. */
-  setData(markers: MapMarker[], userLocation?: MapCoordinate | null): void {
+  setData(markers: MapMarker[], userLocation?: MapCoordinate | null, userAccuracy?: number | null): void {
     const fc = buildMerchantFeatureCollection(markers);
     const data = fc as unknown as Parameters<GeoJSONSource['setData']>[0];
 
@@ -66,7 +67,7 @@ export class MapClusterController {
       this.installLayers();
     }
 
-    this.setUserLocation(userLocation ?? null);
+    this.setUserLocation(userLocation ?? null, userAccuracy ?? null);
     this.syncPhotoMarkers();
     this.fit(markers, userLocation ?? null);
   }
@@ -180,17 +181,33 @@ export class MapClusterController {
     this.onZoom();
   };
 
-  private setUserLocation(coord: MapCoordinate | null): void {
+  private setUserLocation(coord: MapCoordinate | null, accuracy?: number | null): void {
     this.userMarker?.remove();
     this.userMarker = null;
     if (!coord || !isPlausibleCoordinate(coord)) return;
+
+    // Halo de précision (translucide) + point net « vous » (couleur marque).
+    const halo = accuracyToHaloPx(accuracy);
     const el = document.createElement('div');
-    el.style.width = '18px';
-    el.style.height = '18px';
-    el.style.borderRadius = '9px';
-    el.style.backgroundColor = colors.accent;
-    el.style.border = '3px solid #FFFFFF';
-    el.style.boxShadow = '0 1px 4px rgba(23,32,26,0.4)';
+    el.style.position = 'relative';
+    el.style.width = `${halo}px`;
+    el.style.height = `${halo}px`;
+    el.style.borderRadius = '50%';
+    el.style.display = 'flex';
+    el.style.alignItems = 'center';
+    el.style.justifyContent = 'center';
+    el.style.backgroundColor = 'rgba(31,122,77,0.16)';
+    el.style.border = '1px solid rgba(31,122,77,0.30)';
+
+    const dot = document.createElement('div');
+    dot.style.width = '16px';
+    dot.style.height = '16px';
+    dot.style.borderRadius = '8px';
+    dot.style.backgroundColor = colors.primary;
+    dot.style.border = '3px solid #FFFFFF';
+    dot.style.boxShadow = '0 1px 4px rgba(23,32,26,0.45)';
+    el.appendChild(dot);
+
     this.userMarker = new this.mapboxgl.Marker({ element: el })
       .setLngLat([coord.longitude, coord.latitude])
       .addTo(this.map);

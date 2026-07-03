@@ -32,6 +32,8 @@ export function useLocationPermission() {
       const next: UserCoordinates = {
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
+        accuracy:
+          typeof position.coords.accuracy === 'number' ? position.coords.accuracy : undefined,
       };
       setCoordinates(next);
       setStatus('granted');
