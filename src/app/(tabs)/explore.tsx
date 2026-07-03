@@ -16,7 +16,12 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { LocationPrompt, useSmartLocation } from '@/features/location';
-import { type MapCoordinate, type MapViewport } from '@/features/map';
+import {
+  isPlausibleViewport,
+  useMapViewportStore,
+  type MapCoordinate,
+  type MapViewport,
+} from '@/features/map';
 import {
   CATEGORY_LABELS,
   getMerchantCoverPhoto,
@@ -71,21 +76,33 @@ export default function MapScreen() {
     useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Persistance session : viewport à restaurer (lu UNE fois au montage) + setter.
+  const setLastViewport = useMapViewportStore((s) => s.setLastViewport);
+  const initialCamera = useMemo(() => {
+    const v = useMapViewportStore.getState().lastViewport;
+    return isPlausibleViewport(v) ? { center: v.center, zoom: v.zoom } : undefined;
+  }, []);
+
   // Zone VALIDÉE (filtre compteur + liste) vs viewport LIVE (dernier état caméra).
   const [searchArea, setSearchArea] = useState<MapViewport | null>(null);
   const [liveViewport, setLiveViewport] = useState<MapViewport | null>(null);
 
   // Programmatique (cadrage initial, zoom cluster) → auto-valide la zone. Geste utilisateur
   // → on mémorise seulement le live et on propose « Rechercher dans cette zone ».
-  const handleViewport = useCallback((v: MapViewport, userInitiated: boolean) => {
-    // IDEMPOTENT : si le viewport est inchangé, on renvoie `prev` → React n'effectue aucun
-    // re-render (protège contre toute boucle rendu ↔ cadrage carte).
-    setLiveViewport((prev) => (sameViewport(prev, v) ? prev : v));
-    setSearchArea((prev) => {
-      if (userInitiated && prev) return prev; // geste utilisateur → on ne re-valide pas la zone
-      return sameViewport(prev, v) ? prev : v;
-    });
-  }, []);
+  const handleViewport = useCallback(
+    (v: MapViewport, userInitiated: boolean) => {
+      // IDEMPOTENT : si le viewport est inchangé, on renvoie `prev` → React n'effectue aucun
+      // re-render (protège contre toute boucle rendu ↔ cadrage carte).
+      setLiveViewport((prev) => (sameViewport(prev, v) ? prev : v));
+      setSearchArea((prev) => {
+        if (userInitiated && prev) return prev; // geste utilisateur → on ne re-valide pas la zone
+        return sameViewport(prev, v) ? prev : v;
+      });
+      // Persistance session : on mémorise toujours le dernier viewport (centre + zoom + emprise).
+      setLastViewport(v);
+    },
+    [setLastViewport],
+  );
 
   const merchantsInArea = useMemo(
     () => (searchArea ? results.filter((m) => inBounds(m, searchArea)) : results),
@@ -155,6 +172,7 @@ export default function MapScreen() {
               userLocation={userLocation}
               userAccuracy={smart.accuracy}
               recenterToken={smart.recenterToken}
+              initialCamera={initialCamera}
               onSelectMarker={setSelectedId}
               onViewportChange={handleViewport}
             />

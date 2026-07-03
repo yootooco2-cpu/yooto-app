@@ -29,6 +29,7 @@ export function MapEngine({
   userLocation,
   userAccuracy,
   recenterToken,
+  initialCamera,
   fill,
 }: MapEngineProps) {
   const { token, styleUrl, defaultRegion } = getMapConfig();
@@ -47,9 +48,14 @@ export function MapEngine({
     onViewportRef.current = onViewportChange;
   });
 
-  const centerLat = defaultRegion.center.latitude;
-  const centerLng = defaultRegion.center.longitude;
-  const zoom = defaultRegion.zoom;
+  // Caméra initiale : viewport restauré (session) s'il existe, sinon région par défaut.
+  // Capturée une fois au montage → aucune recréation de carte si le store change ensuite.
+  const restoredCameraRef = useRef(initialCamera);
+  const camera = restoredCameraRef.current ?? defaultRegion;
+  const hasRestoredCamera = Boolean(restoredCameraRef.current);
+  const centerLat = camera.center.latitude;
+  const centerLng = camera.center.longitude;
+  const zoom = camera.zoom;
 
   // --- Cycle de vie : carte + contrôleur de clustering ---
   useEffect(() => {
@@ -101,8 +107,11 @@ export function MapEngine({
           if (cancelled) return;
           if (timeout) clearTimeout(timeout);
           try {
-            controllerRef.current = new MapClusterController(map, mapboxgl, (id) =>
-              onSelectRef.current?.(id),
+            controllerRef.current = new MapClusterController(
+              map,
+              mapboxgl,
+              (id) => onSelectRef.current?.(id),
+              hasRestoredCamera,
             );
           } catch (err) {
             // eslint-disable-next-line no-console
@@ -138,7 +147,7 @@ export function MapEngine({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [token, styleUrl, centerLat, centerLng, zoom]);
+  }, [token, styleUrl, centerLat, centerLng, zoom, hasRestoredCamera]);
 
   // --- Données (commerces + position) : mise à jour sans recharge ---
   useEffect(() => {

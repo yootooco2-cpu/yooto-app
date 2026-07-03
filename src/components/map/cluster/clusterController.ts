@@ -47,6 +47,9 @@ export class MapClusterController {
     private readonly map: MapboxMap,
     private readonly mapboxgl: Mapbox,
     private readonly onSelect: (id: string) => void,
+    /** Neutralise le cadrage automatique (`fit`) — utilisé quand un viewport est restauré,
+     *  pour ne PAS écraser la caméra rétablie. N'affecte QUE la caméra (aucun clustering). */
+    private readonly suppressFit = false,
   ) {
     this.photoLayer = new PhotoMarkerLayer(mapboxgl, map, onSelect);
   }
@@ -215,6 +218,8 @@ export class MapClusterController {
 
   /** Cadrage : bbox des commerces si raisonnable, sinon région YOOTOO / position. */
   private fit(markers: MapMarker[], userLocation: MapCoordinate | null): void {
+    // Viewport restauré → on ne recadre jamais (la caméra rétablie fait foi).
+    if (this.suppressFit) return;
     const { defaultRegion } = getMapConfig();
     const plottable = markers.filter((m) => isPlausibleCoordinate(m.coordinate));
     const bounds = new this.mapboxgl.LngLatBounds();
