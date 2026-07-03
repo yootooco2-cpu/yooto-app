@@ -66,6 +66,14 @@ export interface SignalContribution {
   key: SignalKey;
   weight: number;
   value: number;
+  /**
+   * Mode d'agrégation (agrégateur v2).
+   *  - `'additive'` (défaut) : entre dans la moyenne pondérée (pertinence contextuelle) ;
+   *  - `'multiplicative'` : agit comme un gate éditorial (prior de catégorie, qualité…).
+   * Défaut `additive` → tous les signaux existants sont inchangés (rétrocompatible).
+   * AUCUN signal `multiplicative` n'existe au Sprint 1 : l'ordre reste identique à l'actuel.
+   */
+  mode?: 'additive' | 'multiplicative';
   /** Explication lisible (vouvoiement) si le signal contribue fortement. */
   reason?: string;
 }
