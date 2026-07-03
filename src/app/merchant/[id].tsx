@@ -13,6 +13,7 @@ import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
+import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { trackEvent } from '@/features/discovery';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, isRealPhotoUrl, useMerchant } from '@/features/merchants';
@@ -216,6 +217,9 @@ export default function MerchantDetailScreen() {
 
   const cover = getMerchantCoverPhoto(merchant);
   const metaDistance = merchant.distanceLabel !== '—' ? merchant.distanceLabel : undefined;
+  const ratingMeta = [typeof reviewCount === 'number' ? `${reviewCount} avis` : null, metaDistance]
+    .filter(Boolean)
+    .join(' • ');
   const categoryLine = [CATEGORY_LABELS[merchant.category], city].filter(Boolean).join(' • ');
 
   // Badges — « Local » = positionnement YOOTOO ; le reste dérive de données réelles.
@@ -276,24 +280,14 @@ export default function MerchantDetailScreen() {
   return (
     <YScreen
       scroll
+      gap="md"
       footer={
         <View style={styles.ctaRow}>
           <IconAction icon="bookmark" label={saved ? 'Enregistré' : 'Enregistrer'} onPress={onSave} />
           <IconAction icon="map" label="Voir sur la carte" primary onPress={() => router.push('/explore')} />
         </View>
       }>
-      <Pressable
-        onPress={() => router.back()}
-        accessibilityRole="button"
-        accessibilityLabel="Retour"
-        style={styles.back}>
-        <Feather name="chevron-left" size={18} color={colors.primary} />
-        <YText variant="label" color="primary">
-          Retour
-        </YText>
-      </Pressable>
-
-      {/* Grande galerie photo — tap → plein écran. Dégradé bas pour la profondeur. */}
+      {/* Grande galerie photo — tap → plein écran. Bouton retour rond flottant. */}
       <Pressable
         disabled={allImages.length === 0}
         onPress={() => setGalleryIndex(0)}
@@ -301,9 +295,14 @@ export default function MerchantDetailScreen() {
         accessibilityLabel="Voir les photos en plein écran"
         style={styles.hero}>
         <MerchantPhoto uri={cover} height={300} rounded={radii.xl} recyclingKey={merchant.id} />
-        {/* Overlay dégradé simulé (sans dépendance) → texte/badge plus lisibles. */}
-        <View pointerEvents="none" style={[styles.heroShade, styles.heroShade1]} />
-        <View pointerEvents="none" style={[styles.heroShade, styles.heroShade2]} />
+        <Pressable
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+          hitSlop={8}
+          style={styles.backFab}>
+          <Feather name="chevron-left" size={20} color={colors.text} />
+        </Pressable>
         {allImages.length > 1 ? (
           <View style={styles.countBadge}>
             <Feather name="image" size={12} color="#FFFFFF" />
@@ -339,11 +338,14 @@ export default function MerchantDetailScreen() {
           {typeof merchant.rating === 'number' ? (
             <>
               <StarRow rating={merchant.rating} />
-              <YText variant="caption" color="muted" style={styles.ratingText}>
+              <YText variant="caption" style={styles.ratingScore}>
                 {formatRatingFr(merchant.rating)}
-                {typeof reviewCount === 'number' ? ` (${reviewCount} avis)` : ''}
-                {metaDistance ? ` • ${metaDistance}` : ''}
               </YText>
+              {ratingMeta ? (
+                <YText variant="caption" color="muted" style={styles.ratingText}>
+                  {ratingMeta}
+                </YText>
+              ) : null}
             </>
           ) : metaDistance ? (
             <YText variant="caption" color="muted">
@@ -399,7 +401,7 @@ export default function MerchantDetailScreen() {
       ) : null}
 
       {/* Pourquoi YOOTOO recommande ce commerce */}
-      <YCard>
+      <YCard padding="md">
         <YText variant="subtitle">Pourquoi YOOTOO recommande ce commerce</YText>
         {whyLines.map((line) => (
           <WhyLine key={line} text={line} />
@@ -408,7 +410,7 @@ export default function MerchantDetailScreen() {
 
       {/* Informations pratiques — carte premium à icônes */}
       {hasContact ? (
-        <YCard>
+        <YCard padding="md">
           <YText variant="subtitle">Informations pratiques</YText>
           {addressLines.length > 0 ? (
             <IconRow icon="map-pin" label="Adresse" value={addressLines.join(', ')} onPress={onDirections} />
@@ -436,7 +438,7 @@ export default function MerchantDetailScreen() {
 
       {/* Horaires */}
       {openingHours && openingHours.length > 0 ? (
-        <YCard>
+        <YCard padding="md">
           <View style={styles.cardHeader}>
             <Feather name="clock" size={16} color={colors.primary} />
             <YText variant="subtitle">Horaires</YText>
@@ -450,7 +452,7 @@ export default function MerchantDetailScreen() {
       ) : null}
 
       {/* Avis clients — ÉVOLUTIF */}
-      <YCard>
+      <YCard padding="md">
         <YText variant="subtitle">Avis clients</YText>
         <ReviewsSummary
           rating={merchant.rating}
@@ -462,7 +464,7 @@ export default function MerchantDetailScreen() {
 
       {/* Score YOOTOO — carte dédiée, mise en avant forte */}
       {scoreStats.length > 0 ? (
-        <YCard style={styles.scoreCard}>
+        <YCard padding="md" style={styles.scoreCard}>
           <View style={styles.cardHeader}>
             <Feather name="award" size={16} color={colors.primary} />
             <YText variant="subtitle">Score YOOTOO</YText>
@@ -489,31 +491,23 @@ export default function MerchantDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  back: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 2,
-    paddingVertical: spacing.xs,
-  },
   hero: {
     position: 'relative',
     borderRadius: radii.xl,
     overflow: 'hidden',
+    ...shadows.sm,
   },
-  heroShade: {
+  backFab: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  heroShade1: {
-    height: 96,
-    backgroundColor: 'rgba(23,32,26,0.10)',
-  },
-  heroShade2: {
-    height: 44,
-    backgroundColor: 'rgba(23,32,26,0.20)',
+    top: spacing.sm,
+    left: spacing.sm,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    ...shadows.sm,
   },
   countBadge: {
     position: 'absolute',
@@ -536,6 +530,8 @@ const styles = StyleSheet.create({
   },
   galleryThumb: {
     width: 120,
+    borderRadius: radii.md,
+    ...shadows.sm,
   },
   identity: {
     gap: spacing.xs,
@@ -548,6 +544,11 @@ const styles = StyleSheet.create({
   },
   stars: {
     letterSpacing: 2,
+  },
+  ratingScore: {
+    color: colors.text,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   ratingText: {
     fontVariant: ['tabular-nums'],
