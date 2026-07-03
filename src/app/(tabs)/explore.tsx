@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MapEngine, MapMerchantPreview } from '@/components/map';
@@ -14,7 +14,7 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
-import { isPlausibleCoordinate, type MapViewport } from '@/features/map';
+import { type MapViewport } from '@/features/map';
 import {
   CATEGORY_LABELS,
   getMerchantCoverPhoto,
@@ -89,25 +89,6 @@ export default function MapScreen() {
   const onSearchHere = () => {
     if (liveViewport) setSearchArea(liveViewport);
   };
-
-  // Logs debug TEMPORAIRES (P0 alignement carte/liste/compteur).
-  useEffect(() => {
-    if (!__DEV__) return;
-    const valid = results.filter((m) => isPlausibleCoordinate(m.coordinates)).length;
-    // eslint-disable-next-line no-console
-    console.log(
-      `[YOOTOO/explore] total=${results.length} validCoords=${valid} inArea=${merchantsInArea.length}` +
-        ` | center=${searchArea ? `${searchArea.center.latitude.toFixed(4)},${searchArea.center.longitude.toFixed(4)}` : 'n/a'}` +
-        ` zoom=${searchArea ? searchArea.zoom.toFixed(2) : 'n/a'}`,
-    );
-  }, [results, merchantsInArea.length, searchArea]);
-
-  // Log d'état de chargement (P0 — garantir qu'on ne reste jamais bloqué sur « Chargement »).
-  useEffect(() => {
-    if (!__DEV__) return;
-    // eslint-disable-next-line no-console
-    console.log(`[YOOTOO/explore] loading state: isLoading=${isLoading} isError=${isError}`);
-  }, [isLoading, isError]);
 
   const count = merchantsInArea.length;
   const showEmpty = !isLoading && !isError && searchArea !== null && count === 0;
@@ -192,15 +173,9 @@ export default function MapScreen() {
                 <MapMerchantPreview
                   merchant={selectedMerchant}
                   onClose={() => setSelectedId(null)}
-                  onPress={() => {
-                    if (__DEV__) {
-                      // eslint-disable-next-line no-console
-                      console.log(
-                        `[YOOTOO/explore] open merchant detail id=${selectedMerchant.id} name=${selectedMerchant.name}`,
-                      );
-                    }
-                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } });
-                  }}
+                  onPress={() =>
+                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
+                  }
                 />
               </View>
             ) : !isLoading && count > 0 ? (

@@ -140,10 +140,6 @@ export default function MerchantDetailScreen() {
   // `id` peut arriver en tableau (Expo Router) → on prend la 1ʳᵉ valeur, jamais un id figé.
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? (params.id[0] ?? '') : (params.id ?? '');
-  if (__DEV__) {
-    // eslint-disable-next-line no-console
-    console.log(`[YOOTOO/merchant] route id=${id || '(absent)'}`);
-  }
   const { data: merchant, isLoading, isError, refetch } = useMerchant(id);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   // Favori : état visuel local (pas de persistance inventée ; branché plus tard sur un store).
@@ -153,10 +149,6 @@ export default function MerchantDetailScreen() {
   useEffect(() => {
     if (merchant) {
       trackEvent({ type: 'open_merchant', category: merchant.category, isProducer: merchant.isProducer });
-      if (__DEV__) {
-        // eslint-disable-next-line no-console
-        console.log(`[YOOTOO/merchant] loaded merchant name=${merchant.name} id=${merchant.id}`);
-      }
     }
   }, [merchant]);
 

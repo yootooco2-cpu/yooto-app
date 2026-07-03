@@ -178,35 +178,6 @@ export class MapClusterController {
     this.photoLayer.sync(photoPoints);
     // Applique l'état de visibilité du cryptogramme aux marqueurs (ap. maj données, sans zoom).
     this.onZoom();
-
-    // DEBUG TEMPORAIRE (P0 lisibilité carte) — densité réelle du viewport.
-    if (__DEV__) {
-      let clusterCount = 0;
-      let merchantsInClusters = 0;
-      try {
-        const clusters = this.map.querySourceFeatures(SOURCE_ID, {
-          filter: ['has', 'point_count'],
-        } as unknown as Parameters<MapboxMap['querySourceFeatures']>[1]);
-        const seenClusters = new Set<number>();
-        for (const c of clusters) {
-          const cp = c.properties as { cluster_id?: number; point_count?: number } | null;
-          const cid = cp?.cluster_id;
-          if (cid == null || seenClusters.has(cid)) continue;
-          seenClusters.add(cid);
-          clusterCount += 1;
-          merchantsInClusters += cp?.point_count ?? 0;
-        }
-      } catch {
-        // querySourceFeatures peut échouer transitoirement (source non prête) → debug seulement.
-      }
-      const individual = points.length;
-      const viewport = merchantsInClusters + individual;
-      // eslint-disable-next-line no-console
-      console.log(
-        `[YOOTOO/map] zoom=${this.map.getZoom().toFixed(2)} clusters=${clusterCount} ` +
-          `individual=${individual} photo=${photoPoints.length} viewport=${viewport}`,
-      );
-    }
   };
 
   private setUserLocation(coord: MapCoordinate | null): void {
