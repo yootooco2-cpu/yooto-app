@@ -10,9 +10,25 @@ export const CLUSTERS_LAYER = 'merchants-clusters';
 export const CLUSTER_COUNT_LAYER = 'merchants-cluster-count';
 export const UNCLUSTERED_HIT_LAYER = 'merchants-unclustered';
 
-/** Réglages clustering (ajustables). */
-export const CLUSTER_RADIUS = 60; // px : espace entre clusters → aucun chevauchement
-export const CLUSTER_MAX_ZOOM = 14; // au-delà : plus de cluster, points individuels
+/**
+ * Réglages clustering — VOLONTAIREMENT PEU AGRESSIFS : YOOTOO est une carte de découverte,
+ * pas une carte statistique. On privilégie les commerces individuels le plus tôt possible.
+ *  - clusterRadius faible → les points se séparent vite.
+ *  - clusterMaxZoom bas → AUCUN cluster au-delà du niveau ville : dès le quartier (zoom 12),
+ *    tous les commerces sont individuels (photo + cryptogramme).
+ */
+export const CLUSTER_RADIUS = 44; // px (était 60) : regroupe beaucoup moins
+export const CLUSTER_MAX_ZOOM = 11; // au-delà (>=12) : plus AUCUN cluster, commerces individuels
+
+/**
+ * Paliers de zoom — logique d'affichage (source unique).
+ *  - < ZOOM_SHOW_PHOTO_MARKERS : territoire → clusters uniquement (pas de surcharge).
+ *  - >= ZOOM_SHOW_PHOTO_MARKERS : dès la ville, chaque commerce NON clusterisé devient un
+ *    marqueur photo (photo + cryptogramme + anneau catégorie) → on voit des commerces, pas des chiffres.
+ *  - >= ZOOM_HIDE_CRYPTOGRAMS_CLOSE : très proche → le cryptogramme devient discret (fondu).
+ */
+export const ZOOM_SHOW_PHOTO_MARKERS = 9; // >= : commerces (photos) visibles dès le niveau ville
+export const ZOOM_HIDE_CRYPTOGRAMS_CLOSE = 16; // >= : très proche → cryptogramme discret/masqué
 
 /** Agrégats calculés par cluster (ex. proportion de producteurs → couleur catégorie). */
 export const CLUSTER_PROPERTIES = {
@@ -76,8 +92,12 @@ export function clusterCountLayerSpec() {
 }
 
 /**
- * Couche INVISIBLE des points non clusterisés : sert uniquement à interroger
- * (queryRenderedFeatures) les commerces visibles → rendus en marqueurs photo HTML.
+ * Couche INVISIBLE des points non clusterisés. Rôles :
+ *  1. interroger (querySourceFeatures) les commerces visibles → marqueurs photo HTML ;
+ *  2. cible de clic (hit area) pour sélectionner un commerce là où, exceptionnellement,
+ *     aucun marqueur photo n'est encore rendu.
+ * Le rendu visible des commerces est porté par les marqueurs photo (photo + cryptogramme),
+ * jamais par cette couche → aucun double marqueur, aucune pastille « statistique ».
  */
 export function unclusteredHitLayerSpec() {
   return {
@@ -86,7 +106,7 @@ export function unclusteredHitLayerSpec() {
     source: SOURCE_ID,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': 1,
+      'circle-radius': 10,
       'circle-opacity': 0,
     },
   };

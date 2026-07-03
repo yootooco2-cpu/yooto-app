@@ -15,6 +15,8 @@ import {
   SOURCE_ID,
   UNCLUSTERED_HIT_LAYER,
   unclusteredHitLayerSpec,
+  ZOOM_HIDE_CRYPTOGRAMS_CLOSE,
+  ZOOM_SHOW_PHOTO_MARKERS,
 } from '@/features/map/cluster/layers';
 
 import type { CryptogramId } from '@/features/merchants/cryptograms';
@@ -40,7 +42,7 @@ export class MapClusterController {
   constructor(
     private readonly map: MapboxMap,
     private readonly mapboxgl: Mapbox,
-    onSelect: (id: string) => void,
+    private readonly onSelect: (id: string) => void,
   ) {
     this.photoLayer = new PhotoMarkerLayer(mapboxgl, map, onSelect);
   }
@@ -73,7 +75,9 @@ export class MapClusterController {
   destroy(): void {
     this.map.off('moveend', this.syncPhotoMarkers);
     this.map.off('idle', this.syncPhotoMarkers);
+    this.map.off('zoom', this.onZoom);
     this.map.off('click', CLUSTERS_LAYER, this.onClusterClick);
+    this.map.off('click', UNCLUSTERED_HIT_LAYER, this.onUnclusteredClick);
     this.photoLayer.clear();
     this.userMarker?.remove();
     this.userMarker = null;
@@ -90,8 +94,10 @@ export class MapClusterController {
     this.map.addLayer(clusterCountLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
     this.map.addLayer(unclusteredHitLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
     this.map.on('click', CLUSTERS_LAYER, this.onClusterClick);
+    this.map.on('click', UNCLUSTERED_HIT_LAYER, this.onUnclusteredClick);
     this.map.on('moveend', this.syncPhotoMarkers);
     this.map.on('idle', this.syncPhotoMarkers);
+    this.map.on('zoom', this.onZoom);
     this.installed = true;
   }
 
@@ -100,8 +106,29 @@ export class MapClusterController {
     this.map.easeTo({ center: e.lngLat, zoom: Math.min(this.map.getZoom() + 2, 18), duration: 400 });
   };
 
+  /** Clic sur un pin sobre (points non clusterisés, zoom large) → sélection du commerce. */
+  private onUnclusteredClick = (e: MapMouseEvent & { features?: Array<{ properties?: { id?: string } | null }> }): void => {
+    const id = e.features?.[0]?.properties?.id;
+    if (id) this.onSelect(id);
+  };
+
+  /**
+   * Pilotage du cryptogramme selon le zoom : à très fort zoom (>= ZOOM_HIDE_CRYPTOGRAMS_CLOSE),
+   * on l'efface en fondu pour laisser respirer la photo. Idempotent → aucun flicker au zoom.
+   */
+  private onZoom = (): void => {
+    this.photoLayer.setCryptogramVisible(this.map.getZoom() < ZOOM_HIDE_CRYPTOGRAMS_CLOSE);
+  };
+
   /** Recense les commerces non clusterisés visibles → met à jour le pool photo. */
   private syncPhotoMarkers = (): void => {
+    // Palier « quartier » : en dessous, aucun marqueur photo (clusters + pins sobres GL
+    // uniquement) → carte lisible au loin, aucune surcharge.
+    if (this.map.getZoom() < ZOOM_SHOW_PHOTO_MARKERS) {
+      this.photoLayer.sync([]);
+      return;
+    }
+
     let features;
     try {
       features = this.map.querySourceFeatures(SOURCE_ID, {
@@ -130,6 +157,8 @@ export class MapClusterController {
       });
     }
     this.photoLayer.sync(points);
+    // Applique l'état de visibilité du cryptogramme aux marqueurs (ap. maj données, sans zoom).
+    this.onZoom();
   };
 
   private setUserLocation(coord: MapCoordinate | null): void {

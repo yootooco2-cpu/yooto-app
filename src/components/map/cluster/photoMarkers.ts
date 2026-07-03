@@ -1,7 +1,8 @@
 import type { Map as MapboxMap, Marker as MapboxMarker } from 'mapbox-gl';
 
 import { colors } from '@/design/tokens/colors';
-import { cryptogramColor, cryptogramDataUri, type CryptogramId } from '@/features/merchants/cryptograms';
+import { cryptogramAssetUri } from '@/features/merchants/cryptogramAssets';
+import { cryptogramColor, type CryptogramId } from '@/features/merchants/cryptograms';
 
 type Mapbox = typeof import('mapbox-gl')['default'];
 
@@ -13,7 +14,7 @@ export interface VisibleMerchant {
   cryptogramId: CryptogramId;
 }
 
-const POOL_MAX = 80;
+const POOL_MAX = 140;
 const CRYPTO_SIZE = 18;
 
 function styleBase(el: HTMLDivElement, photo: string) {
@@ -26,7 +27,7 @@ function styleBase(el: HTMLDivElement, photo: string) {
   el.style.boxShadow = '0 2px 6px rgba(23,32,26,0.35)';
   el.style.backgroundSize = 'cover';
   el.style.backgroundPosition = 'center';
-  el.style.transition = 'transform 0.12s ease, border-color 0.12s ease';
+  el.style.transition = 'transform 0.12s ease, border-color 0.12s ease, opacity 0.2s ease';
   if (photo) {
     el.style.backgroundImage = `url("${photo}")`;
     el.style.backgroundColor = colors.surface;
@@ -51,12 +52,14 @@ function createCryptogramBadge(id: CryptogramId): HTMLDivElement {
   badge.style.right = '-4px';
   badge.style.width = `${CRYPTO_SIZE}px`;
   badge.style.height = `${CRYPTO_SIZE}px`;
-  badge.style.backgroundImage = `url("${cryptogramDataUri(id, CRYPTO_SIZE)}")`;
+  badge.style.backgroundImage = `url("${cryptogramAssetUri(id)}")`;
   badge.style.backgroundSize = 'contain';
   badge.style.backgroundRepeat = 'no-repeat';
   badge.style.backgroundPosition = 'center';
   badge.style.pointerEvents = 'none';
   badge.style.filter = 'drop-shadow(0 1px 1px rgba(23,32,26,0.35))';
+  // Fondu doux quand le cryptogramme apparaît/disparaît selon le zoom (aucun flicker).
+  badge.style.transition = 'opacity 0.2s ease';
   return badge;
 }
 
@@ -66,8 +69,12 @@ function createCryptogramBadge(id: CryptogramId): HTMLDivElement {
  * marqueurs : Mapbox GL porte tout le reste (clusters). Réutilise/retire à la volée.
  */
 export class PhotoMarkerLayer {
-  private markers = new Map<string, { marker: MapboxMarker; el: HTMLDivElement; ringColor: string }>();
+  private markers = new Map<
+    string,
+    { marker: MapboxMarker; el: HTMLDivElement; ringColor: string; badge: HTMLDivElement }
+  >();
   private selectedId: string | null = null;
+  private cryptogramVisible = true;
 
   constructor(
     private readonly mapboxgl: Mapbox,
@@ -79,6 +86,18 @@ export class PhotoMarkerLayer {
     this.selectedId = id;
     for (const [markerId, entry] of this.markers) {
       styleSelected(entry.el, markerId === id, entry.ringColor);
+    }
+  }
+
+  /**
+   * Affiche/masque en fondu les petits cryptogrammes (piloté par le zoom). À très fort
+   * zoom on les efface pour laisser respirer la photo. Idempotent (aucun churn au scroll).
+   */
+  setCryptogramVisible(visible: boolean): void {
+    if (visible === this.cryptogramVisible) return;
+    this.cryptogramVisible = visible;
+    for (const entry of this.markers.values()) {
+      entry.badge.style.opacity = visible ? '1' : '0';
     }
   }
 
@@ -100,13 +119,20 @@ export class PhotoMarkerLayer {
       styleBase(el, p.photo);
       const ringColor = cryptogramColor(p.cryptogramId);
       styleSelected(el, p.id === this.selectedId, ringColor);
-      el.appendChild(createCryptogramBadge(p.cryptogramId));
+      const badge = createCryptogramBadge(p.cryptogramId);
+      badge.style.opacity = this.cryptogramVisible ? '1' : '0';
+      el.appendChild(badge);
       el.addEventListener('click', (event) => {
         event.stopPropagation();
         this.onSelect(p.id);
       });
+      // Fondu d'apparition : évite le « pop » brutal quand un marqueur photo entre au zoom.
+      el.style.opacity = '0';
+      requestAnimationFrame(() => {
+        el.style.opacity = '1';
+      });
       const marker = new this.mapboxgl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(this.map);
-      this.markers.set(p.id, { marker, el, ringColor });
+      this.markers.set(p.id, { marker, el, ringColor, badge });
     }
   }
 
