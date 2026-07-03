@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -14,12 +15,14 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
-import { type MapViewport } from '@/features/map';
+import { LocationPrompt, useSmartLocation } from '@/features/location';
+import { type MapCoordinate, type MapViewport } from '@/features/map';
 import {
   CATEGORY_LABELS,
   getMerchantCoverPhoto,
   QUICK_FILTERS,
   useMerchantSearch,
+  useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
 
@@ -28,6 +31,12 @@ function inBounds(m: Merchant, v: MapViewport): boolean {
   const { latitude: lat, longitude: lng } = m.coordinates;
   const { west, south, east, north } = v.bounds;
   return lng >= west && lng <= east && lat >= south && lat <= north;
+}
+
+/** La position utilisateur est-elle dans l'emprise du viewport ? */
+function coordInViewport(c: MapCoordinate, v: MapViewport): boolean {
+  const { west, south, east, north } = v.bounds;
+  return c.longitude >= west && c.longitude <= east && c.latitude >= south && c.latitude <= north;
 }
 
 /** La carte a-t-elle « assez bougé » depuis la zone validée pour proposer une re-recherche ? */
@@ -90,6 +99,14 @@ export default function MapScreen() {
     if (liveViewport) setSearchArea(liveViewport);
   };
 
+  // Localisation intelligente (PR1) : soft-ask après délai + recentrage. Jamais au lancement.
+  const setUserLocation = useMerchantSearchStore((s) => s.setUserLocation);
+  const smart = useSmartLocation({ userLocation, onLocate: setUserLocation });
+  // « Me recentrer » : visible seulement si la position est connue ET hors du viewport courant.
+  const showRecenter = Boolean(
+    userLocation && liveViewport && !coordInViewport(userLocation, liveViewport),
+  );
+
   const count = merchantsInArea.length;
   const showEmpty = !isLoading && !isError && searchArea !== null && count === 0;
 
@@ -136,9 +153,22 @@ export default function MapScreen() {
               markers={markers}
               selectedId={selectedId}
               userLocation={userLocation}
+              userAccuracy={smart.accuracy}
+              recenterToken={smart.recenterToken}
               onSelectMarker={setSelectedId}
               onViewportChange={handleViewport}
             />
+
+            {/* « Me recentrer » — visible uniquement si la position est connue et hors du viewport. */}
+            {showRecenter ? (
+              <Pressable
+                onPress={smart.recenter}
+                accessibilityRole="button"
+                accessibilityLabel="Me recentrer"
+                style={[styles.recenterFab, shadows.md]}>
+                <Feather name="navigation" size={18} color={colors.primary} />
+              </Pressable>
+            ) : null}
 
             {/* Compteur : commerces de la ZONE (viewport), jamais le total global. */}
             <View style={[styles.counterChip, shadows.sm]}>
@@ -203,6 +233,13 @@ export default function MapScreen() {
                 </ScrollView>
               </View>
             ) : null}
+
+            {/* Localisation « service » : carte soft-ask (jamais au lancement, dismissable). */}
+            {smart.showPrompt ? (
+              <View style={styles.promptWrap}>
+                <LocationPrompt onAuthorize={smart.authorize} onDismiss={smart.dismiss} />
+              </View>
+            ) : null}
           </>
         )}
       </View>
@@ -221,6 +258,26 @@ const styles = StyleSheet.create({
   },
   mapArea: {
     flex: 1,
+  },
+  recenterFab: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  promptWrap: {
+    position: 'absolute',
+    left: spacing.sm,
+    right: spacing.sm,
+    bottom: spacing.sm,
+    zIndex: 10,
   },
   counterChip: {
     position: 'absolute',

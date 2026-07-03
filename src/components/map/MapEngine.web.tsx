@@ -27,6 +27,8 @@ export function MapEngine({
   onSelectMarker,
   onViewportChange,
   userLocation,
+  userAccuracy,
+  recenterToken,
   fill,
 }: MapEngineProps) {
   const { token, styleUrl, defaultRegion } = getMapConfig();
@@ -141,14 +143,36 @@ export function MapEngine({
   // --- Données (commerces + position) : mise à jour sans recharge ---
   useEffect(() => {
     if (!ready || !controllerRef.current) return;
-    controllerRef.current.setData(markers, userLocation);
-  }, [ready, markers, userLocation]);
+    controllerRef.current.setData(markers, userLocation, userAccuracy);
+  }, [ready, markers, userLocation, userAccuracy]);
 
   // --- Sélection : restyle sans reconstruire la carte ---
   useEffect(() => {
     if (!ready || !controllerRef.current) return;
     controllerRef.current.setSelected(selectedId ?? null);
   }, [ready, selectedId]);
+
+  // --- Vol one-shot vers l'utilisateur au 1er fix (jamais de re-hijack ensuite) ---
+  const flownToUserRef = useRef(false);
+  useEffect(() => {
+    if (!ready || !userLocation || !mapRef.current || flownToUserRef.current) return;
+    flownToUserRef.current = true;
+    mapRef.current.flyTo({
+      center: [userLocation.longitude, userLocation.latitude],
+      zoom: 14,
+      duration: 900,
+    });
+  }, [ready, userLocation]);
+
+  // --- Recentrage explicite (bouton « Me recentrer ») : à chaque incrément du jeton ---
+  useEffect(() => {
+    if (!ready || !recenterToken || !userLocation || !mapRef.current) return;
+    mapRef.current.flyTo({
+      center: [userLocation.longitude, userLocation.latitude],
+      zoom: 15,
+      duration: 700,
+    });
+  }, [recenterToken, ready, userLocation]);
 
   if (!token) {
     return (
