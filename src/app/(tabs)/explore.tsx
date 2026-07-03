@@ -1,11 +1,16 @@
 import { Feather } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetFlatList, BottomSheetView } from '@gorhom/bottom-sheet';
+import BottomSheet, {
+  BottomSheetBackdrop,
+  BottomSheetFlatList,
+  BottomSheetView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MapEngine, MapMerchantPreview } from '@/components/map';
-import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
+import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
@@ -24,8 +29,6 @@ import {
   type MapViewport,
 } from '@/features/map';
 import {
-  CATEGORY_LABELS,
-  getMerchantCoverPhoto,
   QUICK_FILTERS,
   useMerchantSearch,
   useMerchantSearchStore,
@@ -69,8 +72,8 @@ function sameViewport(a: MapViewport | null, b: MapViewport): boolean {
   );
 }
 
-/** Points d'accrochage du bottom sheet (peek / étendu). Snap fins = PR4.4. */
-const SNAP_POINTS = ['22%', '75%'];
+/** Paliers du bottom sheet : peek (aperçu) / mid (liste, sélection) / full (immersif). */
+const SNAP_POINTS = ['15%', '55%', '90%'];
 
 export default function MapScreen() {
   const router = useRouter();
@@ -136,23 +139,15 @@ export default function MapScreen() {
   const keyExtractor = useCallback((m: Merchant) => m.id, []);
   const renderRow = useCallback(
     ({ item }: { item: Merchant }) => (
-      <Pressable
-        onPress={() => setSelectedId(item.id)}
-        accessibilityRole="button"
-        accessibilityLabel={item.name}
-        style={styles.sheetRow}>
-        <View style={styles.sheetThumb}>
-          <MerchantPhoto uri={getMerchantCoverPhoto(item)} height={56} rounded={radii.md} />
-        </View>
-        <View style={styles.sheetRowText}>
-          <YText variant="bodyStrong" numberOfLines={1}>
-            {item.name}
-          </YText>
-          <YText variant="caption" color="muted" numberOfLines={1}>
-            {[CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(' · ')}
-          </YText>
-        </View>
-      </Pressable>
+      <MerchantListRow merchant={item} onPress={() => setSelectedId(item.id)} />
+    ),
+    [],
+  );
+
+  // Backdrop premium : n'assombrit qu'au palier plein écran (index 2) → carte interactive au peek/mid.
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop {...props} appearsOnIndex={2} disappearsOnIndex={1} opacity={0.35} />
     ),
     [],
   );
@@ -256,12 +251,17 @@ export default function MapScreen() {
                 index={0}
                 snapPoints={SNAP_POINTS}
                 enableDynamicSizing={false}
-                enablePanDownToClose={false}>
+                enablePanDownToClose={false}
+                backdropComponent={renderBackdrop}
+                handleIndicatorStyle={styles.sheetHandle}
+                backgroundStyle={styles.sheetBackground}
+                style={styles.sheetShadow}>
                 {selectedMerchant ? (
                   // Mode « commerce » : mini-fiche réutilisée, dans le sheet.
                   <BottomSheetView style={styles.sheetPreview}>
                     <MapMerchantPreview
                       merchant={selectedMerchant}
+                      flat
                       onClose={() => setSelectedId(null)}
                       onPress={() =>
                         router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
@@ -385,21 +385,22 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   sheetListContent: {
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingBottom: spacing.xl,
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
-  sheetRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.xs,
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: radii.pill,
+    backgroundColor: colors.border,
   },
-  sheetThumb: {
-    width: 56,
+  sheetBackground: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
   },
-  sheetRowText: {
-    flex: 1,
-    gap: 1,
+  sheetShadow: {
+    ...shadows.lg,
   },
 });
