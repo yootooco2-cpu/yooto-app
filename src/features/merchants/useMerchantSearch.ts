@@ -10,10 +10,12 @@ import {
 import { useLocationPermission } from '@/features/location';
 
 import type { QuickFilterId } from './filters';
+import { applyMerchantQueryLocal } from './merchantQuery';
 import { useMerchants } from './queries';
 import { useMerchantSearchStore } from './searchStore';
 import { merchantsToMapMarkers } from './toMapMarkers';
 import type { MerchantQuery } from './types';
+import { useDebouncedValue } from './useDebouncedValue';
 
 /**
  * État de recherche/filtres/GPS + données commerces, PARTAGÉ entre les écrans
@@ -45,8 +47,12 @@ export function useMerchantSearch() {
     }
   };
 
+  // Recherche instantanée : debounce léger de la saisie → lisse l'intention et le
+  // re-classement pendant la frappe, sans jamais déclencher de requête réseau.
+  const debouncedSearch = useDebouncedValue(search, 200);
+
   // Intention déduite de la recherche (élargit le filtrage ET enrichit le score).
-  const intent = useMemo(() => resolveIntent(search), [search]);
+  const intent = useMemo(() => resolveIntent(debouncedSearch), [debouncedSearch]);
 
   // Apprentissage léger : une recherche reconnue est un signal d'engagement.
   useEffect(() => {
@@ -55,27 +61,34 @@ export function useMerchantSearch() {
 
   const merchantQuery = useMemo<MerchantQuery>(
     () => ({
-      search: search.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       filters,
       near: nearbyActive ? (userLocation ?? undefined) : undefined,
       intent,
     }),
-    [search, filters, nearbyActive, userLocation, intent],
+    [debouncedSearch, filters, nearbyActive, userLocation, intent],
   );
 
-  const { data, isLoading, isError, refetch } = useMerchants(merchantQuery);
-  const filtered = useMemo(() => data ?? [], [data]);
+  // FETCH-ONCE : le corpus actif est chargé UNE seule fois (clé React Query STABLE, sans
+  // recherche ni filtres) → aucune requête réseau à la frappe.
+  const { data, isLoading, isError, refetch } = useMerchants();
+  const corpus = useMemo(() => data ?? [], [data]);
 
-  // L'ORDRE est décidé par le Discovery Engine (point d'entrée unique).
-  // Le repository fournit l'ensemble filtré ; le moteur classe par pertinence.
+  // FILTRAGE INSTANTANÉ EN MÉMOIRE : recherche + filtres + distance appliqués côté client.
+  const queried = useMemo(
+    () => applyMerchantQueryLocal(corpus, merchantQuery),
+    [corpus, merchantQuery],
+  );
+
+  // L'ORDRE est décidé par le Discovery Engine (point d'entrée unique) sur l'ensemble filtré.
   const preferences = usePreferences();
   const discoveryContext = useMemo(
     () => buildDiscoveryContext({ userLocation, intent, preferences }),
     [userLocation, intent, preferences],
   );
   const results = useMemo(
-    () => recommendCached(filtered, discoveryContext).map((scored) => scored.merchant),
-    [filtered, discoveryContext],
+    () => recommendCached(queried, discoveryContext).map((scored) => scored.merchant),
+    [queried, discoveryContext],
   );
   const markers = useMemo(() => merchantsToMapMarkers(results), [results]);
 

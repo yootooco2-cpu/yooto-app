@@ -2,6 +2,7 @@ import { formatDistanceLabel, haversineKm } from '@/lib/geo/haversine';
 import type { MapCoordinate } from '@/features/map';
 import type { SupabaseSelectBuilder } from '@/lib/supabase/datasource';
 
+import { normalizeSearch } from './normalizeSearch';
 import type { Merchant, MerchantQuery } from './types';
 import type { QuickFilterId } from './filters';
 
@@ -18,16 +19,17 @@ import type { QuickFilterId } from './filters';
  * pas uniquement les libellés contenant « pain ».
  */
 function matchesQuery(merchant: Merchant, query?: MerchantQuery): boolean {
-  const q = query?.search?.trim().toLowerCase();
+  const q = normalizeSearch(query?.search);
   const intent = query?.intent;
   if (!q && !intent) return true;
 
-  const text = `${merchant.name} ${merchant.description}`.toLowerCase();
+  // Recherche insensible aux accents/casse : « cafe » retrouve « Café ».
+  const text = normalizeSearch(`${merchant.name} ${merchant.description}`);
   if (q && text.includes(q)) return true;
 
   if (intent) {
     if (intent.categories.includes(merchant.category)) return true;
-    if (intent.keywords.some((k) => text.includes(k))) return true;
+    if (intent.keywords.some((k) => text.includes(normalizeSearch(k)))) return true;
   }
   return false;
 }
