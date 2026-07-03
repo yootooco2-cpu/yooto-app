@@ -1,9 +1,12 @@
+import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { FullscreenGallery } from '@/components/merchants/FullscreenGallery';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
+import { ReviewsSummary } from '@/components/merchants/ReviewsSummary';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YScreen } from '@/components/ui/YScreen';
@@ -11,47 +14,123 @@ import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
-import { buildDiscoveryContext, getDiscoveryReasons, trackEvent, usePreferences } from '@/features/discovery';
-import {
-  CATEGORY_LABELS,
-  getMerchantCoverPhoto,
-  isRealPhotoUrl,
-  useMerchant,
-  useMerchantSearchStore,
-} from '@/features/merchants';
+import { trackEvent } from '@/features/discovery';
+import { CATEGORY_LABELS, getMerchantCoverPhoto, isRealPhotoUrl, useMerchant } from '@/features/merchants';
 import { buildDirectionsUrl } from '@/features/merchants/directions';
+import { formatRatingFr, starFill } from '@/features/merchants/reviews';
+
+type FeatherName = ComponentProps<typeof Feather>['name'];
 
 const ensureHttp = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
 const openUrl = (url?: string) => {
   if (url) void Linking.openURL(url).catch(() => {});
 };
+const clampPct = (n: number) => Math.max(0, Math.min(100, n));
 
-/** Ligne d'information cliquable (téléphone, site, réseaux…). */
-function InfoLink({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
+/** Rangée d'étoiles or (pleines/vides selon la note). */
+function StarRow({ rating }: { rating: number }) {
+  const { full, empty } = starFill(rating);
   return (
-    <Pressable onPress={onPress} accessibilityRole="link">
-      <View style={styles.infoRow}>
-        <YText variant="caption" color="muted">
-          {label}
-        </YText>
-        <YText variant="caption" color="primary" numberOfLines={1} style={styles.infoValue}>
-          {value}
-        </YText>
-      </View>
+    <YText variant="subtitle" color="accent" style={styles.stars} accessibilityLabel={`${formatRatingFr(rating)} sur 5`}>
+      {'★'.repeat(full) + '☆'.repeat(empty)}
+    </YText>
+  );
+}
+
+/** Bouton d'action avec icône (Itinéraire / Appeler / Site web / footer). */
+function IconAction({
+  icon,
+  label,
+  primary,
+  onPress,
+}: {
+  icon: FeatherName;
+  label: string;
+  primary?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.action,
+        primary ? styles.actionPrimary : styles.actionSecondary,
+        pressed && styles.pressed,
+      ]}>
+      <Feather name={icon} size={16} color={primary ? '#FFFFFF' : colors.primary} />
+      <YText variant="label" color={primary ? 'inverse' : 'primary'}>
+        {label}
+      </YText>
     </Pressable>
   );
 }
 
-/** Ligne « libellé → valeur » non cliquable (scores, stats). */
-function InfoStat({ label, value }: { label: string; value: string }) {
+/** Rangée d'information avec icône (adresse, téléphone, site, réseaux…). */
+function IconRow({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: FeatherName;
+  label: string;
+  value: string;
+  onPress?: () => void;
+}) {
+  const body = (
+    <View style={styles.iconRow}>
+      <View style={styles.iconBadge}>
+        <Feather name={icon} size={15} color={colors.primary} />
+      </View>
+      <View style={styles.iconRowText}>
+        <YText variant="caption" color="muted">
+          {label}
+        </YText>
+        <YText variant="body" color={onPress ? 'primary' : 'default'} numberOfLines={2}>
+          {value}
+        </YText>
+      </View>
+    </View>
+  );
+  return onPress ? (
+    <Pressable onPress={onPress} accessibilityRole="link">
+      {body}
+    </Pressable>
+  ) : (
+    body
+  );
+}
+
+/** Ligne « Pourquoi YOOTOO recommande » avec coche verte. */
+function WhyLine({ text }: { text: string }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={styles.whyRow}>
+      <Feather name="check" size={16} color={colors.primary} style={styles.whyCheck} />
+      <YText variant="body" style={styles.whyText}>
+        {text}
+      </YText>
+    </View>
+  );
+}
+
+/** Statistique de score YOOTOO (grand nombre + barre de progression). */
+function ScoreStat({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.scoreStat}>
       <YText variant="caption" color="muted">
         {label}
       </YText>
-      <YText variant="caption" color="default" style={styles.infoValue}>
-        {value}
-      </YText>
+      <View style={styles.scoreValueLine}>
+        <YText variant="display">{value}</YText>
+        <YText variant="caption" color="muted" style={styles.scoreOutOf}>
+          /100
+        </YText>
+      </View>
+      <View style={styles.scoreTrack}>
+        <View style={[styles.scoreFill, { width: `${clampPct(value)}%` }]} />
+      </View>
     </View>
   );
 }
@@ -66,8 +145,6 @@ export default function MerchantDetailScreen() {
     console.log(`[YOOTOO/merchant] route id=${id || '(absent)'}`);
   }
   const { data: merchant, isLoading, isError, refetch } = useMerchant(id);
-  const userLocation = useMerchantSearchStore((s) => s.userLocation);
-  const preferences = usePreferences();
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
   // Favori : état visuel local (pas de persistance inventée ; branché plus tard sur un store).
   const [saved, setSaved] = useState(false);
@@ -142,27 +219,47 @@ export default function MerchantDetailScreen() {
     googleMapsUrl,
     openingHours,
     reviewCount,
+    tags,
   } = merchant;
 
   const cover = getMerchantCoverPhoto(merchant);
-  const reasons = getDiscoveryReasons(merchant, buildDiscoveryContext({ userLocation, preferences }));
+  const metaDistance = merchant.distanceLabel !== '—' ? merchant.distanceLabel : undefined;
+  const categoryLine = [CATEGORY_LABELS[merchant.category], city].filter(Boolean).join(' • ');
 
-  // Labels éditoriaux — dérivés de données réelles uniquement (aucune affirmation inventée).
-  const labels: string[] = [];
-  if (merchant.isProducer) labels.push('Producteur local');
-  if (typeof merchant.ecoScore === 'number' && merchant.ecoScore >= 80) labels.push('Écoresponsable');
-  if (merchant.isAccessible) labels.push('Accessible PMR');
-  if (merchant.hasRewards) labels.push('Récompenses YOOTOO');
+  // Badges — « Local » = positionnement YOOTOO ; le reste dérive de données réelles.
+  const badges: string[] = ['Local'];
+  if (merchant.isProducer) badges.push('Producteur');
+  if (typeof merchant.ecoScore === 'number' && merchant.ecoScore >= 80) badges.push('Écoresponsable');
+  if (merchant.isAccessible) badges.push('Accessible PMR');
+  if (merchant.hasRewards) badges.push('Récompenses');
+
+  // « Pourquoi YOOTOO recommande » — UNIQUEMENT des lignes adossées à de vraies données.
+  const whyLines: string[] = [];
+  if (merchant.isProducer) {
+    whyLines.push('Producteur local en vente directe');
+    whyLines.push('Circuit court');
+  }
+  if (typeof merchant.rating === 'number' && merchant.rating >= 4.3) {
+    whyLines.push('Très bien noté par les habitants');
+  }
+  if (typeof merchant.ecoScore === 'number' && merchant.ecoScore >= 80) whyLines.push('Écoresponsable');
+  if (merchant.isAccessible) whyLines.push('Accessible à tous');
+  if (merchant.hasRewards) whyLines.push('Récompenses YOOTOO à chaque visite');
+  // Socle véridique (le catalogue YOOTOO est une sélection locale) → bloc jamais vide.
+  whyLines.push('Sélection locale YOOTOO');
 
   const addressLines = [address, [postalCode, city].filter(Boolean).join(' ').trim()].filter(
     (line): line is string => !!line && line.length > 0,
   );
   const hasContact = Boolean(
-    address || city || phone || email || website || instagram || facebook || googleMapsUrl,
+    addressLines.length || phone || email || website || instagram || facebook || googleMapsUrl,
   );
-  const hasScores = typeof merchant.localScore === 'number' || typeof merchant.ecoScore === 'number';
 
-  // Galerie : gallery_photos → sinon fallback photo_url. Vraies photos, hors cover, plafonnée à 2.
+  const scoreStats: { label: string; value: number }[] = [];
+  if (typeof merchant.localScore === 'number') scoreStats.push({ label: 'Impact local', value: merchant.localScore });
+  if (typeof merchant.ecoScore === 'number') scoreStats.push({ label: 'Écoresponsabilité', value: merchant.ecoScore });
+
+  // Galerie : gallery_photos → sinon fallback photo_url. Vraies photos, hors cover, plafonnée à 4.
   const galleryCandidates =
     merchant.galleryPhotos && merchant.galleryPhotos.length > 0
       ? merchant.galleryPhotos
@@ -172,10 +269,9 @@ export default function MerchantDetailScreen() {
   const galleryImages = galleryCandidates
     .filter(isRealPhotoUrl)
     .filter((photo) => photo !== cover)
-    .slice(0, 2);
+    .slice(0, 4);
   const allImages = Array.from(new Set([cover, ...galleryImages].filter((u): u is string => !!u)));
 
-  // --- Actions réelles ---
   const onDirections = () => {
     openUrl(buildDirectionsUrl(merchant));
     trackEvent({ type: 'go_there', category: merchant.category, isProducer: merchant.isProducer });
@@ -190,25 +286,35 @@ export default function MerchantDetailScreen() {
       scroll
       footer={
         <View style={styles.ctaRow}>
-          <View style={styles.ctaItem}>
-            <YButton label={saved ? 'Enregistré ✓' : 'Enregistrer'} variant="secondary" fullWidth onPress={onSave} />
-          </View>
-          <View style={styles.ctaItem}>
-            <YButton label="Itinéraire" fullWidth onPress={onDirections} />
-          </View>
+          <IconAction icon="bookmark" label={saved ? 'Enregistré' : 'Enregistrer'} onPress={onSave} />
+          <IconAction icon="map" label="Voir sur la carte" primary onPress={() => router.push('/explore')} />
         </View>
       }>
-      <YButton label="← Retour" variant="ghost" onPress={() => router.back()} />
+      <Pressable
+        onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel="Retour"
+        style={styles.back}>
+        <Feather name="chevron-left" size={18} color={colors.primary} />
+        <YText variant="label" color="primary">
+          Retour
+        </YText>
+      </Pressable>
 
-      {/* Hero cover — tap → galerie plein écran (swipe + zoom). Fallback catégorie si absente. */}
+      {/* Grande galerie photo — tap → plein écran. Dégradé bas pour la profondeur. */}
       <Pressable
         disabled={allImages.length === 0}
         onPress={() => setGalleryIndex(0)}
         accessibilityRole="imagebutton"
-        accessibilityLabel="Voir les photos en plein écran">
-        <MerchantPhoto uri={cover} height={260} rounded={radii.xl} recyclingKey={merchant.id} />
+        accessibilityLabel="Voir les photos en plein écran"
+        style={styles.hero}>
+        <MerchantPhoto uri={cover} height={300} rounded={radii.xl} recyclingKey={merchant.id} />
+        {/* Overlay dégradé simulé (sans dépendance) → texte/badge plus lisibles. */}
+        <View pointerEvents="none" style={[styles.heroShade, styles.heroShade1]} />
+        <View pointerEvents="none" style={[styles.heroShade, styles.heroShade2]} />
         {allImages.length > 1 ? (
           <View style={styles.countBadge}>
+            <Feather name="image" size={12} color="#FFFFFF" />
             <YText variant="caption" color="inverse">
               1/{allImages.length}
             </YText>
@@ -216,7 +322,6 @@ export default function MerchantDetailScreen() {
         ) : null}
       </Pressable>
 
-      {/* Galerie horizontale (max 2 vignettes) — masquée si aucune photo */}
       {galleryImages.length > 0 ? (
         <ScrollView
           horizontal
@@ -229,54 +334,56 @@ export default function MerchantDetailScreen() {
               style={styles.galleryThumb}
               accessibilityRole="imagebutton"
               onPress={() => setGalleryIndex(Math.max(0, allImages.indexOf(photo)))}>
-              <MerchantPhoto uri={photo} height={84} rounded={radii.md} />
+              <MerchantPhoto uri={photo} height={96} rounded={radii.md} />
             </Pressable>
           ))}
         </ScrollView>
       ) : null}
 
-      <YText variant="caption" color="primary">
-        {CATEGORY_LABELS[merchant.category]}
-      </YText>
-      <YText variant="title">{merchant.name}</YText>
-
-      <View style={styles.metaRow}>
-        {merchant.distanceLabel !== '—' || city ? (
-          <YText variant="caption" color="muted">
-            {merchant.distanceLabel !== '—' ? merchant.distanceLabel : city}
+      {/* Identité : nom d'abord, puis note, puis catégorie • ville */}
+      <View style={styles.identity}>
+        <YText variant="title">{merchant.name}</YText>
+        <View style={styles.ratingLine}>
+          {typeof merchant.rating === 'number' ? (
+            <>
+              <StarRow rating={merchant.rating} />
+              <YText variant="caption" color="muted" style={styles.ratingText}>
+                {formatRatingFr(merchant.rating)}
+                {typeof reviewCount === 'number' ? ` (${reviewCount} avis)` : ''}
+                {metaDistance ? ` • ${metaDistance}` : ''}
+              </YText>
+            </>
+          ) : metaDistance ? (
+            <YText variant="caption" color="muted">
+              {metaDistance}
+            </YText>
+          ) : null}
+        </View>
+        {categoryLine ? (
+          <YText variant="caption" color="primary" style={styles.categoryLine}>
+            {categoryLine}
           </YText>
         ) : null}
-        {typeof merchant.rating === 'number' ? (
-          <YText variant="caption" color="muted">
-            · ★ {merchant.rating.toFixed(1)}
-            {typeof reviewCount === 'number' ? ` (${reviewCount} avis)` : ''}
-          </YText>
-        ) : null}
-        <YText variant="caption" color={merchant.isOpenNow ? 'primary' : 'muted'}>
-          · {merchant.isOpenNow ? 'Ouvert maintenant' : 'Fermé'}
-        </YText>
       </View>
 
-      {/* Labels éditoriaux */}
-      {labels.length > 0 ? (
-        <View style={styles.tagsRow}>
-          {labels.map((tag) => (
-            <View key={tag} style={styles.tag}>
-              <YText variant="caption" color="default">
-                {tag}
-              </YText>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      {/* Badges */}
+      <View style={styles.chipsRow}>
+        {badges.map((badge) => (
+          <View key={badge} style={styles.badge}>
+            <YText variant="caption" color="primary">
+              {badge}
+            </YText>
+          </View>
+        ))}
+      </View>
 
-      {/* Actions rapides — uniquement celles dont la donnée existe (jamais de bouton mort) */}
+      {/* Actions rapides avec icônes */}
       <View style={styles.actionsRow}>
-        {phone ? <YButton label="Appeler" variant="secondary" size="sm" onPress={() => openUrl(`tel:${phone}`)} /> : null}
+        <IconAction icon="navigation" label="Itinéraire" primary onPress={onDirections} />
+        {phone ? <IconAction icon="phone" label="Appeler" onPress={() => openUrl(`tel:${phone}`)} /> : null}
         {website ? (
-          <YButton label="Site web" variant="secondary" size="sm" onPress={() => openUrl(ensureHttp(website))} />
+          <IconAction icon="globe" label="Site web" onPress={() => openUrl(ensureHttp(website))} />
         ) : null}
-        <YButton label="Voir sur la carte" variant="secondary" size="sm" onPress={() => router.push('/explore')} />
       </View>
 
       {/* Description éditoriale YOOTOO */}
@@ -286,42 +393,51 @@ export default function MerchantDetailScreen() {
         </YText>
       ) : null}
 
-      {/* Informations pratiques */}
+      {/* Tags de contenu (réels — signature_tags), masqués si absents */}
+      {tags && tags.length > 0 ? (
+        <View style={styles.chipsRow}>
+          {tags.map((tag) => (
+            <View key={tag} style={styles.tag}>
+              <YText variant="caption" color="default">
+                {tag}
+              </YText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {/* Pourquoi YOOTOO recommande ce commerce */}
+      <YCard>
+        <YText variant="subtitle">Pourquoi YOOTOO recommande ce commerce</YText>
+        {whyLines.map((line) => (
+          <WhyLine key={line} text={line} />
+        ))}
+      </YCard>
+
+      {/* Informations pratiques — carte premium à icônes */}
       {hasContact ? (
         <YCard>
           <YText variant="subtitle">Informations pratiques</YText>
-
           {addressLines.length > 0 ? (
-            <View style={styles.infoBlock}>
-              <YText variant="caption" color="muted">
-                Adresse
-              </YText>
-              {addressLines.map((line) => (
-                <YText key={line} variant="body">
-                  {line}
-                </YText>
-              ))}
-            </View>
+            <IconRow icon="map-pin" label="Adresse" value={addressLines.join(', ')} onPress={onDirections} />
           ) : null}
-
-          {phone ? <InfoLink label="Téléphone" value={phone} onPress={() => openUrl(`tel:${phone}`)} /> : null}
+          {phone ? (
+            <IconRow icon="phone" label="Téléphone" value={phone} onPress={() => openUrl(`tel:${phone}`)} />
+          ) : null}
           {website ? (
-            <InfoLink label="Site web" value={website} onPress={() => openUrl(ensureHttp(website))} />
+            <IconRow icon="globe" label="Site web" value={website} onPress={() => openUrl(ensureHttp(website))} />
           ) : null}
-          {email ? <InfoLink label="Email" value={email} onPress={() => openUrl(`mailto:${email}`)} /> : null}
+          {email ? (
+            <IconRow icon="mail" label="Email" value={email} onPress={() => openUrl(`mailto:${email}`)} />
+          ) : null}
           {instagram ? (
-            <InfoLink label="Instagram" value={instagram} onPress={() => openUrl(ensureHttp(instagram))} />
+            <IconRow icon="instagram" label="Instagram" value={instagram} onPress={() => openUrl(ensureHttp(instagram))} />
           ) : null}
           {facebook ? (
-            <InfoLink label="Facebook" value={facebook} onPress={() => openUrl(ensureHttp(facebook))} />
+            <IconRow icon="facebook" label="Facebook" value={facebook} onPress={() => openUrl(ensureHttp(facebook))} />
           ) : null}
           {googleMapsUrl ? (
-            <YButton
-              label="Ouvrir dans Google Maps"
-              variant="secondary"
-              fullWidth
-              onPress={() => openUrl(googleMapsUrl)}
-            />
+            <IconRow icon="map" label="Google Maps" value="Ouvrir dans Google Maps" onPress={() => openUrl(googleMapsUrl)} />
           ) : null}
         </YCard>
       ) : null}
@@ -329,7 +445,10 @@ export default function MerchantDetailScreen() {
       {/* Horaires */}
       {openingHours && openingHours.length > 0 ? (
         <YCard>
-          <YText variant="subtitle">Horaires</YText>
+          <View style={styles.cardHeader}>
+            <Feather name="clock" size={16} color={colors.primary} />
+            <YText variant="subtitle">Horaires</YText>
+          </View>
           {openingHours.map((line) => (
             <YText key={line} variant="caption" color="muted">
               {line}
@@ -338,33 +457,31 @@ export default function MerchantDetailScreen() {
         </YCard>
       ) : null}
 
-      {/* Engagement — scores local / écologique */}
-      {hasScores ? (
-        <YCard>
-          <YText variant="subtitle">Engagement</YText>
-          {typeof merchant.ecoScore === 'number' ? (
-            <InfoStat label="Score écologique" value={`${merchant.ecoScore}/100`} />
-          ) : null}
-          {typeof merchant.localScore === 'number' ? (
-            <InfoStat label="Score local YOOTOO" value={`${merchant.localScore}`} />
-          ) : null}
+      {/* Avis clients — ÉVOLUTIF */}
+      <YCard>
+        <YText variant="subtitle">Avis clients</YText>
+        <ReviewsSummary
+          rating={merchant.rating}
+          reviewCount={reviewCount}
+          distribution={merchant.ratingDistribution}
+          onSeeReviews={googleMapsUrl ? () => openUrl(googleMapsUrl) : undefined}
+        />
+      </YCard>
+
+      {/* Score YOOTOO — carte dédiée, mise en avant forte */}
+      {scoreStats.length > 0 ? (
+        <YCard style={styles.scoreCard}>
+          <View style={styles.cardHeader}>
+            <Feather name="award" size={16} color={colors.primary} />
+            <YText variant="subtitle">Score YOOTOO</YText>
+          </View>
+          <View style={styles.scoreGrid}>
+            {scoreStats.map((s) => (
+              <ScoreStat key={s.label} label={s.label} value={s.value} />
+            ))}
+          </View>
         </YCard>
       ) : null}
-
-      {/* Pourquoi c'est recommandé */}
-      <YCard>
-        <YText variant="subtitle">Pourquoi c’est recommandé</YText>
-        {reasons.map((reason) => (
-          <View key={reason} style={styles.reasonRow}>
-            <YText variant="body" color="primary">
-              •
-            </YText>
-            <YText variant="body" color="muted" style={styles.reasonText}>
-              {reason}
-            </YText>
-          </View>
-        ))}
-      </YCard>
 
       {/* Espace pour ne pas masquer le contenu derrière le CTA flottant */}
       <View style={styles.footerSpacer} />
@@ -380,11 +497,40 @@ export default function MerchantDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 2,
+    paddingVertical: spacing.xs,
+  },
+  hero: {
+    position: 'relative',
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+  },
+  heroShade: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  heroShade1: {
+    height: 96,
+    backgroundColor: 'rgba(23,32,26,0.10)',
+  },
+  heroShade2: {
+    height: 44,
+    backgroundColor: 'rgba(23,32,26,0.20)',
+  },
   countBadge: {
     position: 'absolute',
     top: spacing.sm,
     right: spacing.sm,
-    paddingVertical: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: 3,
     paddingHorizontal: spacing.sm,
     borderRadius: radii.pill,
     backgroundColor: 'rgba(23,32,26,0.6)',
@@ -399,20 +545,40 @@ const styles = StyleSheet.create({
   galleryThumb: {
     width: 120,
   },
-  metaRow: {
+  identity: {
+    gap: spacing.xs,
+  },
+  ratingLine: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
-  tagsRow: {
+  stars: {
+    letterSpacing: 2,
+  },
+  ratingText: {
+    fontVariant: ['tabular-nums'],
+  },
+  categoryLine: {
+    letterSpacing: 0.4,
+  },
+  chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
+  badge: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(31,122,77,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(31,122,77,0.25)',
+  },
   tag: {
     paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -420,36 +586,99 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  reasonRow: {
+  action: {
+    flex: 1,
     flexDirection: 'row',
-    gap: spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.lg,
   },
-  reasonText: {
-    flexShrink: 1,
+  actionPrimary: {
+    backgroundColor: colors.primary,
   },
-  infoBlock: {
-    gap: 2,
+  actionSecondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  infoRow: {
+  pressed: {
+    opacity: 0.85,
+  },
+  cardHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: 2,
   },
-  infoValue: {
+  iconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  iconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(31,122,77,0.08)',
+  },
+  iconRowText: {
+    flex: 1,
+    gap: 1,
+  },
+  whyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  whyCheck: {
+    marginTop: 1,
+  },
+  whyText: {
     flexShrink: 1,
-    textAlign: 'right',
+  },
+  scoreCard: {
+    backgroundColor: 'rgba(31,122,77,0.05)',
+    borderColor: 'rgba(31,122,77,0.20)',
+  },
+  scoreGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.lg,
+  },
+  scoreStat: {
+    flex: 1,
+    minWidth: 130,
+    gap: spacing.xs,
+  },
+  scoreValueLine: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.xs,
+  },
+  scoreOutOf: {
+    marginBottom: spacing.xs,
+  },
+  scoreTrack: {
+    height: 8,
+    borderRadius: radii.pill,
+    backgroundColor: colors.border,
+    overflow: 'hidden',
+  },
+  scoreFill: {
+    height: '100%',
+    borderRadius: radii.pill,
+    backgroundColor: colors.primary,
   },
   ctaRow: {
     flexDirection: 'row',
     gap: spacing.sm,
-  },
-  ctaItem: {
-    flex: 1,
   },
   footerSpacer: {
     height: 72,

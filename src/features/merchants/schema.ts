@@ -139,6 +139,8 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     facebook: row.facebook ?? undefined,
     googleMapsUrl: row.google_maps_url ?? undefined,
     reviewCount: row.review_count ?? row.reviews_count ?? undefined,
+    // Tags de contenu depuis `signature_tags` (colonne existante) — réels, jamais inventés.
+    tags: toStringArray(row.signature_tags),
     openingHours: readWeekdayText(row.opening_hours),
     localScore: row.local_score ?? undefined,
     partnerPotential: row.partner_potential ?? undefined,
