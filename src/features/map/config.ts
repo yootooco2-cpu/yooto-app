@@ -13,9 +13,9 @@ import type { MapRegion } from './types';
  */
 
 /**
- * Région par défaut YOOTOO — centrée sur MONTPELLIER à un zoom « quartier » (12) où les
- * commerces apparaissent en marqueurs individuels (cf. clusterMaxZoom=11). C'est aussi le
- * repli de cadrage quand la bbox des commerces est trop large (points éloignés isolés).
+ * Région par défaut YOOTOO — centrée sur MONTPELLIER à un zoom « quartier » (12). À ce zoom,
+ * les zones denses restent regroupées en clusters (cf. clusterMaxZoom=14) puis se séparent en
+ * zoomant. C'est aussi le repli de cadrage quand la bbox des commerces est trop large.
  */
 const DEFAULT_REGION: MapRegion = {
   center: { latitude: 43.6108, longitude: 3.8767 },

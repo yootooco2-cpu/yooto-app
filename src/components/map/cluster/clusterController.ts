@@ -12,6 +12,7 @@ import {
   clusterCountLayerSpec,
   clusterSourceSpec,
   clustersLayerSpec,
+  PHOTO_MARKER_CAP,
   SOURCE_ID,
   UNCLUSTERED_HIT_LAYER,
   unclusteredHitLayerSpec,
@@ -22,6 +23,7 @@ import {
 import type { CryptogramId } from '@/features/merchants/cryptograms';
 
 import { PhotoMarkerLayer, type VisibleMerchant } from './photoMarkers';
+import { selectPhotoMarkers } from './photoSelection';
 
 type Mapbox = typeof import('mapbox-gl')['default'];
 
@@ -38,6 +40,7 @@ export class MapClusterController {
   private readonly photoLayer: PhotoMarkerLayer;
   private installed = false;
   private userMarker: MapboxMarker | null = null;
+  private selectedId: string | null = null;
 
   constructor(
     private readonly map: MapboxMap,
@@ -69,7 +72,11 @@ export class MapClusterController {
   }
 
   setSelected(id: string | null): void {
+    this.selectedId = id;
     this.photoLayer.setSelected(id);
+    // Re-synchronise pour PROMOUVOIR le commerce sélectionné en marqueur photo (même s'il
+    // n'était qu'un pin compact / hors cap) → sélection toujours mise en avant.
+    this.syncPhotoMarkers();
   }
 
   destroy(): void {
@@ -141,7 +148,9 @@ export class MapClusterController {
     const seen = new Set<string>();
     const points: VisibleMerchant[] = [];
     for (const f of features) {
-      const props = f.properties as { id?: string; photo?: string; cryptogramId?: string } | null;
+      const props = f.properties as
+        | { id?: string; photo?: string; cryptogramId?: string; rating?: number; producer?: number }
+        | null;
       const id = props?.id;
       if (!id || seen.has(id)) continue;
       const geom = f.geometry;
@@ -154,18 +163,48 @@ export class MapClusterController {
         lat: coords[1],
         photo: props?.photo ?? '',
         cryptogramId: (props?.cryptogramId as CryptogramId) ?? 'autres',
+        rating: props?.rating ?? 0,
+        producer: props?.producer ?? 0,
       });
     }
-    this.photoLayer.sync(points);
+
+    // Réduction de densité : seuls les commerces prioritaires (vraie photo, producteur, note)
+    // deviennent des marqueurs photo ; les autres restent en pin compact (couche GL) → jamais
+    // masqués. Le commerce sélectionné est toujours promu.
+    const photoPoints = selectPhotoMarkers(points, {
+      cap: PHOTO_MARKER_CAP,
+      selectedId: this.selectedId,
+    });
+    this.photoLayer.sync(photoPoints);
     // Applique l'état de visibilité du cryptogramme aux marqueurs (ap. maj données, sans zoom).
     this.onZoom();
 
-    // DEBUG TEMPORAIRE (P0 alignement carte) — marqueurs individuels réellement rendus.
+    // DEBUG TEMPORAIRE (P0 lisibilité carte) — densité réelle du viewport.
     if (__DEV__) {
-      const rendered = Math.min(points.length, this.photoLayer.poolMax);
+      let clusterCount = 0;
+      let merchantsInClusters = 0;
+      try {
+        const clusters = this.map.querySourceFeatures(SOURCE_ID, {
+          filter: ['has', 'point_count'],
+        } as unknown as Parameters<MapboxMap['querySourceFeatures']>[1]);
+        const seenClusters = new Set<number>();
+        for (const c of clusters) {
+          const cp = c.properties as { cluster_id?: number; point_count?: number } | null;
+          const cid = cp?.cluster_id;
+          if (cid == null || seenClusters.has(cid)) continue;
+          seenClusters.add(cid);
+          clusterCount += 1;
+          merchantsInClusters += cp?.point_count ?? 0;
+        }
+      } catch {
+        // querySourceFeatures peut échouer transitoirement (source non prête) → debug seulement.
+      }
+      const individual = points.length;
+      const viewport = merchantsInClusters + individual;
       // eslint-disable-next-line no-console
       console.log(
-        `[YOOTOO/map] rendered markers=${rendered}/${points.length} candidats (cap ${this.photoLayer.poolMax}) | zoom=${this.map.getZoom().toFixed(2)}`,
+        `[YOOTOO/map] zoom=${this.map.getZoom().toFixed(2)} clusters=${clusterCount} ` +
+          `individual=${individual} photo=${photoPoints.length} viewport=${viewport}`,
       );
     }
   };
