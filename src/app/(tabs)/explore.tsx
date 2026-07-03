@@ -192,9 +192,15 @@ export default function MapScreen() {
                 <MapMerchantPreview
                   merchant={selectedMerchant}
                   onClose={() => setSelectedId(null)}
-                  onPress={() =>
-                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
-                  }
+                  onPress={() => {
+                    if (__DEV__) {
+                      // eslint-disable-next-line no-console
+                      console.log(
+                        `[YOOTOO/explore] open merchant detail id=${selectedMerchant.id} name=${selectedMerchant.name}`,
+                      );
+                    }
+                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } });
+                  }}
                 />
               </View>
             ) : !isLoading && count > 0 ? (
