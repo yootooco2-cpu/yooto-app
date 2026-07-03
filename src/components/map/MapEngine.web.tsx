@@ -55,8 +55,6 @@ export function MapEngine({
     let cancelled = false;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     setStatus('loading');
-    // eslint-disable-next-line no-console
-    console.log('[YOOTOO/map] init');
 
     void (async () => {
       try {
@@ -91,10 +89,6 @@ export function MapEngine({
               },
               userInitiated,
             );
-            if (__DEV__) {
-              // eslint-disable-next-line no-console
-              console.log('[YOOTOO/map] viewport emitted', { zoom: Number(map.getZoom().toFixed(2)) });
-            }
           } catch (err) {
             // eslint-disable-next-line no-console
             console.error('[YOOTOO/map] error (viewport emit)', err);
@@ -104,8 +98,6 @@ export function MapEngine({
         map.on('load', () => {
           if (cancelled) return;
           if (timeout) clearTimeout(timeout);
-          // eslint-disable-next-line no-console
-          console.log('[YOOTOO/map] load');
           try {
             controllerRef.current = new MapClusterController(map, mapboxgl, (id) =>
               onSelectRef.current?.(id),

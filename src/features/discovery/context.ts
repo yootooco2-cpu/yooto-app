@@ -1,5 +1,6 @@
 import type { MapCoordinate } from '@/features/map';
 
+import { getRankingV2 } from './flags';
 import { resolveIntent } from './intents/intentEngine';
 import type { ResolvedIntent } from './intents/types';
 import type { PreferenceSnapshot } from './preferences/types';
@@ -56,6 +57,8 @@ export function buildDiscoveryContext(input: DiscoveryContextInput = {}): Discov
     budget: input.budget,
     mobility: input.mobility,
     calendarBusy: input.calendarBusy,
-    extras: input.extras,
+    // Feature flag ranking v2 transporté dans `extras` (défaut OFF via `getRankingV2()`).
+    // Un appelant (harness A/B, test) peut le forcer via `input.extras.rankingV2`.
+    extras: { ...input.extras, rankingV2: input.extras?.rankingV2 ?? getRankingV2() },
   };
 }

@@ -3,6 +3,7 @@ import type { ResolvedIntent } from '@/features/discovery';
 import type { MapCoordinate } from '@/features/map';
 
 import type { QuickFilterId } from './filters';
+import type { RatingDistribution } from './reviews';
 
 export type MerchantCategory = 'producer' | 'grocery' | 'restaurant' | 'shop' | 'service';
 
@@ -51,6 +52,10 @@ export interface Merchant {
   googleMapsUrl?: string;
   /** Nombre d'avis Google. */
   reviewCount?: number;
+  /** Répartition des avis par étoile (5→1). Optionnelle/évolutive : absente aujourd'hui. */
+  ratingDistribution?: RatingDistribution;
+  /** Tags de contenu (ex. « Brunch », « Café », « Produits locaux ») issus de `signature_tags`. */
+  tags?: string[];
   /** Horaires lisibles (weekday_text). */
   openingHours?: string[];
   /** Scores internes (non affichés comme score brut). */

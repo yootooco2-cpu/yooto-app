@@ -28,6 +28,9 @@ export function contextSignature(ctx: DiscoveryContext): string {
     ctx.budget ?? 'na',
     ctx.mobility ?? 'na',
     ctx.calendarBusy ?? 'na',
+    // Feature flag ranking v2 : DEUX états (ON/OFF) → DEUX entrées de cache distinctes,
+    // sinon un flip servirait un résultat mis en cache de l'état précédent (empoisonnement).
+    `v2:${(ctx.extras as { rankingV2?: boolean } | undefined)?.rankingV2 ?? false}`,
   ].join('|');
 }
 

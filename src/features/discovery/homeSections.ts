@@ -1,6 +1,7 @@
-import { getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
+import type { Merchant } from '@/features/merchants';
 
 import { recommendCached } from './cache';
+import { editorialScore } from './editorial/editorialScore';
 import type { DiscoveryContext } from './types';
 
 // homeSections — EDITORIAL ranking for the Home screen sections ONLY.
@@ -13,153 +14,14 @@ import type { DiscoveryContext } from './types';
 // Scope: this module is consumed ONLY by src/app/(tabs)/index.tsx. It does NOT modify the
 // Discovery Engine registry/signals, the map, /explore, /merchants, the filters or Mapbox.
 //
-// Defensive & pure: no invented data (missing photo/rating → lower score, never faked),
-// deterministic (stable tie-breaks). Category buckets are coarse (5 values) so appeal is
-// refined with keyword matching on name + description.
+// Editorial priority now comes from a SINGLE SOURCE: `editorialScore` (editorial/) which
+// delegates category appeal to `resolveTier` (editorial/categoryTiers). No term lists live
+// here anymore — the previous ATTRACTIVE_TERMS / SENSITIVE_TERMS / SENSITIVE_RAW_CATEGORIES
+// duplication has been removed.
 
-// ── Editorial weights (validated: strong priority on real photo & category appeal) ──────
-const W = {
-  realPhoto: 60,
-  noPhotoPenalty: -60,
-  attractiveCategory: 30,
-  sensitivePenalty: -80,
-  serviceBucketPenalty: -30,
-  producer: 10,
-  premiumProducer: 22,
-  openNow: 6,
-  ratingScale: 8,
-  ratingPivot: 3.5,
-  ratingClamp: 14,
-  lowConfidenceReviews: 5,
-} as const
-
-// Bucket-level nudges (used only when no keyword matched).
-const BUCKET_NUDGE: Record<Merchant['category'], number> = {
-  restaurant: 14,
-  grocery: 10,
-  producer: 8,
-  shop: 4,
-  service: W.serviceBucketPenalty,
-}
-
-// Attractive, "sells the first impression" keywords (name + description, accent-free).
-const ATTRACTIVE_TERMS = [
-  'cafe',
-  'torrefaction',
-  'boulangerie',
-  'patisserie',
-  'restaurant',
-  'bistrot',
-  'brasserie',
-  'caviste',
-  'chocolatier',
-  'glacier',
-  'epicerie fine',
-  'epicerie',
-  'primeur',
-  'fromagerie',
-  'traiteur',
-  'fleuriste',
-] as const
-
-// Quality-producer keywords (extra bonus on top of the producer base).
-const PREMIUM_PRODUCER_TERMS = ['domaine', 'vignoble', 'vigneron', 'viticulteur'] as const
-
-// Low-appeal / sensitive RAW categories (Google `category`/`merchant_type`) — these lose
-// granularity once normalized to a bucket (e.g. `pet_care` → `shop`), so a merchant whose
-// NAME lacks a keyword would otherwise escape the penalty. Matched on `merchant.rawCategory`.
-// Producers (farm/ranch/vineyard/winery) are intentionally NOT here — they are valued.
-const SENSITIVE_RAW_CATEGORIES = new Set<string>([
-  'pet_care',
-  'pet_store',
-  'local_pet',
-  'pet_boarding_service',
-  'dog_park',
-  'veterinary_care',
-  'locksmith',
-  'funeral_home',
-  'plumber',
-  'general_contractor',
-  'roofing_contractor',
-  'painter',
-])
-
-// Low-appeal / sensitive keywords for a discovery feed (penalty, never removal).
-const SENSITIVE_TERMS = [
-  'elevage',
-  'toilettage',
-  'pompe funebre',
-  'pompes funebres',
-  'funeraire',
-  'service technique',
-  'services techniques',
-  'depannage',
-  'plomberie',
-  'serrurerie',
-  'garage',
-  'reparation',
-] as const
-
-/** Accent-insensitive, lowercased. */
-function normalize(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, n))
-}
-
-function hasRealPhoto(merchant: Merchant): boolean {
-  return getMerchantCoverPhoto(merchant) !== null
-}
-
-/**
- * Editorial "first impression" score for a merchant. Higher = surface higher. Pure &
- * additive so ordering stays explainable and testable.
- */
-export function editorialScore(merchant: Merchant): number {
-  const haystack = normalize(`${merchant.name} ${merchant.description}`)
-  let score = 0
-
-  // 1. Real photo — the strongest lever both ways.
-  if (hasRealPhoto(merchant)) score += W.realPhoto
-  else score += W.noPhotoPenalty
-
-  // 2/4. Category appeal. Sensitive wins over everything; else attractive keyword; else a
-  // bucket-level nudge (so a photo-less "service" merchant still sinks). Sensitivity is
-  // triggered by a name/description keyword OR a sensitive RAW category — penalty applied
-  // once (no double).
-  const rawSensitive = merchant.rawCategory ? SENSITIVE_RAW_CATEGORIES.has(merchant.rawCategory) : false
-  const isSensitive = rawSensitive || SENSITIVE_TERMS.some((t) => haystack.includes(t))
-  const isAttractive = ATTRACTIVE_TERMS.some((t) => haystack.includes(t))
-  if (isSensitive) {
-    score += W.sensitivePenalty
-  } else if (isAttractive) {
-    score += W.attractiveCategory
-  } else {
-    score += BUCKET_NUDGE[merchant.category]
-  }
-
-  // 5. Producer quality.
-  if (merchant.isProducer || merchant.category === 'producer') {
-    score += W.producer
-    if (PREMIUM_PRODUCER_TERMS.some((t) => haystack.includes(t))) score += W.premiumProducer
-  }
-
-  // Rating (0–5), down-weighted when too few reviews to trust.
-  if (typeof merchant.rating === 'number' && Number.isFinite(merchant.rating)) {
-    const confidence = (merchant.reviewCount ?? 0) >= W.lowConfidenceReviews ? 1 : 0.5
-    score += clamp((merchant.rating - W.ratingPivot) * W.ratingScale, -W.ratingClamp, W.ratingClamp) * confidence
-  }
-
-  // Open now — small bonus; never penalizes a closed/unknown merchant.
-  if (merchant.isOpenNow) score += W.openNow
-
-  return score
-}
+// Re-export so existing consumers (index.ts barrel, index.tsx) keep importing `editorialScore`
+// from '@/features/discovery' unchanged.
+export { editorialScore } from './editorial/editorialScore';
 
 export interface HomeSectionLimits {
   recommendedToday?: number

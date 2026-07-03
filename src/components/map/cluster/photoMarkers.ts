@@ -12,6 +12,10 @@ export interface VisibleMerchant {
   lat: number;
   photo: string;
   cryptogramId: CryptogramId;
+  /** Note (0–5) — utilisée pour prioriser les marqueurs photo (densité). */
+  rating: number;
+  /** Producteur local (0 | 1) — priorité d'affichage. */
+  producer: number;
 }
 
 const POOL_MAX = 140;
@@ -42,14 +46,18 @@ function styleBase(el: HTMLDivElement, photo: string) {
   }
 }
 
-/** Contour = couleur de la catégorie au repos ; primary quand sélectionné. */
+/** Contour = couleur de la catégorie au repos ; primary + halo quand sélectionné. */
 function styleSelected(el: HTMLDivElement, active: boolean, ringColor: string) {
-  // NE JAMAIS écrire `el.style.transform` : Mapbox y stocke la position du marqueur. On met en
-  // avant la sélection via bordure + ombre + z-index (aucun conflit avec le positionnement).
+  // NE JAMAIS écrire `el.style.transform` : Mapbox y stocke la position du marqueur. La mise en
+  // avant passe UNIQUEMENT par bordure + halo (box-shadow) + z-index (aucun conflit de position).
   el.style.borderColor = active ? colors.primary : ringColor;
   el.style.borderWidth = active ? '4px' : '3px';
-  el.style.boxShadow = active ? '0 4px 12px rgba(23,32,26,0.55)' : '0 2px 6px rgba(23,32,26,0.35)';
-  el.style.zIndex = active ? '3' : '1';
+  // Sélection : anneau blanc + halo primary + ombre portée → nettement au-dessus des autres.
+  el.style.boxShadow = active
+    ? `0 0 0 3px #FFFFFF, 0 0 0 6px ${colors.primary}, 0 6px 16px rgba(23,32,26,0.5)`
+    : '0 2px 6px rgba(23,32,26,0.35)';
+  // z-index élevé et sans ambiguïté : le marqueur sélectionné passe devant tous les autres.
+  el.style.zIndex = active ? '6' : '1';
 }
 
 /** Petit cryptogramme officiel superposé en haut-droite de la pastille photo. */

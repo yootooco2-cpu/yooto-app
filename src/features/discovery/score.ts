@@ -1,5 +1,6 @@
 import type { Merchant } from '@/features/merchants';
 
+import { aggregate } from './aggregate';
 import { getSignals } from './registry';
 import type { DiscoveryContext, SignalContribution } from './types';
 
@@ -8,12 +9,14 @@ export interface ScoreResult {
   contributions: SignalContribution[];
 }
 
-/** Discovery Score = moyenne pondérée des signaux applicables (registre plug-in). */
+/**
+ * Discovery Score = agrégation v2 des signaux applicables (registre plug-in).
+ * Tant que tous les signaux sont additifs (état actuel), l'agrégateur préserve exactement
+ * l'ORDRE de la moyenne pondérée historique (cf. `aggregate` + tests de non-régression).
+ */
 export function scoreMerchant(merchant: Merchant, ctx: DiscoveryContext): ScoreResult {
   const contributions = getSignals()
     .map((signal) => signal(merchant, ctx))
     .filter((c): c is SignalContribution => c !== null);
-  const totalWeight = contributions.reduce((acc, c) => acc + c.weight, 0);
-  const weighted = contributions.reduce((acc, c) => acc + c.weight * c.value, 0);
-  return { score: totalWeight > 0 ? weighted / totalWeight : 0, contributions };
+  return { score: aggregate(contributions), contributions };
 }

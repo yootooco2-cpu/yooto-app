@@ -11,14 +11,19 @@ export const CLUSTER_COUNT_LAYER = 'merchants-cluster-count';
 export const UNCLUSTERED_HIT_LAYER = 'merchants-unclustered';
 
 /**
- * Réglages clustering — VOLONTAIREMENT PEU AGRESSIFS : YOOTOO est une carte de découverte,
- * pas une carte statistique. On privilégie les commerces individuels le plus tôt possible.
- *  - clusterRadius faible → les points se séparent vite.
- *  - clusterMaxZoom bas → AUCUN cluster au-delà du niveau ville : dès le quartier (zoom 12),
- *    tous les commerces sont individuels (photo + cryptogramme).
+ * Réglages clustering — P0 lisibilité (Montpellier centre).
+ * Avant : clusterMaxZoom=11 → au zoom 12 (défaut) AUCUN cluster → des dizaines de marqueurs
+ * photo empilés au centre. Désormais on garde les clusters PLUS LONGTEMPS pour désempiler,
+ * tout en restant une carte de découverte (pas statistique) :
+ *  - clusterRadius plus large → regroupe davantage les points proches.
+ *  - clusterMaxZoom relevé → les clusters persistent au zoom « quartier » (12) dans les zones
+ *    denses, puis se séparent progressivement en zoomant (>= 15 : plus aucun cluster).
  */
-export const CLUSTER_RADIUS = 44; // px (était 60) : regroupe beaucoup moins
-export const CLUSTER_MAX_ZOOM = 11; // au-delà (>=12) : plus AUCUN cluster, commerces individuels
+export const CLUSTER_RADIUS = 60; // px (était 44) : regroupe davantage → désempile le centre
+export const CLUSTER_MAX_ZOOM = 14; // au-delà (>=15) : commerces individuels ; <=14 : clusters possibles
+
+/** Plafond de marqueurs PHOTO simultanés (lisibilité). Au-delà → pin compact / cluster. */
+export const PHOTO_MARKER_CAP = 60;
 
 /**
  * Paliers de zoom — logique d'affichage (source unique).
@@ -92,12 +97,13 @@ export function clusterCountLayerSpec() {
 }
 
 /**
- * Couche INVISIBLE des points non clusterisés. Rôles :
- *  1. interroger (querySourceFeatures) les commerces visibles → marqueurs photo HTML ;
- *  2. cible de clic (hit area) pour sélectionner un commerce là où, exceptionnellement,
- *     aucun marqueur photo n'est encore rendu.
- * Le rendu visible des commerces est porté par les marqueurs photo (photo + cryptogramme),
- * jamais par cette couche → aucun double marqueur, aucune pastille « statistique ».
+ * Couche des points non clusterisés — PIN COMPACT visible (P0 lisibilité). Rôles :
+ *  1. garantir que CHAQUE commerce non clusterisé reste visible (petit pin), même quand il
+ *     n'obtient pas de marqueur photo (non prioritaire / cap atteint) → jamais masqué ;
+ *  2. interroger (querySourceFeatures) les commerces visibles → sélection des marqueurs photo ;
+ *  3. cible de clic (hit area) pour sélectionner un commerce.
+ * Les marqueurs photo (40px) se superposent aux pins prioritaires ; le pin compact reste sous
+ * eux (couleur catégorie : vert producteur, sinon teinte neutre).
  */
 export function unclusteredHitLayerSpec() {
   return {
@@ -106,8 +112,11 @@ export function unclusteredHitLayerSpec() {
     source: SOURCE_ID,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': 10,
-      'circle-opacity': 0,
+      'circle-radius': 6,
+      'circle-color': ['case', ['>', ['get', 'producer'], 0], colors.primary, colors.accent],
+      'circle-stroke-width': 2,
+      'circle-stroke-color': '#FFFFFF',
+      'circle-opacity': 0.9,
     },
   };
 }

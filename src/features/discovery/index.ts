@@ -7,6 +7,8 @@ export { recommend, getDiscoveryReasons } from './recommendationEngine';
 export { buildHomeSections, editorialScore } from './homeSections';
 export type { HomeSections, HomeSectionLimits, BuildHomeSectionsOptions } from './homeSections';
 export { recommendCached, contextSignature } from './cache';
+export { getRankingV2, setRankingV2 } from './flags';
+export { editorialSignals } from './editorial/editorialSignals';
 export { PLANNED_SIGNALS, signalTemplate } from './futureSignals';
 export { resolveIntent } from './intents/intentEngine';
 export { matchIntents, normalizeText } from './intents/intentMatcher';

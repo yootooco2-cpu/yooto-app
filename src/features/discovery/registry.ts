@@ -1,3 +1,4 @@
+import { editorialSignals } from './editorial/editorialSignals';
 import { intentSignals } from './intents/intentSignals';
 import { merchantSignals } from './merchantSignals';
 import { preferenceSignals } from './preferences/preferenceEngine';
@@ -16,6 +17,7 @@ const registry: Signal[] = [
   ...userSignals,
   ...intentSignals,
   ...preferenceSignals,
+  ...editorialSignals,
 ];
 
 export function registerSignal(signal: Signal): void {
