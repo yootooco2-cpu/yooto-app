@@ -48,6 +48,7 @@ export type SignalKey =
   | 'history'
   | 'intent'
   | 'preference'
+  | 'category'
   // --- Prévus (architecture plug-in, non implémentés) ---
   | 'weather'
   | 'traffic'
