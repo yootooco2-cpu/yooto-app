@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
+import BottomSheet, { BottomSheetFlatList, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MapEngine, MapMerchantPreview } from '@/components/map';
@@ -77,6 +77,7 @@ export default function MapScreen() {
   const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
     useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const sheetRef = useRef<BottomSheet>(null);
 
   // Persistance session : viewport à restaurer (lu UNE fois au montage) + setter.
   const setLastViewport = useMapViewportStore((s) => s.setLastViewport);
@@ -125,6 +126,11 @@ export default function MapScreen() {
   const showRecenter = Boolean(
     userLocation && liveViewport && !coordInViewport(userLocation, liveViewport),
   );
+
+  // Snap à la sélection : on étend le sheet pour révéler la mini-fiche, on revient au peek à la fermeture.
+  useEffect(() => {
+    sheetRef.current?.snapToIndex(selectedId ? 1 : 0);
+  }, [selectedId]);
 
   // Liste virtualisée du bottom sheet (rendu de ligne stable).
   const keyExtractor = useCallback((m: Merchant) => m.id, []);
@@ -242,35 +248,42 @@ export default function MapScreen() {
               </View>
             ) : null}
 
-            {/* Bas : fiche du commerce sélectionné, sinon liste filtrée par la zone. */}
-            {selectedMerchant ? (
-              <View style={styles.previewWrap}>
-                <MapMerchantPreview
-                  merchant={selectedMerchant}
-                  onClose={() => setSelectedId(null)}
-                  onPress={() =>
-                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
-                  }
-                />
-              </View>
-            ) : !isLoading && count > 0 ? (
+            {/* Bottom sheet PERSISTANT : bascule contenu preview (commerce sélectionné) ↔ liste.
+                Ne se démonte plus à la sélection → transition fluide, position conservée. */}
+            {selectedMerchant || (!isLoading && count > 0) ? (
               <BottomSheet
+                ref={sheetRef}
                 index={0}
                 snapPoints={SNAP_POINTS}
                 enableDynamicSizing={false}
                 enablePanDownToClose={false}>
-                {/* Compteur intégré dans l'en-tête du sheet. */}
-                <View style={styles.sheetHeader}>
-                  <YText variant="label">
-                    {count} commerce{count > 1 ? 's' : ''} dans cette zone
-                  </YText>
-                </View>
-                <BottomSheetFlatList
-                  data={merchantsInArea}
-                  keyExtractor={keyExtractor}
-                  renderItem={renderRow}
-                  contentContainerStyle={styles.sheetListContent}
-                />
+                {selectedMerchant ? (
+                  // Mode « commerce » : mini-fiche réutilisée, dans le sheet.
+                  <BottomSheetView style={styles.sheetPreview}>
+                    <MapMerchantPreview
+                      merchant={selectedMerchant}
+                      onClose={() => setSelectedId(null)}
+                      onPress={() =>
+                        router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
+                      }
+                    />
+                  </BottomSheetView>
+                ) : (
+                  // Mode « liste » : compteur en en-tête + liste virtualisée.
+                  <>
+                    <View style={styles.sheetHeader}>
+                      <YText variant="label">
+                        {count} commerce{count > 1 ? 's' : ''} dans cette zone
+                      </YText>
+                    </View>
+                    <BottomSheetFlatList
+                      data={merchantsInArea}
+                      keyExtractor={keyExtractor}
+                      renderItem={renderRow}
+                      contentContainerStyle={styles.sheetListContent}
+                    />
+                  </>
+                )}
               </BottomSheet>
             ) : null}
 
@@ -361,11 +374,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: colors.text,
   },
-  previewWrap: {
-    position: 'absolute',
-    left: spacing.sm,
-    right: spacing.sm,
-    bottom: spacing.sm,
+  sheetPreview: {
+    padding: spacing.md,
   },
   sheetHeader: {
     paddingHorizontal: spacing.lg,
