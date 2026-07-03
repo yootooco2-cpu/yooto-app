@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetFlatList } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -68,7 +69,8 @@ function sameViewport(a: MapViewport | null, b: MapViewport): boolean {
   );
 }
 
-const LIST_MAX = 40;
+/** Points d'accrochage du bottom sheet (peek / étendu). Snap fins = PR4.4. */
+const SNAP_POINTS = ['22%', '75%'];
 
 export default function MapScreen() {
   const router = useRouter();
@@ -122,6 +124,31 @@ export default function MapScreen() {
   // « Me recentrer » : visible seulement si la position est connue ET hors du viewport courant.
   const showRecenter = Boolean(
     userLocation && liveViewport && !coordInViewport(userLocation, liveViewport),
+  );
+
+  // Liste virtualisée du bottom sheet (rendu de ligne stable).
+  const keyExtractor = useCallback((m: Merchant) => m.id, []);
+  const renderRow = useCallback(
+    ({ item }: { item: Merchant }) => (
+      <Pressable
+        onPress={() => setSelectedId(item.id)}
+        accessibilityRole="button"
+        accessibilityLabel={item.name}
+        style={styles.sheetRow}>
+        <View style={styles.sheetThumb}>
+          <MerchantPhoto uri={getMerchantCoverPhoto(item)} height={56} rounded={radii.md} />
+        </View>
+        <View style={styles.sheetRowText}>
+          <YText variant="bodyStrong" numberOfLines={1}>
+            {item.name}
+          </YText>
+          <YText variant="caption" color="muted" numberOfLines={1}>
+            {[CATEGORY_LABELS[item.category], item.city].filter(Boolean).join(' · ')}
+          </YText>
+        </View>
+      </Pressable>
+    ),
+    [],
   );
 
   const count = merchantsInArea.length;
@@ -188,14 +215,14 @@ export default function MapScreen() {
               </Pressable>
             ) : null}
 
-            {/* Compteur : commerces de la ZONE (viewport), jamais le total global. */}
-            <View style={[styles.counterChip, shadows.sm]}>
-              <YText variant="caption" style={styles.counterText}>
-                {isLoading
-                  ? 'Chargement des commerces…'
-                  : `${count} commerce${count > 1 ? 's' : ''} dans cette zone`}
-              </YText>
-            </View>
+            {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
+            {isLoading ? (
+              <View style={[styles.counterChip, shadows.sm]}>
+                <YText variant="caption" style={styles.counterText}>
+                  Chargement des commerces…
+                </YText>
+              </View>
+            ) : null}
 
             {/* Re-recherche après déplacement/zoom utilisateur. */}
             {moved ? (
@@ -227,29 +254,24 @@ export default function MapScreen() {
                 />
               </View>
             ) : !isLoading && count > 0 ? (
-              <View style={styles.listWrap}>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.listContent}>
-                  {merchantsInArea.slice(0, LIST_MAX).map((m) => (
-                    <Pressable
-                      key={m.id}
-                      onPress={() => setSelectedId(m.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={m.name}
-                      style={[styles.card, shadows.sm]}>
-                      <MerchantPhoto uri={getMerchantCoverPhoto(m)} height={84} rounded={radii.md} />
-                      <YText variant="caption" numberOfLines={1} style={styles.cardTitle}>
-                        {m.name}
-                      </YText>
-                      <YText variant="caption" color="muted" numberOfLines={1}>
-                        {[CATEGORY_LABELS[m.category], m.city].filter(Boolean).join(' · ')}
-                      </YText>
-                    </Pressable>
-                  ))}
-                </ScrollView>
-              </View>
+              <BottomSheet
+                index={0}
+                snapPoints={SNAP_POINTS}
+                enableDynamicSizing={false}
+                enablePanDownToClose={false}>
+                {/* Compteur intégré dans l'en-tête du sheet. */}
+                <View style={styles.sheetHeader}>
+                  <YText variant="label">
+                    {count} commerce{count > 1 ? 's' : ''} dans cette zone
+                  </YText>
+                </View>
+                <BottomSheetFlatList
+                  data={merchantsInArea}
+                  keyExtractor={keyExtractor}
+                  renderItem={renderRow}
+                  contentContainerStyle={styles.sheetListContent}
+                />
+              </BottomSheet>
             ) : null}
 
             {/* Localisation « service » : carte soft-ask (jamais au lancement, dismissable). */}
@@ -345,32 +367,29 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     bottom: spacing.sm,
   },
-  listWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: spacing.sm,
+  sheetHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  listContent: {
+  sheetListContent: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
     gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
   },
-  card: {
-    width: 168,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.sm,
-    gap: spacing.xs,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontWeight: '600',
-  },
-  fillCenter: {
-    flex: 1,
+  sheetRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  sheetThumb: {
+    width: 56,
+  },
+  sheetRowText: {
+    flex: 1,
+    gap: 1,
   },
 });
