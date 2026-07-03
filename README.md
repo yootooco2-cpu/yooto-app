@@ -1,56 +1,103 @@
-# Welcome to your Expo app 👋
+# YOOTOO
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Application **mobile + web** de découverte du commerce local : trouver les producteurs,
+épiceries, artisans et commerces responsables autour de soi, sur une carte intelligente.
 
-## Get started
+Construite avec **Expo (React Native) + Expo Router + TypeScript**, avec **Supabase** en
+back-end et **Mapbox** pour la cartographie. Le même code tourne sur **iOS, Android et Web**.
 
-1. Install dependencies
+## ✨ Fonctionnalités
 
-   ```bash
-   npm install
-   ```
+**Implémentées**
+- 🗺️ **Carte intelligente Mapbox** — clustering adaptatif au zoom ; marqueurs commerces
+  (photo + cryptogramme premium de catégorie + anneau couleur), fiche au tap.
+- 🧭 **Découverte** — accueil éditorial (ranking), méga-menu de catégories partagé avec la
+  page Commerçants (survol web / tap mobile), recherche + filtres rapides.
+- 🏪 **Commerçants & producteurs** — liste, catégories officielles (cryptogrammes), fiche
+  détaillée, données Supabase avec repli automatique sur des données de démo.
+- 🌿 **De saison** — guide saisonnier des produits (12 mois illustrés).
+- 👤 **Profil** — préférences et personnalisation de la découverte.
 
-2. Start the app
+**Vision / roadmap**
+- 💶 Gestion de budget personnel · 🎁 récompenses comportementales · 🌍 score
+  écologique/local · 🤖 IA de recommandation approfondie · 🔗 couche crypto/Web3 invisible.
 
-   ```bash
-   npx expo start
-   ```
+## 🧱 Stack
 
-In the output, you'll find options to open the app in a
+| Domaine | Techno |
+|---|---|
+| App | Expo SDK 56 · React Native 0.85 · Expo Router (routing par fichiers) |
+| Langage | TypeScript (strict) |
+| Back-end | Supabase (Postgres + RLS, clé **anon** publique côté client) |
+| Carte | Mapbox GL (web) / Mapbox natif |
+| État / data | Zustand · React Query |
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📋 Prérequis
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- **Node.js ≥ 20** (testé sur Node 24) et **npm**
+- **Expo Go** (iOS/Android) ou un simulateur/émulateur pour le mobile
+- Comptes **Supabase** et **Mapbox** (optionnels : sans clés, l'app tourne en mode démo)
 
-## Get a fresh project
-
-When you're ready, run:
+## 🚀 Démarrage
 
 ```bash
-npm run reset-project
+# 1. Installer les dépendances
+npm install
+
+# 2. Configurer les variables d'environnement
+cp .env.example .env
+# puis renseigner .env (voir ci-dessous) — laisser vide = mode démo, aucun crash
+
+# 3. Lancer
+npm run start      # menu Expo (QR code Expo Go, choix plateforme)
+npm run web        # ouvrir dans le navigateur
+npm run ios        # simulateur iOS (macOS)
+npm run android    # émulateur Android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🔑 Variables d'environnement
 
-### Other setup steps
+Copiez `.env.example` vers `.env`. Toutes les variables client sont préfixées
+`EXPO_PUBLIC_` (inlinées dans le bundle) :
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+| Variable | Rôle |
+|---|---|
+| `EXPO_PUBLIC_MAPBOX_TOKEN` | Token **public** Mapbox (`pk.…`), à restreindre par domaine. Vide → carte en placeholder. |
+| `EXPO_PUBLIC_MAPBOX_STYLE_URL` | (Optionnel) style Mapbox personnalisé. |
+| `EXPO_PUBLIC_SUPABASE_URL` | URL du projet Supabase. Vide → données de démo. |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Clé **anon** publique (protégée par RLS). |
 
-## Learn more
+> ⚠️ Ne jamais committer de secret : `.env` est ignoré par git. La clé `service_role`
+> et le token Mapbox secret `sk.…` ne doivent **jamais** entrer dans le bundle/repo.
 
-To learn more about developing your project with Expo, look at the following resources:
+## 🗂️ Structure
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```
+src/
+  app/            # routes Expo Router (écrans) : (tabs)/, merchant/[id], _layout
+  components/     # UI partagée (cards, map, home, ui, merchants)
+  features/       # domaines métier
+    merchants/    #   commerces : données, cryptogrammes, recherche, carte
+    map/          #   moteur cartographique (clustering Mapbox)
+    discovery/    #   accueil éditorial, méga-menu de catégories, ranking
+    carnet/       #   guide « De saison »
+    profile/      #   profil & préférences
+    location/     #   géolocalisation
+  lib/            # intégrations (supabase, geo, data)
+  design/tokens/  # design system (couleurs, espacements, rayons…)
+  constants/ types/
+supabase/migrations/  # schéma & RLS
+assets/               # images (cryptogrammes, illustrations carnet…)
+```
 
-## Join the community
+## 🧪 Qualité
 
-Join our community of developers creating universal apps.
+```bash
+npx tsc --noEmit                 # vérification TypeScript
+npm run lint                     # ESLint (expo lint)
+npx expo export --platform web   # build web statique (dist/)
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📄 Licence
+
+Propriétaire — © YOOTOO. Tous droits réservés.
