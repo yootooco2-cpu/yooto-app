@@ -7,7 +7,6 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
-import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
@@ -15,7 +14,6 @@ import { spacing } from '@/design/tokens/spacing';
 
 type Props = {
   greeting: string;
-  onExplore: () => void;
   scrollY: SharedValue<number>;
 };
 
@@ -28,7 +26,7 @@ const RANGE = 200;
  * (≤ 18 px) → sensation de profondeur quasi invisible. 100 % UI thread
  * (interpolate), aucune allocation pendant le scroll.
  */
-export function HomeHero({ greeting, onExplore, scrollY }: Props) {
+export function HomeHero({ greeting, scrollY }: Props) {
   // Plan 1 — halos (les plus « lointains » : décalent le plus, s'estompent un peu).
   const haloStyle = useAnimatedStyle(() => ({
     transform: [
@@ -42,11 +40,6 @@ export function HomeHero({ greeting, onExplore, scrollY }: Props) {
     transform: [
       { translateY: interpolate(scrollY.value, [0, RANGE], [0, 10], Extrapolation.CLAMP) },
     ],
-  }));
-
-  // Plan 3 — CTA (presque fixe).
-  const ctaStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: interpolate(scrollY.value, [0, RANGE], [0, 3], Extrapolation.CLAMP) }],
   }));
 
   return (
@@ -76,10 +69,6 @@ export function HomeHero({ greeting, onExplore, scrollY }: Props) {
           Producteurs, épiceries et artisans responsables — soutenez le local, simplement.
         </YText>
       </Animated.View>
-
-      <Animated.View style={[styles.cta, ctaStyle]}>
-        <YButton label="Explorer la carte" fullWidth onPress={onExplore} />
-      </Animated.View>
     </View>
   );
 }
@@ -90,7 +79,7 @@ const styles = StyleSheet.create({
     marginTop: -spacing.lg,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
-    paddingBottom: spacing.xl,
+    paddingBottom: spacing.lg,
     backgroundColor: '#EFF4EF',
     borderBottomLeftRadius: radii.xl,
     borderBottomRightRadius: radii.xl,
@@ -137,8 +126,5 @@ const styles = StyleSheet.create({
   },
   title: {
     letterSpacing: -1,
-  },
-  cta: {
-    marginTop: spacing.md,
   },
 });

@@ -4,6 +4,10 @@
 // traduits, cf. i18n.ts). Règle stricte : un mois n'affiche QUE les produits listés dans
 // SAISON_CAL pour ce mois → jamais de produit hors saison.
 
+import type { ImageSourcePropType } from 'react-native';
+
+import { produitIllustration } from './illustrations';
+
 export type ProduitType = 'legume' | 'fruit';
 
 export interface FicheProduit {
@@ -21,7 +25,8 @@ export interface FicheProduit {
 
 export interface ProduitResolu {
   nom: string;
-  emoji: string;
+  /** Illustration « ardoise de marché » (source de vérité) ou null → croquis botanique. */
+  illustration: ImageSourcePropType | null;
   type: ProduitType;
   fiche: FicheProduit;
 }
@@ -38,10 +43,10 @@ export const SAISON_CAL: Record<number, { legumes: string[]; fruits: string[] }>
   1: { legumes: ['Betterave', 'Carotte', 'Chou', 'Endive', 'Mâche', 'Navet', 'Panais', 'Poireau', 'Topinambour'], fruits: ['Kiwi', 'Orange', 'Pamplemousse', 'Poire', 'Pomme'] },
   2: { legumes: ['Betterave', 'Carotte', 'Chou', 'Endive', 'Épinard', 'Poireau', 'Radis', 'Topinambour'], fruits: ['Kiwi', 'Orange', 'Pomme'] },
   3: { legumes: ['Asperge', 'Betterave', 'Carotte', 'Épinard', 'Navet', 'Petit pois', 'Radis'], fruits: ['Pomme', 'Rhubarbe'] },
-  4: { legumes: ['Asperge', 'Blette', 'Carotte', 'Concombre', 'Épinard', 'Petit pois', 'Radis'], fruits: ['Cerise', 'Fraise', 'Rhubarbe'] },
-  5: { legumes: ['Artichaut', 'Aubergine', 'Concombre', 'Courgette', 'Haricot vert', 'Petit pois', 'Poivron', 'Radis', 'Tomate'], fruits: ['Abricot', 'Cerise', 'Fraise', 'Framboise', 'Melon', 'Pêche'] },
-  6: { legumes: ['Aubergine', 'Concombre', 'Courgette', 'Haricot vert', 'Poivron', 'Tomate'], fruits: ['Abricot', 'Cassis', 'Cerise', 'Figue', 'Framboise', 'Melon', 'Pêche', 'Prune'] },
-  7: { legumes: ['Aubergine', 'Concombre', 'Courgette', 'Haricot vert', 'Maïs', 'Poivron', 'Tomate'], fruits: ['Abricot', 'Figue', 'Melon', 'Mirabelle', 'Mûre', 'Pêche', 'Prune', 'Raisin'] },
+  4: { legumes: ['Asperge', 'Blette', 'Carotte', 'Concombre', 'Épinard', 'Petit pois', 'Radis', 'Salade'], fruits: ['Cerise', 'Fraise', 'Rhubarbe'] },
+  5: { legumes: ['Artichaut', 'Aubergine', 'Concombre', 'Courgette', 'Fenouil', 'Haricot vert', 'Petit pois', 'Poivron', 'Radis', 'Salade', 'Tomate'], fruits: ['Abricot', 'Cerise', 'Fraise', 'Framboise', 'Groseille', 'Melon', 'Pêche'] },
+  6: { legumes: ['Aubergine', 'Concombre', 'Courgette', 'Fenouil', 'Haricot vert', 'Poivron', 'Salade', 'Tomate'], fruits: ['Abricot', 'Cassis', 'Cerise', 'Figue', 'Framboise', 'Groseille', 'Melon', 'Nectarine', 'Pêche', 'Prune'] },
+  7: { legumes: ['Aubergine', 'Concombre', 'Courgette', 'Fenouil', 'Haricot vert', 'Maïs', 'Poivron', 'Salade', 'Tomate'], fruits: ['Abricot', 'Figue', 'Melon', 'Mirabelle', 'Mûre', 'Nectarine', 'Pêche', 'Prune', 'Raisin'] },
   8: { legumes: ['Aubergine', 'Betterave', 'Brocoli', 'Courgette', 'Épinard', 'Poireau', 'Poivron', 'Tomate'], fruits: ['Figue', 'Noisette', 'Poire', 'Pomme', 'Prune', 'Raisin'] },
   9: { legumes: ['Betterave', 'Brocoli', 'Carotte', 'Chou', 'Courge', 'Épinard', 'Poireau', 'Potiron'], fruits: ['Châtaigne', 'Coing', 'Noix', 'Poire', 'Pomme', 'Raisin'] },
   10: { legumes: ['Betterave', 'Carotte', 'Chou', 'Courge', 'Endive', 'Mâche', 'Navet', 'Poireau', 'Potiron'], fruits: ['Châtaigne', 'Clémentine', 'Kiwi', 'Poire', 'Pomme'] },
@@ -107,7 +112,7 @@ function resolveProduit(nom: string, type: ProduitType): ProduitResolu {
   return {
     nom,
     type,
-    emoji: SAISON_IMG[nom] ?? '🧺',
+    illustration: produitIllustration(nom),
     fiche: SAISON_PRODUITS[nom] ?? SAISON_FALLBACK,
   };
 }

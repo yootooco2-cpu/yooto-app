@@ -1,141 +1,111 @@
 import { useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { Cryptogram } from '@/components/merchants/Cryptogram';
 import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
-
+import { cryptogramColor } from '@/features/merchants';
+import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
 import {
-  CATEGORY_MEGA_MENU,
-  type MegaCategory,
-  type MegaCategoryId,
-  type MegaSubcategory,
-} from '../categoryMegaMenu';
+  MERCHANT_CATEGORY_FILTERS,
+  type CategorySubEntry,
+  type MerchantCategoryFilter,
+  type MerchantCategoryId,
+} from '@/features/merchants/merchantCategoryFilters';
 
 const IS_WEB = Platform.OS === 'web';
 
 export interface CategoryMegaMenuProps {
-  /** Catégories affichées (défaut : catalogue officiel YOOTOO). */
-  categories?: MegaCategory[];
-  /** Catégorie ouverte (contrôlé). Si omis → semi-contrôlé (état interne). */
-  activeCategoryId?: MegaCategoryId | null;
-  onActiveCategoryChange?: (id: MegaCategoryId | null) => void;
-  onSelectCategory?: (category: MegaCategory) => void;
-  onSelectSubcategory: (category: MegaCategory, subcategory: MegaSubcategory) => void;
-  onViewAllNearby: (category: MegaCategory) => void;
-  onViewMap: (category: MegaCategory) => void;
+  /** Catégories affichées (défaut : catalogue officiel partagé avec /merchants). */
+  categories?: MerchantCategoryFilter[];
+  /** Sous-catégorie choisie → injecte une recherche puis navigue. */
+  onSelectSubcategory: (category: MerchantCategoryFilter, subcategory: CategorySubEntry) => void;
+  /** « Voir les commerçants » → filtre /merchants sur la catégorie. */
+  onSelectCategory: (category: MerchantCategoryFilter) => void;
+  /** « Voir sur la carte » → écran Carte. */
+  onViewMap: (category: MerchantCategoryFilter) => void;
 }
 
 /**
- * CategoryMegaMenu — méga-menu de découverte (inspiration Leboncoin, adapté YOOTOO).
- * Rangée horizontale de catégories + panneau de sous-catégories en grille.
- * - Web : ouverture au survol (Platform.OS === 'web') ; tap partout.
- * - Fermeture automatique après sélection d'une sous-catégorie / d'une action.
- * Autonome : ne fait que remonter des callbacks (le branchement décide recherche/navigation).
+ * CategoryMegaMenu — méga-menu de découverte de l'Accueil, bâti sur le MÊME système que
+ * la page Commerçants : barre de cryptogrammes partagée (MerchantCategoryBar), même config
+ * (MERCHANT_CATEGORY_FILTERS), mêmes couleurs. Web : ouverture au survol (remplacement
+ * instantané) ; Mobile : tap. Le panneau enrichit la catégorie active (sous-catégories +
+ * accès direct). Autonome : ne fait que remonter des callbacks (recherche/navigation dehors).
  */
 export function CategoryMegaMenu({
-  categories = CATEGORY_MEGA_MENU,
-  activeCategoryId,
-  onActiveCategoryChange,
-  onSelectCategory,
+  categories = MERCHANT_CATEGORY_FILTERS,
   onSelectSubcategory,
-  onViewAllNearby,
+  onSelectCategory,
   onViewMap,
 }: CategoryMegaMenuProps) {
-  const [internalOpen, setInternalOpen] = useState<MegaCategoryId | null>(null);
-  const isControlled = activeCategoryId !== undefined;
-  const openId = isControlled ? activeCategoryId : internalOpen;
-
-  const setOpen = (id: MegaCategoryId | null) => {
-    if (!isControlled) setInternalOpen(id);
-    onActiveCategoryChange?.(id);
-  };
-
-  const openCategory = (category: MegaCategory) => {
-    if (openId === category.id) return;
-    setOpen(category.id);
-    onSelectCategory?.(category);
-  };
-
-  const toggleCategory = (category: MegaCategory) => {
-    const next = openId === category.id ? null : category.id;
-    setOpen(next);
-    if (next) onSelectCategory?.(category);
-  };
-
+  const [openId, setOpenId] = useState<MerchantCategoryId | null>(null);
   const active = categories.find((c) => c.id === openId) ?? null;
+  const accent = active ? cryptogramColor(active.icon) : colors.primary;
 
-  const handleSubcategory = (category: MegaCategory, subcategory: MegaSubcategory) => {
-    onSelectSubcategory(category, subcategory);
-    setOpen(null); // fermeture auto après sélection
-  };
-
+  // Web : fermeture auto quand la souris quitte TOUT le bloc (barre + panneau). En RN Web,
+  // `onHoverOut` suit la sémantique `mouseleave` : il ne se déclenche pas en passant sur un
+  // descendant (chip → panneau) → aucun flicker, fermeture seulement à la sortie complète.
   return (
-    <View style={styles.root}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.row}>
-        {categories.map((category) => {
-          const isActive = category.id === openId;
-          return (
-            <Pressable
-              key={category.id}
-              onPress={() => toggleCategory(category)}
-              onHoverIn={IS_WEB ? () => openCategory(category) : undefined}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: isActive }}
-              accessibilityLabel={category.label}
-              style={[
-                styles.chip,
-                isActive && { borderColor: category.color, backgroundColor: `${category.color}14` },
-              ]}>
-              <YText style={styles.chipIcon}>{category.icon}</YText>
-              <YText
-                variant="bodyStrong"
-                style={[styles.chipLabel, isActive ? { color: category.color } : null]}>
-                {category.label}
-              </YText>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+    <Pressable
+      style={styles.root}
+      onHoverOut={IS_WEB ? () => setOpenId(null) : undefined}
+      focusable={false}
+      accessible={false}>
+      <MerchantCategoryBar
+        active={openId}
+        onToggle={(id) => setOpenId((cur) => (cur === id ? null : id))}
+        onHover={(id) => setOpenId(id)}
+      />
 
       {active ? (
-        <View style={[styles.panel, shadows.md]}>
+        <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, shadows.md]}>
           <View style={styles.panelHeader}>
-            <YText style={styles.panelIcon}>{active.icon}</YText>
-            <YText variant="subtitle">{active.label}</YText>
+            <Cryptogram id={active.icon} size={30} />
+            <YText variant="subtitle" style={{ color: accent }}>
+              {active.label}
+            </YText>
           </View>
 
-          <View style={styles.grid}>
-            {active.subcategories.map((subcategory) => (
-              <Pressable
-                key={subcategory.id}
-                onPress={() => handleSubcategory(active, subcategory)}
-                accessibilityRole="button"
-                accessibilityLabel={subcategory.label}
-                style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>
-                <View style={[styles.dot, { backgroundColor: active.color }]} />
-                <YText variant="body" numberOfLines={1} style={styles.tileLabel}>
-                  {subcategory.label}
-                </YText>
-              </Pressable>
-            ))}
-          </View>
+          {active.subcategories?.length ? (
+            <View style={styles.grid}>
+              {active.subcategories.map((subcategory) => (
+                <Pressable
+                  key={subcategory.id}
+                  onPress={() => {
+                    onSelectSubcategory(active, subcategory);
+                    setOpenId(null);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={subcategory.label}
+                  style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>
+                  <View style={[styles.dot, { backgroundColor: accent }]} />
+                  <YText variant="body" numberOfLines={1} style={styles.tileLabel}>
+                    {subcategory.label}
+                  </YText>
+                </Pressable>
+              ))}
+            </View>
+          ) : (
+            <YText variant="body" color="muted">
+              Explorez tous les commerçants de cette catégorie.
+            </YText>
+          )}
 
           <View style={styles.actions}>
             <View style={styles.actionBtn}>
               <YButton
-                label="Voir tout autour de moi"
+                label="Voir les commerçants"
                 variant="primary"
                 fullWidth
                 onPress={() => {
-                  onViewAllNearby(active);
-                  setOpen(null);
+                  onSelectCategory(active);
+                  setOpenId(null);
                 }}
               />
             </View>
@@ -146,41 +116,20 @@ export function CategoryMegaMenu({
                 fullWidth
                 onPress={() => {
                   onViewMap(active);
-                  setOpen(null);
+                  setOpenId(null);
                 }}
               />
             </View>
           </View>
-        </View>
+        </Animated.View>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     gap: spacing.sm,
-  },
-  row: {
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  chipIcon: {
-    fontSize: 16,
-  },
-  chipLabel: {
-    color: colors.text,
   },
   panel: {
     marginTop: spacing.xs,
@@ -195,9 +144,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  panelIcon: {
-    fontSize: 20,
   },
   grid: {
     flexDirection: 'row',

@@ -31,6 +31,20 @@ export const carnetTheme = {
 /** Empattement éditorial (« carte de primeur »). Cormorant absent → repli Georgia serif. */
 export const carnetSerif = Platform.select({ ios: 'Georgia', web: 'Georgia', default: undefined });
 
+/** Croquis botanique « encre » (data-URI SVG) — illustration de repli quand un produit n'a
+ *  pas encore d'illustration dédiée. Trait manuscrit, jamais un emoji ni une icône plate. */
+export function botaniqueSketchUri(color: string = '#EFE9D6'): string {
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
+    `<g fill='none' stroke='${color}' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'>` +
+    `<path d='M32 56 C 30 42 32 26 35 12'/>` +
+    `<path d='M33 46 C 22 44 16 36 13 27 C 24 29 31 35 33 46 Z'/>` +
+    `<path d='M34 37 C 45 35 51 27 53 18 C 43 20 36 27 34 37 Z'/>` +
+    `<path d='M34 27 C 27 23 23 16 23 9 C 31 12 35 19 34 27 Z'/>` +
+    `</g></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
+}
+
 /** SVG grain (feTurbulence) en data-URI — texture papier/ardoise discrète via expo-image.
  *  Web : rendu natif du filtre. Natif : peut ne pas rendre le filtre → overlay transparent
  *  (dégradation silencieuse, aucune casse). */

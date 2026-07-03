@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
@@ -5,10 +6,12 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
-import { carnetSerif, carnetTheme as C } from '../theme';
+import { botaniqueSketchUri, carnetSerif, carnetTheme as C } from '../theme';
 import { t, type Locale } from '../i18n';
 import { MOIS, marmitonSearchUrl, type ProduitResolu } from '../saison';
 import { Grain } from './Grain';
+
+const SKETCH = botaniqueSketchUri('#7C8A5F');
 
 interface Props {
   produit: ProduitResolu | null;
@@ -30,7 +33,11 @@ export function ProduitSheet({ produit, monthIndex, locale, onClose }: Props) {
             <View style={styles.handle} />
             <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
               <View style={styles.hero}>
-                <YText style={styles.emoji}>{produit.emoji}</YText>
+                {produit.illustration ? (
+                  <Image source={produit.illustration} style={styles.heroImg} contentFit="contain" />
+                ) : (
+                  <Image source={{ uri: SKETCH }} style={styles.heroSketch} contentFit="contain" />
+                )}
                 <View style={styles.heroText}>
                   <YText style={styles.season}>
                     {t('inSeason', locale)} · {MOIS[monthIndex]}
@@ -74,7 +81,15 @@ export function ProduitSheet({ produit, monthIndex, locale, onClose }: Props) {
                       void Linking.openURL(marmitonSearchUrl(recette, produit.nom));
                     }}
                     style={({ pressed }) => [styles.recipe, pressed && styles.recipePressed]}>
-                    <YText style={styles.recipeEmoji}>{produit.emoji}</YText>
+                    {produit.illustration ? (
+                      <Image
+                        source={produit.illustration}
+                        style={styles.recipeThumb}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <Image source={{ uri: SKETCH }} style={styles.recipeThumb} contentFit="contain" />
+                    )}
                     <View style={styles.recipeBody}>
                       <YText style={styles.recipeName}>{recette}</YText>
                       <YText style={styles.recipeSub}>→ {t('onMarmiton', locale)}</YText>
@@ -130,8 +145,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
   },
-  emoji: {
-    fontSize: 64,
+  heroImg: {
+    width: 92,
+    aspectRatio: 0.82,
+    borderRadius: radii.sm,
+  },
+  heroSketch: {
+    width: 72,
+    height: 72,
   },
   heroText: {
     flex: 1,
@@ -220,8 +241,10 @@ const styles = StyleSheet.create({
   recipePressed: {
     opacity: 0.75,
   },
-  recipeEmoji: {
-    fontSize: 24,
+  recipeThumb: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.sm,
   },
   recipeBody: {
     flex: 1,

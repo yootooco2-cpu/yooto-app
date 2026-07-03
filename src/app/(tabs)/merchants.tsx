@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useMemo } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MerchantCard } from '@/components/cards/MerchantCard';
@@ -9,12 +10,29 @@ import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
 import { spacing } from '@/design/tokens/spacing';
-import { QUICK_FILTERS, useMerchantSearch, type Merchant } from '@/features/merchants';
+import {
+  QUICK_FILTERS,
+  filterCryptogramAsset,
+  useMerchantSearch,
+  useMerchantSearchStore,
+  type Merchant,
+} from '@/features/merchants';
+import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
+import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
 
 export default function MerchantsScreen() {
   const router = useRouter();
   const { query, setQuery, filters, toggleFilter, results, isLoading, isError, refetch } =
     useMerchantSearch();
+
+  // Catégorie principale sélectionnée : SOURCE UNIQUE dans le store (présélectionnable
+  // depuis l'Accueil). Post-filtre local de la grille ; n'altère pas useMerchantSearch.
+  const activeCategory = useMerchantSearchStore((s) => s.activeCategory);
+  const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
+  const displayed = useMemo(() => {
+    const cat = merchantCategoryById(activeCategory);
+    return cat ? results.filter(cat.match) : results;
+  }, [results, activeCategory]);
 
   // Grille fixe : exactement 3 colonnes sur toutes les tailles d'écran.
   const numColumns = 3;
@@ -36,6 +54,12 @@ export default function MerchantsScreen() {
 
       <YSearchBar value={query} onChangeText={setQuery} />
 
+      {/* Catégories principales sous la recherche (navigation guidée). */}
+      <MerchantCategoryBar
+        active={activeCategory}
+        onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
+      />
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -45,6 +69,7 @@ export default function MerchantsScreen() {
           <YChip
             key={filter.id}
             label={filter.label}
+            icon={filterCryptogramAsset(filter.id)}
             active={filters.includes(filter.id)}
             onPress={() => toggleFilter(filter.id)}
           />
@@ -69,7 +94,7 @@ export default function MerchantsScreen() {
         <FlatList
           key={`cols-${numColumns}`}
           style={styles.list}
-          data={results}
+          data={displayed}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           numColumns={numColumns}
@@ -81,7 +106,7 @@ export default function MerchantsScreen() {
           windowSize={7}
           ListHeaderComponent={
             <YText variant="label" color="muted">
-              {results.length} commerce{results.length > 1 ? 's' : ''}
+              {displayed.length} commerce{displayed.length > 1 ? 's' : ''}
             </YText>
           }
           ListEmptyComponent={

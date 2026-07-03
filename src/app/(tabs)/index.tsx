@@ -28,8 +28,7 @@ export default function HomeScreen() {
 
   const userLocation = useMerchantSearchStore((s) => s.userLocation);
   const setSearch = useMerchantSearchStore((s) => s.setSearch);
-  const activeFilters = useMerchantSearchStore((s) => s.activeFilters);
-  const toggleFilter = useMerchantSearchStore((s) => s.toggleFilter);
+  const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
   const preferences = usePreferences();
   const discoveryContext = useMemo(
     () => buildDiscoveryContext({ userLocation, preferences }),
@@ -50,21 +49,20 @@ export default function HomeScreen() {
 
   return (
     <YScreen scroll gap="lg" padding="lg" onScroll={scrollHandler}>
-      <HomeHero
-        greeting={greetingForNow()}
-        onExplore={() => router.push('/explore')}
-        scrollY={scrollY}
-      />
+      <HomeHero greeting={greetingForNow()} scrollY={scrollY} />
 
-      {/* Méga-menu de découverte par catégories (sous le hero — pas de barre de recherche
-          sur l'Accueil). Une sélection injecte la query dans la recherche existante. */}
+      {/* Méga-menu de découverte : MÊME système que /merchants (barre de cryptogrammes +
+          config partagées). Sous-catégorie → recherche injectée ; catégorie → filtre partagé
+          (activeCategory du store, consommé par /merchants) ; carte → écran Carte. */}
       <CategoryMegaMenu
-        onSelectSubcategory={(_category, subcategory) => {
+        onSelectSubcategory={(category, subcategory) => {
+          setActiveCategory(category.id);
           setSearch(subcategory.query);
           router.push('/merchants');
         }}
-        onViewAllNearby={() => {
-          if (!activeFilters.includes('nearby')) toggleFilter('nearby');
+        onSelectCategory={(category) => {
+          setSearch('');
+          setActiveCategory(category.id);
           router.push('/merchants');
         }}
         onViewMap={() => router.push('/explore')}

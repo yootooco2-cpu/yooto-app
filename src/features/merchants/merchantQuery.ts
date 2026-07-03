@@ -12,10 +12,24 @@ import type { QuickFilterId } from './filters';
  * Les garder côte à côte limite la dérive de comportement local/serveur.
  */
 
-function matchesText(merchant: Merchant, search?: string): boolean {
-  const q = search?.trim().toLowerCase();
-  if (!q) return true;
-  return `${merchant.name} ${merchant.description}`.toLowerCase().includes(q);
+/**
+ * Correspondance texte + ÉLARGISSEMENT par intention :
+ * une recherche « pain » garde aussi les pâtisseries/viennoiseries (via l'intention),
+ * pas uniquement les libellés contenant « pain ».
+ */
+function matchesQuery(merchant: Merchant, query?: MerchantQuery): boolean {
+  const q = query?.search?.trim().toLowerCase();
+  const intent = query?.intent;
+  if (!q && !intent) return true;
+
+  const text = `${merchant.name} ${merchant.description}`.toLowerCase();
+  if (q && text.includes(q)) return true;
+
+  if (intent) {
+    if (intent.categories.includes(merchant.category)) return true;
+    if (intent.keywords.some((k) => text.includes(k))) return true;
+  }
+  return false;
 }
 
 function matchesFilters(merchant: Merchant, filters?: QuickFilterId[]): boolean {
@@ -55,7 +69,7 @@ export function applyMerchantQueryLocal(
   query?: MerchantQuery,
 ): Merchant[] {
   const base = merchants.filter(
-    (merchant) => matchesText(merchant, query?.search) && matchesFilters(merchant, query?.filters),
+    (merchant) => matchesQuery(merchant, query) && matchesFilters(merchant, query?.filters),
   );
   return withDistance(base, query?.near, query?.radiusKm);
 }

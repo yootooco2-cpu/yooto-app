@@ -28,16 +28,16 @@ export function buildRecommendationReasons(merchant: Merchant): string[] {
     }
   }
   if (merchant.hasRewards) {
-    reasons.push('Tu cumules des récompenses YOOTOO à chaque visite.');
+    reasons.push('Vous cumulez des récompenses YOOTOO à chaque visite.');
   }
   if (merchant.isAccessible) {
     reasons.push('Lieu accessible aux personnes à mobilité réduite.');
   }
   if (merchant.isOpenNow) {
-    reasons.push('Ouvert maintenant, à quelques minutes de toi.');
+    reasons.push('Ouvert maintenant, à quelques minutes de vous.');
   }
   if (reasons.length === 0) {
-    reasons.push('Commerce indépendant proche de toi.');
+    reasons.push('Commerce indépendant proche de vous.');
   }
 
   return reasons;

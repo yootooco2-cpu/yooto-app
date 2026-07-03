@@ -11,7 +11,6 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="merchant/[id]" />
-        <Stack.Screen name="de-saison" />
       </Stack>
     </QueryClientProvider>
   );

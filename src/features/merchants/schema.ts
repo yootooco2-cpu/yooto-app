@@ -33,6 +33,20 @@ export const merchantRowSchema = z.object({
   cover_photo_url: z.string().nullable().optional(),
   photo_url: z.string().nullable().optional(),
   gallery_photos: z.unknown().nullable().optional(),
+  photo_count: z.coerce.number().nullable().optional(),
+  address: z.string().nullable().optional(),
+  postal_code: z.string().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  email: z.string().nullable().optional(),
+  website: z.string().nullable().optional(),
+  instagram: z.string().nullable().optional(),
+  facebook: z.string().nullable().optional(),
+  google_maps_url: z.string().nullable().optional(),
+  review_count: z.coerce.number().nullable().optional(),
+  reviews_count: z.coerce.number().nullable().optional(),
+  local_score: z.coerce.number().nullable().optional(),
+  partner_potential: z.coerce.number().nullable().optional(),
+  status: z.string().nullable().optional(),
   pin_x: z.coerce.number().nullable().optional(),
   pin_y: z.coerce.number().nullable().optional(),
 });
@@ -65,6 +79,18 @@ function readOpenNow(raw: unknown): boolean | undefined {
   if (raw && typeof raw === 'object' && 'open_now' in raw) {
     const value = (raw as { open_now?: unknown }).open_now;
     return typeof value === 'boolean' ? value : undefined;
+  }
+  return undefined;
+}
+
+/** Lit `opening_hours.weekday_text` (horaires lisibles) de façon défensive. */
+function readWeekdayText(raw: unknown): string[] | undefined {
+  if (raw && typeof raw === 'object' && 'weekday_text' in raw) {
+    const value = (raw as { weekday_text?: unknown }).weekday_text;
+    if (Array.isArray(value)) {
+      const lines = value.filter((x): x is string => typeof x === 'string' && x.trim().length > 0);
+      return lines.length > 0 ? lines : undefined;
+    }
   }
   return undefined;
 }
@@ -103,6 +129,20 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     coverPhotoUrl: row.cover_photo_url ?? undefined,
     photoUrl: row.photo_url ?? undefined,
     galleryPhotos: toStringArray(row.gallery_photos),
+    photoCount: row.photo_count ?? undefined,
+    address: row.address ?? undefined,
+    postalCode: row.postal_code ?? undefined,
+    phone: row.phone ?? undefined,
+    email: row.email ?? undefined,
+    website: row.website ?? undefined,
+    instagram: row.instagram ?? undefined,
+    facebook: row.facebook ?? undefined,
+    googleMapsUrl: row.google_maps_url ?? undefined,
+    reviewCount: row.review_count ?? row.reviews_count ?? undefined,
+    openingHours: readWeekdayText(row.opening_hours),
+    localScore: row.local_score ?? undefined,
+    partnerPotential: row.partner_potential ?? undefined,
+    status: row.status ?? undefined,
     pin: { x: row.pin_x ?? 0, y: row.pin_y ?? 0 },
   };
 }

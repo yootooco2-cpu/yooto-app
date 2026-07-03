@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { Pressable, StyleSheet, type ImageSourcePropType } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
@@ -9,9 +10,11 @@ type Props = {
   label: string;
   active?: boolean;
   onPress?: () => void;
+  /** Cryptogramme optionnel affiché avant le label (ex. filtres rapides). */
+  icon?: ImageSourcePropType;
 };
 
-export function YChip({ label, active = false, onPress }: Props) {
+export function YChip({ label, active = false, onPress, icon }: Props) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -22,6 +25,7 @@ export function YChip({ label, active = false, onPress }: Props) {
         active ? styles.active : styles.inactive,
         pressed && styles.pressed,
       ]}>
+      {icon ? <Image source={icon} style={styles.icon} contentFit="contain" /> : null}
       <YText variant="caption" color={active ? 'inverse' : 'default'} numberOfLines={1}>
         {label}
       </YText>
@@ -52,5 +56,10 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.7,
+  },
+  icon: {
+    width: 18,
+    height: 18,
+    marginRight: spacing.xs,
   },
 });

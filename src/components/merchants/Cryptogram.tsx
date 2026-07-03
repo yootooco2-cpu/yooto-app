@@ -1,24 +1,24 @@
 import { Image } from 'expo-image';
 
-import { cryptogramDataUri, type CryptogramId } from '@/features/merchants/cryptograms';
+import { cryptogramAsset } from '@/features/merchants/cryptogramAssets';
+import type { CryptogramId } from '@/features/merchants/cryptograms';
 
 type Props = {
   id: CryptogramId;
-  /** Taille du cryptogramme (px). Légèrement plus grand que les anciens badges. */
+  /** Taille du cryptogramme (px). */
   size?: number;
 };
 
 /**
- * Cryptogramme officiel YOOTOO (goutte + pictogramme blanc, couleur de catégorie).
- * SVG custom rendu via expo-image (zéro dépendance). Web (localhost:8081) ; natif plus tard.
+ * Cryptogramme officiel YOOTOO (goutte peinte, bibliothèque d'assets).
+ * Rendu via expo-image ; ids/couleurs inchangés (cf. cryptograms.ts).
  */
 export function Cryptogram({ id, size = 30 }: Props) {
   return (
     <Image
-      source={{ uri: cryptogramDataUri(id, size) }}
+      source={cryptogramAsset(id)}
       style={{ width: size, height: size }}
       contentFit="contain"
-      // Ombre douce pour détacher le cryptogramme de la photo.
       accessibilityIgnoresInvertColors
     />
   );

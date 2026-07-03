@@ -57,6 +57,23 @@ function ProfileIcon({ color, size }: { color: ColorValue; size: number }) {
   );
 }
 
+/** Icône « feuille » composée de Views (aucun asset/package requis, web-safe). */
+function DeSaisonIcon({ color, size }: { color: ColorValue; size: number }) {
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <View
+        style={{
+          width: size * 0.5,
+          height: size * 0.5,
+          borderTopLeftRadius: size * 0.5,
+          borderBottomRightRadius: size * 0.5,
+          backgroundColor: color,
+        }}
+      />
+    </View>
+  );
+}
+
 export default function TabsLayout() {
   return (
     <Tabs
@@ -104,6 +121,13 @@ export default function TabsLayout() {
         options={{
           title: 'Commerçants',
           tabBarIcon: ({ color, size }) => <MerchantsIcon color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="de-saison"
+        options={{
+          title: 'De saison',
+          tabBarIcon: ({ color, size }) => <DeSaisonIcon color={color} size={size} />,
         }}
       />
       <Tabs.Screen

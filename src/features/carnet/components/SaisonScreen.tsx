@@ -1,3 +1,4 @@
+import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -8,22 +9,26 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
-import { carnetSerif, carnetTheme as C } from '../theme';
+import { botaniqueSketchUri, carnetSerif, carnetTheme as C } from '../theme';
 import { t, type Locale } from '../i18n';
 import { getSaison, MOIS, type ProduitResolu } from '../saison';
 import { Grain } from './Grain';
 import { ProduitSheet } from './ProduitSheet';
 
+// Visuel de référence officiel (« Image pour Claude.md ») — source de vérité de la DA.
+// On affiche le bandeau haut (ardoise + étal) via contentFit/contentPosition (aucun crop offline).
+const HERO = require('@/assets/images/carnet/de-saison-ref.png');
+
 interface Props {
   locale?: Locale;
 }
 
-/** Abréviation éditoriale du mois pour la réglette (« Janv. »…). */
 const MOIS_COURT = MOIS.map((m) => (m.length > 5 ? `${m.slice(0, 4)}.` : m));
+const SKETCH = botaniqueSketchUri();
 
 /**
- * SaisonScreen — « De saison » : étal de primeur / carnet botanique.
- * Ardoise héros (craie), réglette mois éditoriale, fiches-ardoise produits, fiche carnet.
+ * SaisonScreen — « De saison ». Hero = visuel de référence peint (ardoise centrale +
+ * légumes/fruits autour, craie), puis réglette mois, grilles produits, fiche carnet.
  */
 export function SaisonScreen({ locale }: Props) {
   const [current] = useState(() => new Date().getMonth());
@@ -31,6 +36,8 @@ export function SaisonScreen({ locale }: Props) {
   const [active, setActive] = useState<ProduitResolu | null>(null);
 
   const saison = useMemo(() => getSaison(selected), [selected]);
+  // TOUS les produits de saison sont affichés (aucun mois vide). Ceux sans illustration
+  // dédiée utilisent le croquis botanique en attendant leur planche.
   const isEmpty = saison.legumes.length === 0 && saison.fruits.length === 0;
 
   const renderSection = (label: string, produits: ProduitResolu[], delay: number) => {
@@ -38,9 +45,9 @@ export function SaisonScreen({ locale }: Props) {
     return (
       <Animated.View entering={FadeInDown.duration(320).delay(delay)} style={styles.section}>
         <View style={styles.sectionHeader}>
-          <YText style={styles.laurelLeft}>❦</YText>
+          <YText style={styles.laurel}>❦</YText>
           <YText style={styles.sectionTitle}>{label}</YText>
-          <YText style={styles.laurelRight}>❦</YText>
+          <YText style={styles.laurel}>❦</YText>
         </View>
         <View style={styles.grid}>
           {produits.map((produit) => (
@@ -50,11 +57,19 @@ export function SaisonScreen({ locale }: Props) {
               accessibilityRole="button"
               accessibilityLabel={produit.nom}
               style={({ pressed }) => [styles.fiche, pressed && styles.fichePressed]}>
-              <YText style={styles.ficheName} numberOfLines={1}>
-                {produit.nom}
-              </YText>
-              <View style={styles.ficheSlate}>
-                <YText style={styles.ficheEmoji}>{produit.emoji}</YText>
+              {/* Petite ardoise : cadre bois discret, fond ardoise CONTINU (aucune barre),
+                  illustration dominante, nom en craie posé sur l'ardoise (secondaire). */}
+              <View style={styles.card}>
+                <View style={styles.cardFace}>
+                  <Image
+                    source={produit.illustration ?? { uri: SKETCH }}
+                    style={StyleSheet.absoluteFill}
+                    contentFit="cover"
+                  />
+                  <YText style={styles.cardName} numberOfLines={1}>
+                    {produit.nom}
+                  </YText>
+                </View>
               </View>
             </Pressable>
           ))}
@@ -65,24 +80,15 @@ export function SaisonScreen({ locale }: Props) {
 
   return (
     <YScreen scroll gap="lg" padding="lg">
-      {/* En-tête éditorial */}
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <YText style={styles.laurelTitle}>❧</YText>
-          <YText style={styles.title}>{t('title', locale)}</YText>
-          <YText style={styles.laurelTitle}>❧</YText>
-        </View>
-        <YText style={styles.subtitle}>{t('subtitle', locale)}</YText>
-      </View>
-
-      {/* Ardoise dans son cadre bois */}
-      <Animated.View entering={FadeIn.duration(400)} style={styles.woodFrame}>
-        <View style={styles.slate}>
-          <Grain variant="slate" opacity={0.35} />
-          <YText style={styles.leafSlateTop}>🌿</YText>
-          <YText style={styles.chalkTitle}>{'Frais, local,\nde saison'}</YText>
-          <YText style={styles.chalkHeart}>♡</YText>
-        </View>
+      {/* Hero — visuel de référence peint (ardoise + étal). Bandeau haut de l'image. */}
+      <Animated.View entering={FadeIn.duration(400)} style={styles.heroWrap}>
+        <Image
+          source={HERO}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          contentPosition="top center"
+          accessibilityLabel={t('title', locale)}
+        />
       </Animated.View>
 
       {/* Réglette des mois */}
@@ -142,75 +148,14 @@ export function SaisonScreen({ locale }: Props) {
 }
 
 const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  laurelTitle: {
-    fontSize: 18,
-    color: C.sage,
-  },
-  title: {
-    fontFamily: carnetSerif,
-    fontSize: 34,
-    lineHeight: 40,
-    color: C.forest,
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontFamily: carnetSerif,
-    fontStyle: 'italic',
-    fontSize: 15,
-    color: C.inkSoft,
-    textAlign: 'center',
-  },
-
-  // Ardoise + cadre bois
-  woodFrame: {
-    backgroundColor: C.wood,
-    padding: spacing.sm,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.lg + 3,
-    borderBottomRightRadius: radii.xl - 2,
-    borderBottomLeftRadius: radii.lg + 2,
-    ...shadows.md,
-  },
-  slate: {
-    backgroundColor: C.slate,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: C.slateEdge,
-    minHeight: 168,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
+  // Hero image (bandeau ardoise + étal). Ratio = fraction haute de l'image de référence.
+  heroWrap: {
+    width: '100%',
+    aspectRatio: 1024 / 470,
+    borderRadius: radii.lg,
     overflow: 'hidden',
-  },
-  leafSlateTop: {
-    position: 'absolute',
-    top: 8,
-    right: 12,
-    fontSize: 34,
-    opacity: 0.14,
-  },
-  chalkTitle: {
-    fontFamily: carnetSerif,
-    fontStyle: 'italic',
-    fontSize: 30,
-    lineHeight: 38,
-    color: C.chalk,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  chalkHeart: {
-    marginTop: spacing.xs,
-    fontSize: 18,
-    color: C.chalkMuted,
+    backgroundColor: C.paperDeep,
+    ...shadows.md,
   },
 
   // Réglette mois
@@ -278,52 +223,56 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: C.forest,
   },
-  laurelLeft: {
-    fontSize: 15,
-    color: C.sage,
-  },
-  laurelRight: {
+  laurel: {
     fontSize: 15,
     color: C.sage,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: spacing.md,
   },
   fiche: {
-    alignItems: 'center',
-    gap: spacing.xs,
+    // Taille réduite (~20 %) & plafonnée → net (jamais agrandi au-delà de la déf. source),
+    // grille homogène qui respire.
     flexGrow: 1,
-    flexBasis: '28%',
-    minWidth: 100,
+    flexBasis: '30%',
+    minWidth: 80,
+    maxWidth: 90,
   },
   fichePressed: {
-    opacity: 0.8,
+    opacity: 0.82,
   },
-  ficheName: {
-    fontFamily: carnetSerif,
-    fontStyle: 'italic',
-    fontSize: 14,
-    color: C.ink,
-  },
-  ficheSlate: {
-    width: '100%',
-    aspectRatio: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: C.slate,
-    borderWidth: 2,
-    borderColor: C.woodLight,
-    // Coins légèrement irréguliers (fiche « faite main »).
-    borderTopLeftRadius: radii.md + 3,
+  // Gabarit unique : cadre bois → ardoise → bandeau nom + sujet carré.
+  card: {
+    backgroundColor: C.wood, // cadre bois discret
+    padding: 2,
+    borderTopLeftRadius: radii.md + 2,
     borderTopRightRadius: radii.md,
-    borderBottomRightRadius: radii.md + 3,
+    borderBottomRightRadius: radii.md + 2,
     borderBottomLeftRadius: radii.md,
     ...shadows.sm,
   },
-  ficheEmoji: {
-    fontSize: 40,
+  cardFace: {
+    aspectRatio: 1, // ardoise carrée, fond continu
+    backgroundColor: C.slate,
+    borderRadius: radii.sm,
+    overflow: 'hidden',
+  },
+  cardName: {
+    position: 'absolute',
+    top: 5,
+    left: 4,
+    right: 4,
+    fontFamily: carnetSerif,
+    fontStyle: 'italic',
+    fontSize: 11,
+    color: C.chalk,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Note parchemin
