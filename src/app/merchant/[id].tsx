@@ -15,11 +15,11 @@ import { buildDiscoveryContext, getDiscoveryReasons, trackEvent, usePreferences 
 import {
   CATEGORY_LABELS,
   getMerchantCoverPhoto,
-  getMerchantTags,
   isRealPhotoUrl,
   useMerchant,
   useMerchantSearchStore,
 } from '@/features/merchants';
+import { buildDirectionsUrl } from '@/features/merchants/directions';
 
 const ensureHttp = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://${url}`);
 const openUrl = (url?: string) => {
@@ -42,6 +42,20 @@ function InfoLink({ label, value, onPress }: { label: string; value: string; onP
   );
 }
 
+/** Ligne « libellé → valeur » non cliquable (scores, stats). */
+function InfoStat({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <YText variant="caption" color="muted">
+        {label}
+      </YText>
+      <YText variant="caption" color="default" style={styles.infoValue}>
+        {value}
+      </YText>
+    </View>
+  );
+}
+
 export default function MerchantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -49,6 +63,8 @@ export default function MerchantDetailScreen() {
   const userLocation = useMerchantSearchStore((s) => s.userLocation);
   const preferences = usePreferences();
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  // Favori : état visuel local (pas de persistance inventée ; branché plus tard sur un store).
+  const [saved, setSaved] = useState(false);
 
   // Apprentissage : consulter une fiche renforce l'affinité pour sa catégorie.
   useEffect(() => {
@@ -75,11 +91,7 @@ export default function MerchantDetailScreen() {
           Impossible de charger ce commerce. Vérifiez votre connexion, puis réessayez.
         </YText>
         <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
-        <YButton
-          label="Retour à l’exploration"
-          variant="ghost"
-          onPress={() => router.replace('/explore')}
-        />
+        <YButton label="Retour à l’exploration" variant="ghost" onPress={() => router.replace('/explore')} />
       </YScreen>
     );
   }
@@ -96,22 +108,39 @@ export default function MerchantDetailScreen() {
     );
   }
 
-  const tags = getMerchantTags(merchant);
-  const reasons = getDiscoveryReasons(merchant, buildDiscoveryContext({ userLocation, preferences }));
-  const cover = getMerchantCoverPhoto(merchant);
+  const {
+    address,
+    postalCode,
+    city,
+    phone,
+    email,
+    website,
+    instagram,
+    facebook,
+    googleMapsUrl,
+    openingHours,
+    reviewCount,
+  } = merchant;
 
-  const { address, postalCode, city, phone, email, website, instagram, facebook, googleMapsUrl } =
-    merchant;
-  const openingHours = merchant.openingHours;
-  const reviewCount = merchant.reviewCount;
+  const cover = getMerchantCoverPhoto(merchant);
+  const reasons = getDiscoveryReasons(merchant, buildDiscoveryContext({ userLocation, preferences }));
+
+  // Labels éditoriaux — dérivés de données réelles uniquement (aucune affirmation inventée).
+  const labels: string[] = [];
+  if (merchant.isProducer) labels.push('Producteur local');
+  if (typeof merchant.ecoScore === 'number' && merchant.ecoScore >= 80) labels.push('Écoresponsable');
+  if (merchant.isAccessible) labels.push('Accessible PMR');
+  if (merchant.hasRewards) labels.push('Récompenses YOOTOO');
+
   const addressLines = [address, [postalCode, city].filter(Boolean).join(' ').trim()].filter(
     (line): line is string => !!line && line.length > 0,
   );
   const hasContact = Boolean(
     address || city || phone || email || website || instagram || facebook || googleMapsUrl,
   );
-  // Galerie : gallery_photos → sinon fallback photo_url. Vraies photos uniquement,
-  // hors cover (pas de doublon), plafonnée à 2. Section masquée si vide.
+  const hasScores = typeof merchant.localScore === 'number' || typeof merchant.ecoScore === 'number';
+
+  // Galerie : gallery_photos → sinon fallback photo_url. Vraies photos, hors cover, plafonnée à 2.
   const galleryCandidates =
     merchant.galleryPhotos && merchant.galleryPhotos.length > 0
       ? merchant.galleryPhotos
@@ -122,10 +151,17 @@ export default function MerchantDetailScreen() {
     .filter(isRealPhotoUrl)
     .filter((photo) => photo !== cover)
     .slice(0, 2);
-  // Toutes les vraies images (cover + galerie), dédoublonnées → galerie plein écran.
-  const allImages = Array.from(
-    new Set([cover, ...galleryImages].filter((u): u is string => !!u)),
-  );
+  const allImages = Array.from(new Set([cover, ...galleryImages].filter((u): u is string => !!u)));
+
+  // --- Actions réelles ---
+  const onDirections = () => {
+    openUrl(buildDirectionsUrl(merchant));
+    trackEvent({ type: 'go_there', category: merchant.category, isProducer: merchant.isProducer });
+  };
+  const onSave = () => {
+    setSaved((v) => !v);
+    trackEvent({ type: 'save', category: merchant.category, isProducer: merchant.isProducer });
+  };
 
   return (
     <YScreen
@@ -133,29 +169,16 @@ export default function MerchantDetailScreen() {
       footer={
         <View style={styles.ctaRow}>
           <View style={styles.ctaItem}>
-            <YButton
-              label="Enregistrer"
-              variant="secondary"
-              fullWidth
-              onPress={() =>
-                trackEvent({ type: 'save', category: merchant.category, isProducer: merchant.isProducer })
-              }
-            />
+            <YButton label={saved ? 'Enregistré ✓' : 'Enregistrer'} variant="secondary" fullWidth onPress={onSave} />
           </View>
           <View style={styles.ctaItem}>
-            <YButton
-              label="Y aller"
-              fullWidth
-              onPress={() =>
-                trackEvent({ type: 'go_there', category: merchant.category, isProducer: merchant.isProducer })
-              }
-            />
+            <YButton label="Itinéraire" fullWidth onPress={onDirections} />
           </View>
         </View>
       }>
       <YButton label="← Retour" variant="ghost" onPress={() => router.back()} />
 
-      {/* Hero cover — tap → galerie plein écran (swipe + zoom) */}
+      {/* Hero cover — tap → galerie plein écran (swipe + zoom). Fallback catégorie si absente. */}
       <Pressable
         disabled={allImages.length === 0}
         onPress={() => setGalleryIndex(0)}
@@ -171,7 +194,7 @@ export default function MerchantDetailScreen() {
         ) : null}
       </Pressable>
 
-      {/* Galerie (max 2 vignettes) — masquée si aucune photo */}
+      {/* Galerie horizontale (max 2 vignettes) — masquée si aucune photo */}
       {galleryImages.length > 0 ? (
         <ScrollView
           horizontal
@@ -196,9 +219,9 @@ export default function MerchantDetailScreen() {
       <YText variant="title">{merchant.name}</YText>
 
       <View style={styles.metaRow}>
-        {merchant.distanceLabel !== '—' || merchant.city ? (
+        {merchant.distanceLabel !== '—' || city ? (
           <YText variant="caption" color="muted">
-            {merchant.distanceLabel !== '—' ? merchant.distanceLabel : merchant.city}
+            {merchant.distanceLabel !== '—' ? merchant.distanceLabel : city}
           </YText>
         ) : null}
         {typeof merchant.rating === 'number' ? (
@@ -207,19 +230,15 @@ export default function MerchantDetailScreen() {
             {typeof reviewCount === 'number' ? ` (${reviewCount} avis)` : ''}
           </YText>
         ) : null}
-        {typeof merchant.ecoScore === 'number' ? (
-          <YText variant="caption" color="muted">
-            · Éco {merchant.ecoScore}/100
-          </YText>
-        ) : null}
         <YText variant="caption" color={merchant.isOpenNow ? 'primary' : 'muted'}>
           · {merchant.isOpenNow ? 'Ouvert maintenant' : 'Fermé'}
         </YText>
       </View>
 
-      {tags.length > 0 ? (
+      {/* Labels éditoriaux */}
+      {labels.length > 0 ? (
         <View style={styles.tagsRow}>
-          {tags.map((tag) => (
+          {labels.map((tag) => (
             <View key={tag} style={styles.tag}>
               <YText variant="caption" color="default">
                 {tag}
@@ -229,12 +248,23 @@ export default function MerchantDetailScreen() {
         </View>
       ) : null}
 
+      {/* Actions rapides — uniquement celles dont la donnée existe (jamais de bouton mort) */}
+      <View style={styles.actionsRow}>
+        {phone ? <YButton label="Appeler" variant="secondary" size="sm" onPress={() => openUrl(`tel:${phone}`)} /> : null}
+        {website ? (
+          <YButton label="Site web" variant="secondary" size="sm" onPress={() => openUrl(ensureHttp(website))} />
+        ) : null}
+        <YButton label="Voir sur la carte" variant="secondary" size="sm" onPress={() => router.push('/explore')} />
+      </View>
+
+      {/* Description éditoriale YOOTOO */}
       {merchant.description ? (
         <YText variant="body" color="muted">
           {merchant.description}
         </YText>
       ) : null}
 
+      {/* Informations pratiques */}
       {hasContact ? (
         <YCard>
           <YText variant="subtitle">Informations pratiques</YText>
@@ -252,28 +282,16 @@ export default function MerchantDetailScreen() {
             </View>
           ) : null}
 
-          {phone ? (
-            <InfoLink label="Téléphone" value={phone} onPress={() => openUrl(`tel:${phone}`)} />
-          ) : null}
+          {phone ? <InfoLink label="Téléphone" value={phone} onPress={() => openUrl(`tel:${phone}`)} /> : null}
           {website ? (
             <InfoLink label="Site web" value={website} onPress={() => openUrl(ensureHttp(website))} />
           ) : null}
-          {email ? (
-            <InfoLink label="Email" value={email} onPress={() => openUrl(`mailto:${email}`)} />
-          ) : null}
+          {email ? <InfoLink label="Email" value={email} onPress={() => openUrl(`mailto:${email}`)} /> : null}
           {instagram ? (
-            <InfoLink
-              label="Instagram"
-              value={instagram}
-              onPress={() => openUrl(ensureHttp(instagram))}
-            />
+            <InfoLink label="Instagram" value={instagram} onPress={() => openUrl(ensureHttp(instagram))} />
           ) : null}
           {facebook ? (
-            <InfoLink
-              label="Facebook"
-              value={facebook}
-              onPress={() => openUrl(ensureHttp(facebook))}
-            />
+            <InfoLink label="Facebook" value={facebook} onPress={() => openUrl(ensureHttp(facebook))} />
           ) : null}
           {googleMapsUrl ? (
             <YButton
@@ -286,6 +304,7 @@ export default function MerchantDetailScreen() {
         </YCard>
       ) : null}
 
+      {/* Horaires */}
       {openingHours && openingHours.length > 0 ? (
         <YCard>
           <YText variant="subtitle">Horaires</YText>
@@ -297,6 +316,20 @@ export default function MerchantDetailScreen() {
         </YCard>
       ) : null}
 
+      {/* Engagement — scores local / écologique */}
+      {hasScores ? (
+        <YCard>
+          <YText variant="subtitle">Engagement</YText>
+          {typeof merchant.ecoScore === 'number' ? (
+            <InfoStat label="Score écologique" value={`${merchant.ecoScore}/100`} />
+          ) : null}
+          {typeof merchant.localScore === 'number' ? (
+            <InfoStat label="Score local YOOTOO" value={`${merchant.localScore}`} />
+          ) : null}
+        </YCard>
+      ) : null}
+
+      {/* Pourquoi c'est recommandé */}
       <YCard>
         <YText variant="subtitle">Pourquoi c’est recommandé</YText>
         {reasons.map((reason) => (
@@ -362,6 +395,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   reasonRow: {
     flexDirection: 'row',
