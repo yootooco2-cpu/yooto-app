@@ -18,7 +18,12 @@ const POOL_MAX = 140;
 const CRYPTO_SIZE = 18;
 
 function styleBase(el: HTMLDivElement, photo: string) {
-  el.style.position = 'relative';
+  // `absolute` (jamais `relative`) : Mapbox positionne le marqueur UNIQUEMENT via `transform`.
+  // En `relative`, chaque marqueur occuperait 40px dans le flux du canvas-container → empilement
+  // vertical (N×40px) qui pousse la majorité des marqueurs hors de l'écran.
+  el.style.position = 'absolute';
+  el.style.top = '0';
+  el.style.left = '0';
   el.style.width = '40px';
   el.style.height = '40px';
   el.style.borderRadius = '20px';
@@ -27,7 +32,8 @@ function styleBase(el: HTMLDivElement, photo: string) {
   el.style.boxShadow = '0 2px 6px rgba(23,32,26,0.35)';
   el.style.backgroundSize = 'cover';
   el.style.backgroundPosition = 'center';
-  el.style.transition = 'transform 0.12s ease, border-color 0.12s ease, opacity 0.2s ease';
+  // Pas de transition sur `transform` : Mapbox y écrit la position à chaque frame → sinon lag/traînée.
+  el.style.transition = 'border-color 0.12s ease, box-shadow 0.12s ease, opacity 0.2s ease';
   if (photo) {
     el.style.backgroundImage = `url("${photo}")`;
     el.style.backgroundColor = colors.surface;
@@ -38,9 +44,11 @@ function styleBase(el: HTMLDivElement, photo: string) {
 
 /** Contour = couleur de la catégorie au repos ; primary quand sélectionné. */
 function styleSelected(el: HTMLDivElement, active: boolean, ringColor: string) {
+  // NE JAMAIS écrire `el.style.transform` : Mapbox y stocke la position du marqueur. On met en
+  // avant la sélection via bordure + ombre + z-index (aucun conflit avec le positionnement).
   el.style.borderColor = active ? colors.primary : ringColor;
-  el.style.borderWidth = '3px';
-  el.style.transform = active ? 'scale(1.25)' : 'scale(1)';
+  el.style.borderWidth = active ? '4px' : '3px';
+  el.style.boxShadow = active ? '0 4px 12px rgba(23,32,26,0.55)' : '0 2px 6px rgba(23,32,26,0.35)';
   el.style.zIndex = active ? '3' : '1';
 }
 
@@ -75,6 +83,8 @@ export class PhotoMarkerLayer {
   >();
   private selectedId: string | null = null;
   private cryptogramVisible = true;
+  /** Plafond de marqueurs photo simultanés (exposé pour le debug/monitoring). */
+  readonly poolMax = POOL_MAX;
 
   constructor(
     private readonly mapboxgl: Mapbox,

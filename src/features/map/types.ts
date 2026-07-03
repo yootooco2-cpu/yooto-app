@@ -18,6 +18,21 @@ export interface MapRegion {
   zoom: number;
 }
 
+/** Emprise géographique (bounding box) du viewport courant. */
+export interface MapBounds {
+  west: number;
+  south: number;
+  east: number;
+  north: number;
+}
+
+/** Viewport courant de la carte : centre + zoom + emprise visible. */
+export interface MapViewport {
+  center: MapCoordinate;
+  zoom: number;
+  bounds: MapBounds;
+}
+
 /** Identifiants des implémentations de rendu possibles. */
 export type MapProviderId = 'mapbox-gl' | 'rnmapbox' | 'placeholder';
 
@@ -69,6 +84,12 @@ export interface MapEngineProps {
   userLocation?: MapCoordinate | null;
   /** Remplit la hauteur disponible (flex) au lieu d'une hauteur fixe. */
   fill?: boolean;
+  /**
+   * Notifie le viewport courant à chaque fin de déplacement. `userInitiated` = true si
+   * le déplacement vient d'un geste utilisateur (pan/zoom), false si programmatique
+   * (cadrage initial, zoom sur cluster) → permet d'auto-valider la zone sans bouton.
+   */
+  onViewportChange?: (viewport: MapViewport, userInitiated: boolean) => void;
   // --- Coutures futures (S5) ---
   camera?: MapRegion;
   onRegionChange?: (region: MapRegion) => void;

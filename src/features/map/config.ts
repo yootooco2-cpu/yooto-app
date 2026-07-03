@@ -12,10 +12,14 @@ import type { MapRegion } from './types';
  * passe JAMAIS par ici ni par le bundle.
  */
 
-/** Région par défaut YOOTOO — zone prioritaire Quissac / Gard / Montpellier. */
+/**
+ * Région par défaut YOOTOO — centrée sur MONTPELLIER à un zoom « quartier » (12) où les
+ * commerces apparaissent en marqueurs individuels (cf. clusterMaxZoom=11). C'est aussi le
+ * repli de cadrage quand la bbox des commerces est trop large (points éloignés isolés).
+ */
 const DEFAULT_REGION: MapRegion = {
-  center: { latitude: 43.83, longitude: 4.0 },
-  zoom: 9,
+  center: { latitude: 43.6108, longitude: 3.8767 },
+  zoom: 12,
 };
 
 const DEFAULT_STYLE_URL = 'mapbox://styles/mapbox/streets-v12';

@@ -159,6 +159,15 @@ export class MapClusterController {
     this.photoLayer.sync(points);
     // Applique l'état de visibilité du cryptogramme aux marqueurs (ap. maj données, sans zoom).
     this.onZoom();
+
+    // DEBUG TEMPORAIRE (P0 alignement carte) — marqueurs individuels réellement rendus.
+    if (__DEV__) {
+      const rendered = Math.min(points.length, this.photoLayer.poolMax);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[YOOTOO/map] rendered markers=${rendered}/${points.length} candidats (cap ${this.photoLayer.poolMax}) | zoom=${this.map.getZoom().toFixed(2)}`,
+      );
+    }
   };
 
   private setUserLocation(coord: MapCoordinate | null): void {
