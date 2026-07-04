@@ -111,6 +111,11 @@ type Props = {
   merchant: Merchant;
   /** Action du bouton retour de la galerie. Défaut : router.back() (comportement route). */
   onBack?: () => void;
+  /**
+   * 'route' (défaut) : actions Itinéraire/Appeler/Site + espace footer flottant.
+   * 'panel' (Focus desktop) : actions Itinéraire/Appeler/Enregistrer/Voir la fiche, sans footer.
+   */
+  variant?: 'route' | 'panel';
 };
 
 /**
@@ -119,9 +124,11 @@ type Props = {
  * panneau Focus Commerce desktop. Retourne un Fragment → l'hôte (YScreen ou panneau) fournit
  * la coquille scroll et l'espacement.
  */
-export function MerchantDetail({ merchant, onBack }: Props) {
+export function MerchantDetail({ merchant, onBack, variant = 'route' }: Props) {
   const router = useRouter();
   const back = onBack ?? (() => router.back());
+  // Favori : état visuel local (non persisté), utilisé par la rangée d'actions du panneau Focus.
+  const [saved, setSaved] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
 
   const {
@@ -290,7 +297,24 @@ export function MerchantDetail({ merchant, onBack }: Props) {
         <View style={styles.actionsRow}>
           <IconAction icon="navigation" label="Itinéraire" primary onPress={onDirections} />
           {phone ? <IconAction icon="phone" label="Appeler" onPress={() => openUrl(`tel:${phone}`)} /> : null}
-          {website ? (
+          {variant === 'panel' ? (
+            <>
+              <IconAction
+                icon={saved ? 'check' : 'bookmark'}
+                label={saved ? 'Enregistré' : 'Enregistrer'}
+                onPress={() => {
+                  setSaved((v) => !v);
+                  trackEvent({ type: 'save', category: merchant.category, isProducer: merchant.isProducer });
+                }}
+              />
+              <IconAction
+                icon="external-link"
+                label="Voir la fiche"
+                primary
+                onPress={() => router.push({ pathname: '/merchant/[id]', params: { id: merchant.id } })}
+              />
+            </>
+          ) : website ? (
             <IconAction icon="globe" label="Site web" onPress={() => openUrl(ensureHttp(website))} />
           ) : null}
         </View>
@@ -423,8 +447,8 @@ export function MerchantDetail({ merchant, onBack }: Props) {
         </YCard>
       ) : null}
 
-      {/* Espace pour ne pas masquer le contenu derrière le CTA flottant */}
-      <View style={styles.footerSpacer} />
+      {/* Espace pour ne pas masquer le contenu derrière le CTA flottant (route uniquement) */}
+      {variant === 'route' ? <View style={styles.footerSpacer} /> : null}
 
       <FullscreenGallery
         images={allImages}

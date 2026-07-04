@@ -8,6 +8,7 @@ import BottomSheet, {
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { LinearTransition, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from 'react-native-reanimated';
 
 import { MapEngine, MapMerchantPreview, MerchantFocusPanel } from '@/components/map';
 import { DesktopNavRail } from '@/components/layout/DesktopNavRail';
@@ -131,6 +132,15 @@ export default function MapScreen() {
   }, [isDesktopWeb, selectedId, setFocus]);
   // Filet de sécurité : quitter l'écran carte restaure la tab bar.
   useEffect(() => () => setFocus(false), [setFocus]);
+  // Fermeture au clavier (web) : Échap sort du mode Focus.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFocus) setSelectedId(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [isFocus]);
 
   const onSearchHere = () => {
     if (liveViewport) setSearchArea(liveViewport);
@@ -171,7 +181,11 @@ export default function MapScreen() {
 
   return (
     <View style={styles.root}>
-      {isFocus ? <DesktopNavRail /> : null}
+      {isFocus ? (
+        <Animated.View entering={SlideInLeft.duration(260)} exiting={SlideOutLeft.duration(200)}>
+          <DesktopNavRail />
+        </Animated.View>
+      ) : null}
       <View style={styles.screenWrap}>
         <YScreen gap="sm" padding="lg">
       <YSearchBar value={query} onChangeText={setQuery} />
@@ -208,7 +222,7 @@ export default function MapScreen() {
           </YCard>
         ) : (
           <View style={styles.mapRow}>
-            <View style={[styles.mapCol, isFocus && styles.mapColFocused]}>
+            <Animated.View style={[styles.mapCol, isFocus && styles.mapColFocused]} layout={LinearTransition.duration(280)}>
             {/* La carte est rendue IMMÉDIATEMENT (jamais bloquée par le chargement des données)
                 → visible en < 3 s ; les marqueurs apparaissent dès que les données arrivent. */}
             <MapEngine
@@ -311,11 +325,16 @@ export default function MapScreen() {
                 <LocationPrompt onAuthorize={smart.authorize} onDismiss={smart.dismiss} />
               </View>
             ) : null}
-            </View>
+            </Animated.View>
             {isFocus && selectedMerchant ? (
-              <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel}>
-                <MerchantDetail merchant={selectedMerchant} onBack={() => setSelectedId(null)} />
-              </MerchantFocusPanel>
+              <Animated.View
+                style={styles.focusPanel}
+                entering={SlideInRight.duration(280)}
+                exiting={SlideOutRight.duration(220)}>
+                <MerchantFocusPanel onClose={() => setSelectedId(null)}>
+                  <MerchantDetail merchant={selectedMerchant} onBack={() => setSelectedId(null)} variant="panel" />
+                </MerchantFocusPanel>
+              </Animated.View>
             ) : null}
           </View>
         )}
