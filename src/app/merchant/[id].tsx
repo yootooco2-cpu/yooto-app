@@ -290,7 +290,7 @@ export default function MerchantDetailScreen() {
   return (
     <YScreen
       scroll
-      gap="md"
+      gap="lg"
       footer={
         <View style={styles.ctaRow}>
           <IconAction icon="bookmark" label={saved ? 'Enregistré' : 'Enregistrer'} onPress={onSave} />
@@ -339,6 +339,8 @@ export default function MerchantDetailScreen() {
         ) : null}
       </View>
 
+      {/* Bloc d'intro — rythme resserré (gap sm) : header, actions, badges, description, tags. */}
+      <View style={styles.intro}>
       {/* Header compact : nom → catégorie + statut local → note · avis · distance */}
       <View style={styles.identity}>
         <YText variant="title">{merchant.name}</YText>
@@ -399,7 +401,7 @@ export default function MerchantDetailScreen() {
 
       {/* Description éditoriale YOOTOO */}
       {merchant.description ? (
-        <YText variant="body" color="muted">
+        <YText variant="body" color="default">
           {merchant.description}
         </YText>
       ) : null}
@@ -416,10 +418,16 @@ export default function MerchantDetailScreen() {
           ))}
         </View>
       ) : null}
+      </View>
 
       {/* Pourquoi YOOTOO recommande ce commerce */}
       <YCard padding="md">
-        <YText variant="subtitle">Pourquoi YOOTOO recommande ce commerce</YText>
+        <View style={styles.cardHeader}>
+          <Feather name="heart" size={16} color={colors.primary} />
+          <YText variant="subtitle" style={styles.cardHeaderText}>
+            Pourquoi YOOTOO recommande ce commerce
+          </YText>
+        </View>
         {whyLines.map((line) => (
           <WhyLine key={line} text={line} />
         ))}
@@ -428,7 +436,12 @@ export default function MerchantDetailScreen() {
       {/* Informations pratiques — adresse, horaires, contact (bloc structuré unique) */}
       {hasContact || hasHours ? (
         <YCard padding="md">
-          <YText variant="subtitle">Informations pratiques</YText>
+          <View style={styles.cardHeader}>
+            <Feather name="info" size={16} color={colors.primary} />
+            <YText variant="subtitle" style={styles.cardHeaderText}>
+              Informations pratiques
+            </YText>
+          </View>
           {addressLines.length > 0 ? (
             <IconRow icon="map-pin" label="Adresse" value={addressLines.join(', ')} onPress={onDirections} />
           ) : null}
@@ -472,7 +485,12 @@ export default function MerchantDetailScreen() {
 
       {/* Avis clients — ÉVOLUTIF */}
       <YCard padding="md">
-        <YText variant="subtitle">Avis clients</YText>
+        <View style={styles.cardHeader}>
+          <Feather name="message-square" size={16} color={colors.primary} />
+          <YText variant="subtitle" style={styles.cardHeaderText}>
+            Avis clients
+          </YText>
+        </View>
         <ReviewsSummary
           rating={merchant.rating}
           reviewCount={reviewCount}
@@ -547,6 +565,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: 'rgba(23,32,26,0.6)',
   },
+  intro: {
+    gap: spacing.sm,
+  },
   identity: {
     gap: spacing.xs,
   },
@@ -577,8 +598,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   localPill: {
-    paddingVertical: 2,
-    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     backgroundColor: 'rgba(31,122,77,0.10)',
     borderWidth: 1,
@@ -634,6 +655,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  cardHeaderText: {
+    flexShrink: 1,
   },
   iconRow: {
     flexDirection: 'row',
