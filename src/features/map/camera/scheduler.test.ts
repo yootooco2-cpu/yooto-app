@@ -1,11 +1,15 @@
 /// <reference types="jest" />
-import {
-  CameraScheduler,
-  type CameraDriver,
-  type CameraRunHandle,
-  type SchedulerTimer,
-} from './scheduler';
+import type { CameraCapabilities, CameraDriver, CameraDone } from './driver';
+import { CameraScheduler, type SchedulerTimer } from './scheduler';
 import type { CameraPlan, CameraPose, CameraPriority } from './types';
+
+const ALL_CAPS: CameraCapabilities = {
+  supportsPitch: true,
+  supportsBearing: true,
+  supportsTerrain: true,
+  supportsGlobe: true,
+  supportsFreeCamera: true,
+};
 
 // ── Faux ports (aucun Mapbox, aucune horloge réelle) ─────────────────────────────────────────
 
@@ -29,24 +33,35 @@ class FakeTimer implements SchedulerTimer {
 }
 
 class FakeDriver implements CameraDriver {
+  readonly capabilities = ALL_CAPS;
   runs: CameraPlan[] = [];
-  cancels = 0;
-  private done: (() => void) | null = null;
+  methods: string[] = [];
+  stops = 0;
+  private done: CameraDone | null = null;
   pose: CameraPose = { center: { latitude: 0, longitude: 0 }, zoom: 2, pitch: 0, bearing: 0 };
   getPose(): CameraPose {
     return this.pose;
   }
-  run(plan: CameraPlan, onDone: () => void): CameraRunHandle {
+  jump(plan: CameraPlan, onDone?: CameraDone): void {
     this.runs.push(plan);
-    this.done = onDone;
-    return {
-      cancel: () => {
-        this.cancels++;
-        this.done = null;
-      },
-    };
+    this.methods.push('jump');
+    onDone?.(); // le saut est instantané
   }
-  /** Termine naturellement l'anim en cours. */
+  ease(plan: CameraPlan, onDone?: CameraDone): void {
+    this.runs.push(plan);
+    this.methods.push('ease');
+    this.done = onDone ?? null;
+  }
+  fly(plan: CameraPlan, onDone?: CameraDone): void {
+    this.runs.push(plan);
+    this.methods.push('fly');
+    this.done = onDone ?? null;
+  }
+  stop(): void {
+    this.stops++;
+    this.done = null;
+  }
+  /** Termine naturellement l'anim asynchrone en cours (ease/fly). */
   complete(): void {
     const d = this.done;
     this.done = null;
@@ -134,7 +149,7 @@ describe('l’utilisateur gagne toujours', () => {
     timer.advance(120);
     expect(sched.state).toBe('running');
     sched.notifyGestureStart();
-    expect(driver.cancels).toBe(1);
+    expect(driver.stops).toBe(1);
     expect(sched.state).toBe('idle');
   });
 
@@ -160,7 +175,7 @@ describe('arbitrage des priorités', () => {
     expect(sched.state).toBe('running');
     const outcome = sched.submit(withZoom('explicit', 17));
     expect(outcome).toBe('preempt');
-    expect(driver.cancels).toBe(1);
+    expect(driver.stops).toBe(1);
     expect(driver.runs).toHaveLength(2);
     expect(driver.lastRun.priority).toBe('explicit');
   });

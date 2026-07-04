@@ -13,19 +13,9 @@
  */
 import { CAMERA_COALESCE_MS, CAMERA_DEAD_ZONE } from '@/design/tokens/camera';
 
+import type { CameraDriver } from './driver';
 import { haversineMeters } from './geo';
 import type { CameraPlan, CameraPose, CameraPriority } from './types';
-
-/** Port d'exécution (implémenté par l'Adapter Mapbox en C4). Le Scheduler ne voit QUE ça. */
-export interface CameraDriver {
-  /** Pose caméra actuelle — pour la dead-zone. */
-  getPose(): CameraPose;
-  /** Exécute un plan ; `onDone` à la fin naturelle. Renvoie un handle d'annulation. */
-  run(plan: CameraPlan, onDone: () => void): CameraRunHandle;
-}
-export interface CameraRunHandle {
-  cancel(): void;
-}
 
 /** Port temporel injecté (setTimeout réel en prod, faux horloge en test). */
 export interface SchedulerTimer {
@@ -64,9 +54,11 @@ export class CameraScheduler {
   private _state: SchedulerState = 'idle';
   private pending: CameraPlan | null = null; // en coalescing
   private cancelPending: (() => void) | null = null;
-  private running: { plan: CameraPlan; handle: CameraRunHandle } | null = null;
+  private running: CameraPlan | null = null;
   private queued: CameraPlan | null = null; // une seule place (le meilleur)
   private userInteracting = false;
+  /** Jeton d'exécution : invalide les callbacks `onDone` obsolètes (préemption/stop). */
+  private runToken = 0;
 
   private readonly coalesceMs: number;
   private readonly deadZone: NonNullable<SchedulerConfig['deadZone']>;
@@ -100,7 +92,7 @@ export class CameraScheduler {
 
     if (this.running) {
       // Priorité ≥ courante → préemption immédiate (un seul mouvement, pas de rebond).
-      if (RANK[p.priority] >= RANK[this.running.plan.priority]) {
+      if (RANK[p.priority] >= RANK[this.running.priority]) {
         this.cancelRunning('cancelled');
         this.queued = null;
         this.startRun(p);
@@ -173,8 +165,24 @@ export class CameraScheduler {
 
   private startRun(plan: CameraPlan): void {
     this._state = 'running';
-    const handle = this.driver.run(plan, () => this.onDone());
-    this.running = { plan, handle };
+    this.running = plan;
+    const token = ++this.runToken;
+    const onDone = (): void => {
+      if (token === this.runToken) this.onDone(); // ignore un onDone obsolète (préempté/stoppé)
+    };
+    // Dispatch MÉCANIQUE de la primitive vers le port (aucune décision UX). Le nudge est une ease.
+    switch (plan.motion.primitive) {
+      case 'jump':
+        this.driver.jump(plan, onDone);
+        break;
+      case 'fly':
+        this.driver.fly(plan, onDone);
+        break;
+      case 'ease':
+      case 'nudge':
+        this.driver.ease(plan, onDone);
+        break;
+    }
   }
 
   private onDone(): void {
@@ -193,7 +201,8 @@ export class CameraScheduler {
 
   private cancelRunning(reason: 'cancelled' | 'interrupted'): void {
     if (this.running) {
-      this.running.handle.cancel();
+      this.runToken++; // invalide l'onDone en vol
+      this.driver.stop();
       this.running = null;
       this._state = reason;
     }

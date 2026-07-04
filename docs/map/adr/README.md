@@ -179,6 +179,43 @@ connaître le temps, la concurrence et l'état courant → plus pure).
 
 ---
 
+## ADR-009 — Rendering Bridge : la frontière SDK, idiote et remplaçable
+**Statut :** Accepté
+
+**Contexte.** C'est ici que beaucoup d'architectures se dégradent : la couche qui parle au SDK finit
+par accumuler des décisions (UX, ranking, priorités) « parce que c'est pratique », et le produit se
+retrouve *soudé* à Mapbox. On veut l'inverse : Mapbox = simple fournisseur de rendu, remplaçable.
+
+**Décision.** Un **Rendering Bridge** (`components/map/camera/mapboxCameraBridge.ts`) implémente le
+port **`CameraDriver`** (`features/map/camera/driver.ts`) et **traduit** un `CameraPlan` en appels SDK
+(`jumpTo`/`easeTo`/`flyTo`/`stop`, `getPose`). C'est le **seul** fichier de l'app qui connaît Mapbox
+pour la caméra.
+- Il **ne connaît jamais** : CameraIntent, Mood, Discovery, ranking, Merchant, Scheduler, priorités,
+  UX, bottom sheet, catégories, Design System (au-delà des tokens de motion qu'il *traduit*).
+- **Interdits absolus** : `if (intent)`, `if (mood)`, `if (priority)`, `if (merchant)`, `if (category)`,
+  tout calcul UX/Discovery. Le jour où l'un apparaît, c'est une **régression d'architecture**.
+- **Capacités** exposées (`CameraCapabilities` : pitch/bearing/terrain/globe/free-camera) → l'amont
+  peut interroger le moteur sans le connaître ; brancher demain Apple Maps / Vision Pro / un autre SDK
+  ne touche **que** ce fichier.
+- Traductions **pures et testées** (`poseToCameraOptions`, `motionToAnimationOptions`, easing
+  cubic-bezier) → l'easing token (chaîne CSS) devient une fonction pour le SDK. Erreurs SDK absorbées
+  (le pipeline ne se bloque jamais).
+
+Passe la règle absolue : Vision (produit *au-dessus* du SDK) · Cognition (n/a, zéro décision) ·
+Performance (traduction directe, aucun calcul) · Identité (les tokens de motion pilotent le rendu) ·
+Évolutivité (**remplacer Mapbox = réécrire ce seul fichier, puis recompiler**).
+
+**Conséquences.** « Le fichier le plus ennuyeux de la base », et c'est un compliment : un bon Bridge
+ne réfléchit jamais, il traduit parfaitement. La colonne vertébrale spatiale YOOTOO est complète :
+Discovery → Camera (Strategy/Scheduler) → **Bridge** → SDK. Les innovations futures (3D, lumière,
+caméra contextuelle, saisons) se branchent au-dessus sans casser l'architecture.
+
+**Alternatives écartées.** Appeler Mapbox directement depuis le Scheduler ou les écrans (couplage,
+non testable, dette de décision inévitable) ; un Adapter « intelligent » qui optimise/décide (rend le
+SDK non interchangeable).
+
+---
+
 ## ADR-000 — Template
 
 ```

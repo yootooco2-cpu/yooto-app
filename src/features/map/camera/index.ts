@@ -6,14 +6,8 @@ export { resolveCameraPlan } from './strategy';
 export { resolveMood, resolvePriority, MOOD_RATIONALE } from './mood';
 export { boundsCenter, fitZoom, clamp, haversineMeters } from './geo';
 export { CameraScheduler } from './scheduler';
-export type {
-  CameraDriver,
-  CameraRunHandle,
-  SchedulerConfig,
-  SchedulerState,
-  SchedulerTimer,
-  SubmitOutcome,
-} from './scheduler';
+export type { SchedulerConfig, SchedulerState, SchedulerTimer, SubmitOutcome } from './scheduler';
+export type { CameraCapabilities, CameraDone, CameraDriver } from './driver';
 export type {
   CameraContext,
   CameraEnvironment,
