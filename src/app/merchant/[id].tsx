@@ -222,8 +222,8 @@ export default function MerchantDetailScreen() {
     .join(' • ');
   const categoryLine = [CATEGORY_LABELS[merchant.category], city].filter(Boolean).join(' • ');
 
-  // Badges — « Local » = positionnement YOOTOO ; le reste dérive de données réelles.
-  const badges: string[] = ['Local'];
+  // « Local » (statut) vit dans le header ; les autres attributs restent en badges.
+  const badges: string[] = [];
   if (merchant.isProducer) badges.push('Producteur');
   if (typeof merchant.ecoScore === 'number' && merchant.ecoScore >= 80) badges.push('Écoresponsable');
   if (merchant.isAccessible) badges.push('Accessible PMR');
@@ -332,9 +332,21 @@ export default function MerchantDetailScreen() {
         </ScrollView>
       ) : null}
 
-      {/* Identité : nom d'abord, puis note, puis catégorie • ville */}
+      {/* Header compact : nom → catégorie + statut local → note · avis · distance */}
       <View style={styles.identity}>
         <YText variant="title">{merchant.name}</YText>
+        <View style={styles.categoryRow}>
+          {categoryLine ? (
+            <YText variant="caption" color="primary" style={styles.categoryLine}>
+              {categoryLine}
+            </YText>
+          ) : null}
+          <View style={styles.localPill}>
+            <YText variant="caption" color="primary">
+              Local
+            </YText>
+          </View>
+        </View>
         <View style={styles.ratingLine}>
           {typeof merchant.rating === 'number' ? (
             <>
@@ -354,25 +366,9 @@ export default function MerchantDetailScreen() {
             </YText>
           ) : null}
         </View>
-        {categoryLine ? (
-          <YText variant="caption" color="primary" style={styles.categoryLine}>
-            {categoryLine}
-          </YText>
-        ) : null}
       </View>
 
-      {/* Badges */}
-      <View style={styles.chipsRow}>
-        {badges.map((badge) => (
-          <View key={badge} style={styles.badge}>
-            <YText variant="caption" color="primary">
-              {badge}
-            </YText>
-          </View>
-        ))}
-      </View>
-
-      {/* Actions rapides avec icônes */}
+      {/* Actions rapides avec icônes — juste sous le header */}
       <View style={styles.actionsRow}>
         <IconAction icon="navigation" label="Itinéraire" primary onPress={onDirections} />
         {phone ? <IconAction icon="phone" label="Appeler" onPress={() => openUrl(`tel:${phone}`)} /> : null}
@@ -380,6 +376,19 @@ export default function MerchantDetailScreen() {
           <IconAction icon="globe" label="Site web" onPress={() => openUrl(ensureHttp(website))} />
         ) : null}
       </View>
+
+      {/* Badges attributs (le statut « Local » est déjà dans le header) */}
+      {badges.length > 0 ? (
+        <View style={styles.chipsRow}>
+          {badges.map((badge) => (
+            <View key={badge} style={styles.badge}>
+              <YText variant="caption" color="primary">
+                {badge}
+              </YText>
+            </View>
+          ))}
+        </View>
+      ) : null}
 
       {/* Description éditoriale YOOTOO */}
       {merchant.description ? (
@@ -558,6 +567,20 @@ const styles = StyleSheet.create({
   },
   categoryLine: {
     letterSpacing: 0.4,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  localPill: {
+    paddingVertical: 2,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(31,122,77,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(31,122,77,0.25)',
   },
   chipsRow: {
     flexDirection: 'row',
