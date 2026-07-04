@@ -56,17 +56,38 @@ Mapbox, un seul composant possède la caméra.
 
 **Où vit chaque couche** (respecte l'[ARCHITECTURE](./ARCHITECTURE.md) — dépendances à sens unique) :
 
-| Couche | Nature | Emplacement cible | Dépend de |
-|---|---|---|---|
-| Context | énumération + dérivation | `features/map/camera/context.ts` | rien |
-| Intent | types + mapping context→intent | `features/map/camera/intent.ts` | Design tokens |
-| **Strategy** | **fonction pure** | `features/map/camera/strategy.ts` | Design tokens |
-| Scheduler | machine à états pure + horloge injectée | `features/map/camera/scheduler.ts` | Strategy, Adapter (injecté) |
-| Adapter | seul code Mapbox | `components/map/camera/mapboxCameraAdapter.ts` | mapbox-gl |
-| Tokens | valeurs | `design/tokens/camera.ts` | rien |
+| Couche | Nature | Emplacement | Dépend de | Statut |
+|---|---|---|---|---|
+| Context | énumération + dérivation | `features/map/camera/types.ts` | rien | 🟡 câblage C6 |
+| Intent | union sémantique | `features/map/camera/types.ts` | Design tokens | ✅ C2 |
+| **Mood** | intention émotionnelle (pure) | `features/map/camera/mood.ts` | types | ✅ **C3** |
+| **Strategy** | **fonction pure** | `features/map/camera/strategy.ts` | Mood, tokens, geo | ✅ **C3** |
+| Scheduler | machine à états pure + horloge injectée | `features/map/camera/scheduler.ts` | Strategy, Adapter (injecté) | ⬜ C5 |
+| Adapter | seul code Mapbox | `components/map/camera/mapboxCameraAdapter.ts` | mapbox-gl | ⬜ C4 |
+| Tokens | valeurs | `design/tokens/camera.ts` | rien | ✅ C2 |
 
-Invariant : **1 → 2 → 3 sont purs et testables** (aucun Mapbox, aucun DOM). Seul l'Adapter touche
-Mapbox. Le Scheduler ne connaît Mapbox que via une interface injectée (`CameraDriver`) → testable.
+Invariant : **Intent → Mood → Strategy sont purs et testables** (aucun Mapbox, aucun DOM). Seul
+l'Adapter touche Mapbox. Le Scheduler ne connaît Mapbox que via une interface injectée → testable.
+
+### La couche Mood (✅ C3) — la caméra raisonne en émotions, jamais en pixels
+
+Entre l'Intent (le *but*) et la Strategy (le *plan*), le **Mood** nomme l'**intention émotionnelle**.
+`resolveMood(intent, context)` (pur) → un mood parmi **8** ; `resolveCameraPlan(intent, env)` choisit
+la stratégie du mood et renvoie un `CameraPlan | null`. `null` = **la caméra se tait** (réponse pleine).
+
+| Mood | Émotion | Problème UX résolu | Mouvement |
+|---|---|---|---|
+| **discover** | ouverture, invitation | « où suis-je, qu'y a-t-il ici ? » | fly, plan (recherche) / ville |
+| **explore** | curiosité | comprendre la densité du quartier | ease decel, léger pitch |
+| **focus** | attention, désir, intimité | isoler un lieu, donner envie d'y aller | ease decel, pitch immersif |
+| **follow** | réassurance | me localiser | fly vers l'utilisateur |
+| **return** | prise de recul douce | ne pas perdre le fil après la fiche | ease, léger dézoom |
+| **browse** | continuité fluide | comparer sans re-vol à chaque fiche | ease decel court |
+| **adjust** | *aucune* (imperceptible) | garder le commerce au-dessus de la sheet | nudge (padding seul) |
+| **rest** | respect | **ne jamais lutter contre un geste** | *rien* (plan `null`) |
+
+Le `CameraPlan` porte désormais `{ pose, motion, priority, mood, reason? }` — aucun détail Mapbox.
+La **priorité** dépend du *déclencheur* (`user > explicit > navigation > auto`), pas de l'émotion.
 
 ---
 
@@ -293,9 +314,9 @@ code avant validation de cette architecture.**
 
 | PR | Portée | Testable |
 |---|---|---|
-| **PR-C1** | *cette doc* + [ADR-007](./adr/README.md) | revue |
-| **PR-C2** | Tokens `design/tokens/camera.ts` + types purs (`CameraPose`, `CameraMotion`, `CameraContext`, `CameraIntent`) | unit |
-| **PR-C3** | **Strategy pure** `resolveCameraPlan(intent, env) → {pose, motion}` (hiérarchie zoom + pitch + reduce-motion) | unit (cœur) |
+| **PR-C1** ✅ | *cette doc* + [ADR-007](./adr/README.md) | revue |
+| **PR-C2** ✅ | Tokens `design/tokens/camera.ts` + types purs (`CameraPose`, `CameraMotion`, `CameraContext`, `CameraIntent`) | unit |
+| **PR-C3** ✅ | **Mood** (`mood.ts`) + **Strategy pure** `resolveCameraPlan(intent, env) → CameraPlan\|null` + geo mercator (`geo.ts`) | unit (cœur) |
 | **PR-C4** | **Adapter Mapbox** `applyCameraPlan(driver, plan)` — seul appelant `easeTo/flyTo/jumpTo` | contrat (driver mock) |
 | **PR-C5** | **Scheduler** + machine à états (priorités, dead-zone, coalescing, gestes, interruption) — horloge & driver injectés | unit (machine) |
 | **PR-C6** | **Câblage** : router `initialCamera` / recenter / firstOpen / sélection via le Scheduler ; retirer les `flyTo` ad hoc | intégration + revue |

@@ -3,7 +3,7 @@
  * Partagés par les couches Context → Intent → Strategy → Scheduler. Seul l'Adapter traduit une
  * `CameraPose`/`CameraMotion` en appels Mapbox. → docs/map/CAMERA.md · ADR-007.
  */
-import type { CameraEasingId, ZoomLevelName } from '@/design/tokens/camera';
+import type { CameraEasingId, TerritoryProfile, ZoomLevelName } from '@/design/tokens/camera';
 
 import type { MapBounds, MapCoordinate } from '../types';
 
@@ -36,14 +36,55 @@ export interface CameraMotion {
   fly?: { curve: number; speed: number };
 }
 
-/** Plan complet produit par la Strategy (pure) et exécuté par le Scheduler → Adapter. */
+/** Priorité d'arbitrage : `user` > `explicit` > `navigation` > `auto`. */
+export type CameraPriority = 'user' | 'explicit' | 'navigation' | 'auto';
+
+/**
+ * MOOD — intention ÉMOTIONNELLE du mouvement (pas un état technique). La caméra raisonne à ce
+ * niveau, jamais en pixels. Chaque mood porte une justification cognitive (voir `mood.ts`).
+ * `rest` = la caméra se tait (elle ne lutte jamais contre l'utilisateur).
+ */
+export type CameraMood =
+  | 'discover'
+  | 'explore'
+  | 'focus'
+  | 'follow'
+  | 'return'
+  | 'browse'
+  | 'adjust'
+  | 'rest';
+
+/**
+ * Plan produit par la Strategy (pure), exécuté par le Scheduler → Adapter. NE CONTIENT AUCUN
+ * détail Mapbox : une pose cible, un mouvement, une priorité, l'émotion, et une raison (debug).
+ */
 export interface CameraPlan {
   pose: CameraPose;
   motion: CameraMotion;
+  priority: CameraPriority;
+  mood: CameraMood;
+  /** Justification lisible (debug/observabilité). Jamais utilisée pour décider. */
+  reason?: string;
 }
 
-/** Priorité d'arbitrage : `user` > `explicit` > `navigation` > `auto`. */
-export type CameraPriority = 'user' | 'explicit' | 'navigation' | 'auto';
+/**
+ * Environnement fourni à la Strategy — tout ce dont elle a besoin pour raisonner, SANS Mapbox.
+ * Tout est optionnel (défauts sûrs) : la Strategy reste une fonction pure et déterministe.
+ */
+export interface CameraEnvironment {
+  /** Contexte déclencheur (fixe la priorité et nuance le mood). */
+  context?: CameraContext;
+  /** Pose caméra courante (pour `overview`/`return`/`adjust` qui partent de l'existant). */
+  current?: CameraPose;
+  /** Type de quartier — défaut `neutral` (aucune détection inventée). */
+  territory?: TerritoryProfile;
+  /** Préférence d'accessibilité — défaut `false`. */
+  reduceMotion?: boolean;
+  /** Dimensions du viewport (px) — nécessaires pour cadrer une emprise (`reveal`). */
+  viewport?: { width: number; height: number };
+  /** Insets masqués par la sheet / le panneau Focus (px) — pour `adjust`. */
+  sheetInsets?: SheetInsets;
+}
 
 /**
  * Contexte OBSERVÉ — ce que fait l'utilisateur, là, maintenant. C'est un fait dérivé des
