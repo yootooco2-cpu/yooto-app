@@ -99,6 +99,15 @@ export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }:
             Local
           </YText>
         </View>
+        {merchant.isOpenNow ? (
+          <YText variant="caption" color="primary" style={styles.status}>
+            ● Ouvert
+          </YText>
+        ) : (
+          <YText variant="caption" color="muted" style={styles.status}>
+            ● Fermé
+          </YText>
+        )}
       </View>
 
       {typeof merchant.rating === 'number' ? (
@@ -189,6 +198,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(31,122,77,0.10)',
     borderWidth: 1,
     borderColor: 'rgba(31,122,77,0.25)',
+  },
+  status: {
+    fontWeight: '600',
   },
   ratingLine: {
     flexDirection: 'row',
