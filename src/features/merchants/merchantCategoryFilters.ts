@@ -62,7 +62,7 @@ const sub = (id: string, label: string, query: string): CategorySubEntry => ({ i
 // prédicat s'appuie sur `cryptogramForMerchant` (aucun commerce parasite ne
 // remonte dans une catégorie alimentaire). « Producteurs » utilise le cryptogramme
 // vert dédié.
-export const MERCHANT_CATEGORY_FILTERS: MerchantCategoryFilter[] = [
+const CATEGORY_DEFS: MerchantCategoryFilter[] = [
   {
     id: 'restaurants', label: 'Restaurants', icon: 'restaurant', match: (m) => cid(m) === 'restaurant',
     subcategories: [
@@ -216,6 +216,24 @@ export const MERCHANT_CATEGORY_FILTERS: MerchantCategoryFilter[] = [
   { id: 'cooperatives', label: 'Coopératives', icon: 'cooperative', match: (m) => cid(m) === 'cooperative' },
   { id: 'autres', label: 'Autres', icon: 'autres', match: (m) => cid(m) === 'autres' },
 ];
+
+/**
+ * Ordre d'AFFICHAGE des catégories sous la barre de recherche — appliqué PARTOUT (Accueil,
+ * Carte, Commerçants) qui itèrent `MERCHANT_CATEGORY_FILTERS`. Ne modifie NI les ids, NI les
+ * icônes, NI les sous-catégories : uniquement l'ordre. Toute coquille dans les ids est
+ * rattrapée par `tsc` (type `MerchantCategoryId[]`).
+ */
+const DISPLAY_ORDER: MerchantCategoryId[] = [
+  'producteurs', 'boulangeries', 'primeurs', 'fromageries', 'boucheries',
+  'poissonneries', 'marches', 'cooperatives', 'cavistes', 'bienetre',
+  'artisanat', 'fleuristes', 'culture', 'patisseries', 'cafes',
+  'restaurants', 'epiceries', 'traiteurs', 'librairies', 'mobilite',
+  'transports', 'sport', 'nature', 'autres',
+];
+
+export const MERCHANT_CATEGORY_FILTERS: MerchantCategoryFilter[] = DISPLAY_ORDER.map(
+  (id) => CATEGORY_DEFS.find((c) => c.id === id),
+).filter((c): c is MerchantCategoryFilter => c !== undefined);
 
 export function merchantCategoryById(id: MerchantCategoryId | null): MerchantCategoryFilter | null {
   if (!id) return null;
