@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { FullscreenGallery } from '@/components/merchants/FullscreenGallery';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
@@ -136,6 +136,9 @@ function ScoreStat({ label, value }: { label: string; value: number }) {
   );
 }
 
+/** Hauteur de la galerie (grande photo + colonne de miniatures alignées). */
+const GALLERY_H = 288;
+
 export default function MerchantDetailScreen() {
   const router = useRouter();
   // `id` peut arriver en tableau (Expo Router) → on prend la 1ʳᵉ valeur, jamais un id figé.
@@ -268,6 +271,12 @@ export default function MerchantDetailScreen() {
     .filter((photo) => photo !== cover)
     .slice(0, 4);
   const allImages = Array.from(new Set([cover, ...galleryImages].filter((u): u is string => !!u)));
+  // Galerie type Airbnb : jusqu'à 2 miniatures empilées à droite. Hauteur répartie sur la colonne.
+  const galleryThumbs = galleryImages.slice(0, 2);
+  const thumbH =
+    galleryThumbs.length > 0
+      ? (GALLERY_H - (galleryThumbs.length - 1) * spacing.xs) / galleryThumbs.length
+      : GALLERY_H;
 
   const onDirections = () => {
     openUrl(buildDirectionsUrl(merchant));
@@ -288,49 +297,47 @@ export default function MerchantDetailScreen() {
           <IconAction icon="map" label="Voir sur la carte" primary onPress={() => router.push('/explore')} />
         </View>
       }>
-      {/* Grande galerie photo — tap → plein écran. Bouton retour rond flottant. */}
-      <Pressable
-        disabled={allImages.length === 0}
-        onPress={() => setGalleryIndex(0)}
-        accessibilityRole="imagebutton"
-        accessibilityLabel="Voir les photos en plein écran"
-        style={styles.hero}>
-        <MerchantPhoto uri={cover} height={300} rounded={radii.xl} recyclingKey={merchant.id} />
+      {/* Galerie type Airbnb : grande photo à gauche + colonne de miniatures à droite. */}
+      <View style={styles.gallery}>
         <Pressable
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="Retour"
-          hitSlop={8}
-          style={styles.backFab}>
-          <Feather name="chevron-left" size={20} color={colors.text} />
+          disabled={allImages.length === 0}
+          onPress={() => setGalleryIndex(0)}
+          accessibilityRole="imagebutton"
+          accessibilityLabel="Voir les photos en plein écran"
+          style={styles.galleryMain}>
+          <MerchantPhoto uri={cover} height={GALLERY_H} rounded={radii.lg} recyclingKey={merchant.id} />
+          <Pressable
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={8}
+            style={styles.backFab}>
+            <Feather name="chevron-left" size={20} color={colors.text} />
+          </Pressable>
+          {allImages.length > 1 ? (
+            <View style={styles.countBadge}>
+              <Feather name="image" size={12} color="#FFFFFF" />
+              <YText variant="caption" color="inverse">
+                1/{allImages.length}
+              </YText>
+            </View>
+          ) : null}
         </Pressable>
-        {allImages.length > 1 ? (
-          <View style={styles.countBadge}>
-            <Feather name="image" size={12} color="#FFFFFF" />
-            <YText variant="caption" color="inverse">
-              1/{allImages.length}
-            </YText>
+
+        {galleryThumbs.length > 0 ? (
+          <View style={styles.galleryCol}>
+            {galleryThumbs.map((photo, index) => (
+              <Pressable
+                key={`${photo}-${index}`}
+                accessibilityRole="imagebutton"
+                accessibilityLabel="Voir les photos en plein écran"
+                onPress={() => setGalleryIndex(Math.max(0, allImages.indexOf(photo)))}>
+                <MerchantPhoto uri={photo} height={thumbH} rounded={radii.md} />
+              </Pressable>
+            ))}
           </View>
         ) : null}
-      </Pressable>
-
-      {galleryImages.length > 0 ? (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.galleryScroll}
-          contentContainerStyle={styles.gallery}>
-          {galleryImages.map((photo, index) => (
-            <Pressable
-              key={`${photo}-${index}`}
-              style={styles.galleryThumb}
-              accessibilityRole="imagebutton"
-              onPress={() => setGalleryIndex(Math.max(0, allImages.indexOf(photo)))}>
-              <MerchantPhoto uri={photo} height={96} rounded={radii.md} />
-            </Pressable>
-          ))}
-        </ScrollView>
-      ) : null}
+      </View>
 
       {/* Header compact : nom → catégorie + statut local → note · avis · distance */}
       <View style={styles.identity}>
@@ -503,11 +510,18 @@ export default function MerchantDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: {
+  gallery: {
+    flexDirection: 'row',
+    height: GALLERY_H,
+    gap: spacing.xs,
+  },
+  galleryMain: {
+    flex: 2,
     position: 'relative',
-    borderRadius: radii.xl,
-    overflow: 'hidden',
-    ...shadows.sm,
+  },
+  galleryCol: {
+    flex: 1,
+    gap: spacing.xs,
   },
   backFab: {
     position: 'absolute',
@@ -532,18 +546,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: radii.pill,
     backgroundColor: 'rgba(23,32,26,0.6)',
-  },
-  galleryScroll: {
-    flexGrow: 0,
-  },
-  gallery: {
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
-  },
-  galleryThumb: {
-    width: 120,
-    borderRadius: radii.md,
-    ...shadows.sm,
   },
   identity: {
     gap: spacing.xs,
