@@ -1,4 +1,5 @@
-import { getMerchantCoverPhoto } from '@/features/merchants/photos';
+import { cryptogramForMerchant } from '@/features/merchants/cryptograms';
+import { getMerchantCoverPhoto, isRealPhotoUrl } from '@/features/merchants/photos';
 import type { Merchant } from '@/features/merchants/types';
 
 import { resolveTier, type EditorialTier } from './categoryTiers';
@@ -39,6 +40,78 @@ const TIER_APPEAL: Record<EditorialTier, number> = {
 
 // Bonus « producteur d'exception » (concern distinct du tier : sous-qualité producteur).
 const PREMIUM_PRODUCER_TERMS = ['domaine', 'vignoble', 'vigneron', 'viticulteur'] as const;
+
+// ── Qualité VISUELLE (métadonnées photos + signaux textuels — AUCUNE analyse d'image) ───────
+// Valorise une vraie identité visuelle locale/terroir (vraies photos Google, plusieurs photos,
+// vocabulaire domaine/cave/producteur…) ; réduit légèrement l'impression événementielle
+// (mariage/réception/buffet). Poids MODÉRÉS : couche #3, sous la mission (#1) et la qualité de
+// fiche (#2), au-dessus de la note Google (#4).
+const V = {
+  realPhoto: 12, // vraie photo Google (pas le fallback YOOTOO)
+  fallbackPenalty: -18, // aucune vraie photo → fallback YOOTOO
+  perExtraPhoto: 4, // par photo réelle supplémentaire
+  extraPhotoCap: 16, // plafond (≈ 4 photos en plus)
+  identityWord: 5, // par mot d'identité locale/terroir
+  identityCap: 15,
+  eventWord: -6, // par mot événementiel (réduction légère)
+  eventCap: -18,
+} as const;
+
+// Vocabulaire d'identité locale / terroir / artisanat (nom + description + tags). Bonus léger
+// → un faux positif reste bénin (jamais de suppression). Sans accents (haystack normalisé).
+const IDENTITY_TERMS = [
+  'domaine',
+  'vignoble',
+  'vigne',
+  'vigneron',
+  'cave',
+  'vin',
+  'terroir',
+  'producteur',
+  'ferme',
+  'marche',
+  'primeur',
+  'boulangerie',
+  'fromagerie',
+  'epicerie',
+  'artisan',
+  'local',
+  'circuit court',
+] as const;
+
+// Impression trop événementielle / hors-terroir → réduction légère.
+const EVENT_TERMS = [
+  'mariage',
+  'reception',
+  'evenementiel',
+  'buffet',
+  'traiteur mariage',
+  'salle de reception',
+] as const;
+
+/**
+ * Sous-score de QUALITÉ VISUELLE (métadonnées + texte uniquement — pas d'analyse d'image).
+ * Favorise les vraies photos Google, la richesse (plusieurs photos) et l'identité terroir ;
+ * pénalise l'absence/fallback et l'impression événementielle. Pur & additif. Ne supprime rien.
+ */
+export function visualQualityScore(merchant: Merchant): number {
+  const real = hasRealPhoto(merchant);
+  let score = real ? V.realPhoto : V.fallbackPenalty;
+
+  // Richesse : nb de VRAIES photos (galerie réelle + cover, ou photo_count), plafonné.
+  const galleryReal = (merchant.galleryPhotos ?? []).filter(isRealPhotoUrl).length;
+  const photos = Math.max(merchant.photoCount ?? 0, galleryReal + (real ? 1 : 0));
+  if (real && photos > 1) score += Math.min((photos - 1) * V.perExtraPhoto, V.extraPhotoCap);
+
+  // Identité locale/terroir vs événementiel (nom + description + tags).
+  const haystack = normalize(`${merchant.name} ${merchant.description} ${(merchant.tags ?? []).join(' ')}`);
+  const identity = IDENTITY_TERMS.filter((t) => haystack.includes(t)).length;
+  score += Math.min(identity * V.identityWord, V.identityCap);
+  const events = EVENT_TERMS.filter((t) => haystack.includes(t)).length;
+  score += Math.max(events * V.eventWord, V.eventCap);
+
+  return score;
+}
 
 /** Accent-insensitive, lowercased. */
 function normalize(s: string): string {
@@ -97,6 +170,10 @@ export function editorialScore(merchant: Merchant): number {
   // 5. Ouvert maintenant — petit bonus ; ne pénalise jamais un commerce fermé/inconnu.
   if (merchant.isOpenNow) score += W.openNow;
 
+  // 6. Qualité VISUELLE (couche #3) : vraies photos + richesse + identité terroir/local,
+  //    moins l'impression événementielle. Métadonnées + texte uniquement.
+  score += visualQualityScore(merchant);
+
   return score;
 }
 
@@ -119,4 +196,64 @@ export function rankMerchantsEditorially<T extends Merchant>(merchants: readonly
     .map((m, i) => ({ m, i, s: getMerchantEditorialScore(m) }))
     .sort((a, b) => b.s - a.s || a.i - b.i)
     .map((x) => x.m);
+}
+
+export interface DiversifyOptions {
+  /** Nombre de premières cartes diversifiées (vitrine). Défaut 12. */
+  window?: number;
+  /** Max de commerces consécutifs d'une même famille. Défaut 2. */
+  maxRun?: number;
+  /** Bande d'excellence : on ne brasse que les commerces à `score >= topScore - band`. Défaut 50. */
+  band?: number;
+  /** Profondeur du vivier de candidats brassés (reste = ordre éditorial exact). Défaut ~window*4. */
+  poolSize?: number;
+  /** Clé de « famille » d'un commerce. Défaut : cryptogramme (boulangerie ≠ caviste ≠ producteur…). */
+  familyOf?: (m: Merchant) => string;
+}
+
+/**
+ * Diversification éditoriale LÉGÈRE des premières cartes (vitrine Accueil / sections éditoriales).
+ * `rankMerchantsEditorially` reste le moteur ; cette étape ne réordonne QUE la fenêtre de tête, en
+ * piochant PARMI les commerces déjà excellents (dans la bande de qualité du meilleur score) → ne
+ * fait JAMAIS remonter un commerce « moins bon » uniquement pour varier. Évite plus de `maxRun`
+ * commerces consécutifs de la même famille QUAND une alternative excellente d'une autre famille
+ * existe ; sinon conserve l'ordre (la qualité prime). Déterministe (aucun hasard). Le reste de la
+ * liste garde l'ordre éditorial exact → classement profond de l'annuaire inchangé.
+ */
+export function editorialDiversification<T extends Merchant>(
+  ranked: readonly T[],
+  opts: DiversifyOptions = {},
+): T[] {
+  const window = opts.window ?? 12;
+  const maxRun = opts.maxRun ?? 2;
+  const band = opts.band ?? 50;
+  const poolSize = opts.poolSize ?? Math.max(window * 4, window + 12);
+  const familyOf = opts.familyOf ?? ((m) => cryptogramForMerchant(m));
+  if (ranked.length <= maxRun) return [...ranked];
+
+  const scoreOf = new Map<string, number>();
+  for (const m of ranked) scoreOf.set(m.id, getMerchantEditorialScore(m));
+  const floor = (scoreOf.get(ranked[0].id) ?? 0) - band;
+
+  // Candidats brassables : dans la fenêtre `poolSize` ET dans la bande d'excellence.
+  const eligible = ranked.slice(0, poolSize).filter((m) => (scoreOf.get(m.id) ?? -Infinity) >= floor);
+
+  const chosen: T[] = [];
+  const usedFam: string[] = [];
+  const pending = [...eligible]; // déjà en ordre de score décroissant
+  while (chosen.length < window && pending.length) {
+    const headFam = familyOf(pending[0]);
+    const overused = usedFam.length >= maxRun && usedFam.slice(-maxRun).every((f) => f === headFam);
+    let pick = 0;
+    if (overused) {
+      const alt = pending.findIndex((m) => familyOf(m) !== headFam);
+      if (alt >= 0) pick = alt; // pas d'alternative excellente → on garde le run (qualité prime)
+    }
+    const [m] = pending.splice(pick, 1);
+    chosen.push(m);
+    usedFam.push(familyOf(m));
+  }
+
+  const chosenIds = new Set(chosen.map((m) => m.id));
+  return [...chosen, ...ranked.filter((m) => !chosenIds.has(m.id))];
 }
