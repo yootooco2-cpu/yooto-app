@@ -5,7 +5,7 @@ import BottomSheet, {
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { LinearTransition, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from 'react-native-reanimated';
@@ -130,8 +130,18 @@ export default function MapScreen() {
   useEffect(() => {
     setFocus(isDesktopWeb && selectedId !== null);
   }, [isDesktopWeb, selectedId, setFocus]);
-  // Filet de sécurité : quitter l'écran carte restaure la tab bar.
-  useEffect(() => () => setFocus(false), [setFocus]);
+  // À la SORTIE de l'écran Carte (blur — sidebar, nav basse, retour, deep-link) : on réinitialise
+  // TOUT l'état Focus → shell normal + tab bar visible. `selectedId` n'est purgé qu'en desktop
+  // (aucun changement mobile : la sélection du bottom sheet y reste conservée comme avant).
+  useFocusEffect(
+    useCallback(
+      () => () => {
+        setFocus(false);
+        if (isDesktopWeb) setSelectedId(null);
+      },
+      [setFocus, isDesktopWeb],
+    ),
+  );
   // Fermeture au clavier (web) : Échap sort du mode Focus.
   useEffect(() => {
     if (typeof document === 'undefined') return;

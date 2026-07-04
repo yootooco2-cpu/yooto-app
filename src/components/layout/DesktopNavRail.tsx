@@ -7,6 +7,7 @@ import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
+import { useFocusStore } from '@/features/layout';
 
 type FeatherName = ComponentProps<typeof Feather>['name'];
 
@@ -29,6 +30,14 @@ const NAV_ITEMS: NavItem[] = [
 export function DesktopNavRail() {
   const router = useRouter();
   const pathname = usePathname();
+  const setFocus = useFocusStore((s) => s.setFocus);
+
+  // Réinitialise l'état layout global AVANT de changer de route → la tab bar revient
+  // immédiatement et aucun état Focus ne persiste sur l'écran de destination.
+  const go = (path: NavItem['path']) => {
+    setFocus(false);
+    router.navigate(path);
+  };
   return (
     <View style={styles.rail}>
       <YText variant="subtitle" color="primary" style={styles.brand}>
@@ -40,7 +49,7 @@ export function DesktopNavRail() {
           return (
             <Pressable
               key={String(item.path)}
-              onPress={() => router.navigate(item.path)}
+              onPress={() => go(item.path)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
               accessibilityLabel={item.label}
