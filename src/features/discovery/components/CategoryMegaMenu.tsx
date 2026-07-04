@@ -58,7 +58,7 @@ export function CategoryMegaMenu({
       focusable={false}
       accessible={false}>
       <MerchantCategoryBar
-        active={openId}
+        isActive={(id) => id === openId}
         onToggle={(id) => setOpenId((cur) => (cur === id ? null : id))}
         onHover={(id) => setOpenId(id)}
       />
