@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Cryptogram } from '@/components/merchants/Cryptogram';
 import { YButton } from '@/components/ui/YButton';
@@ -33,10 +32,14 @@ export interface CategoryMegaMenuProps {
 
 /**
  * CategoryMegaMenu — méga-menu de découverte de l'Accueil, bâti sur le MÊME système que
- * la page Commerçants : barre de cryptogrammes partagée (MerchantCategoryBar), même config
- * (MERCHANT_CATEGORY_FILTERS), mêmes couleurs. Web : ouverture au survol (remplacement
- * instantané) ; Mobile : tap. Le panneau enrichit la catégorie active (sous-catégories +
- * accès direct). Autonome : ne fait que remonter des callbacks (recherche/navigation dehors).
+ * la page Commerçants (MerchantCategoryBar + MERCHANT_CATEGORY_FILTERS).
+ *
+ * Hover web robuste : UNE seule zone de survol continue (barre + panneau) via l'API Pointer
+ * Events (`onPointerEnter`/`onPointerLeave` — `pointerleave` non-bubbling, fiable) + un délai
+ * de fermeture annulable. Le panneau est directement accolé à la barre (aucun gap mort) et
+ * expose sa PROPRE zone pointer (double sécurité). Le menu ne se ferme qu'à la sortie COMPLÈTE
+ * du bloc → on peut descendre du bouton vers une sous-catégorie et cliquer avant fermeture.
+ * Mobile/touch : handlers gardés par `IS_WEB` → tap uniquement, inchangé.
  */
 export function CategoryMegaMenu({
   categories = MERCHANT_CATEGORY_FILTERS,
@@ -48,9 +51,6 @@ export function CategoryMegaMenu({
   const active = categories.find((c) => c.id === openId) ?? null;
   const accent = active ? cryptogramColor(active.icon) : colors.primary;
 
-  // Hover premium (web) : le menu ne se ferme QUE lorsque la souris quitte tout le bloc
-  // (barre + panneau). Un délai (~140ms) + annulation au survol (root ET panneau) évitent
-  // les fermetures accidentelles pendant la traversée bouton → sous-menu.
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cancelClose = useCallback(() => {
     if (closeTimer.current) {
@@ -60,7 +60,7 @@ export function CategoryMegaMenu({
   }, []);
   const scheduleClose = useCallback(() => {
     cancelClose();
-    closeTimer.current = setTimeout(() => setOpenId(null), 140);
+    closeTimer.current = setTimeout(() => setOpenId(null), 160);
   }, [cancelClose]);
   const openNow = useCallback(
     (id: MerchantCategoryId) => {
@@ -75,16 +75,11 @@ export function CategoryMegaMenu({
   }, [cancelClose]);
   useEffect(() => cancelClose, [cancelClose]);
 
-  // Web : fermeture auto quand la souris quitte TOUT le bloc (barre + panneau). En RN Web,
-  // `onHoverOut` suit la sémantique `mouseleave` : il ne se déclenche pas en passant sur un
-  // descendant (chip → panneau) → aucun flicker, fermeture seulement à la sortie complète.
   return (
-    <Pressable
+    <View
       style={styles.root}
-      onHoverIn={IS_WEB ? cancelClose : undefined}
-      onHoverOut={IS_WEB ? scheduleClose : undefined}
-      focusable={false}
-      accessible={false}>
+      onPointerEnter={IS_WEB ? cancelClose : undefined}
+      onPointerLeave={IS_WEB ? scheduleClose : undefined}>
       <MerchantCategoryBar
         isActive={(id) => id === openId}
         onToggle={(id) => {
@@ -95,12 +90,10 @@ export function CategoryMegaMenu({
       />
 
       {active ? (
-        <Pressable
-          onHoverIn={IS_WEB ? cancelClose : undefined}
-          onHoverOut={IS_WEB ? scheduleClose : undefined}
-          focusable={false}
-          accessible={false}>
-          <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, shadows.md]}>
+        <View
+          style={[styles.panel, shadows.md]}
+          onPointerEnter={IS_WEB ? cancelClose : undefined}
+          onPointerLeave={IS_WEB ? scheduleClose : undefined}>
           <View style={styles.panelHeader}>
             <Cryptogram id={active.icon} size={30} />
             <YText variant="subtitle" style={{ color: accent }}>
@@ -157,25 +150,27 @@ export function CategoryMegaMenu({
               />
             </View>
           </View>
-          </Animated.View>
-        </Pressable>
+        </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    gap: spacing.sm,
+    // Zone de survol continue : aucun gap entre la barre et le panneau (le panneau est
+    // directement accolé → pas de « trou » qui déclenche un pointerleave prématuré).
+    zIndex: 10,
   },
   panel: {
-    marginTop: spacing.xs,
+    // Accolé à la barre (pas de marge haute) → hover ininterrompu barre → panneau.
     padding: spacing.lg,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     gap: spacing.md,
+    zIndex: 20,
   },
   panelHeader: {
     flexDirection: 'row',
