@@ -49,3 +49,15 @@ export function fitZoom(
 export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
+
+/** Distance (mètres) entre deux coordonnées — Haversine. Pur. Sert la dead-zone du Scheduler. */
+export function haversineMeters(a: MapCoordinate, b: MapCoordinate): number {
+  const R = 6_371_000; // rayon terrestre moyen (m)
+  const toRad = (d: number): number => (d * Math.PI) / 180;
+  const dLat = toRad(b.latitude - a.latitude);
+  const dLng = toRad(b.longitude - a.longitude);
+  const lat1 = toRad(a.latitude);
+  const lat2 = toRad(b.latitude);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
