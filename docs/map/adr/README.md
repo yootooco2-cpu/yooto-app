@@ -113,6 +113,37 @@ rôle mélangé) ; une palette par état plutôt que par catégorie (casse la re
 
 ---
 
+## ADR-007 — Cinematic Camera Engine : pipeline en couches, un seul propriétaire
+**Statut :** Accepté (architecture) — implémentation par étapes (PR-C2…C7)
+
+**Contexte.** La caméra est aujourd'hui pilotée **en direct** dans `MapEngine.web.tsx` (trois
+`flyTo`/setup ad hoc), sans pitch, sans caméra à la sélection, sans arbitrage des gestes. Ajouter
+la caméra contextuelle « à la main » multiplierait les appels Mapbox dispersés → sauts, tremblements,
+animations concurrentes, conflits avec les gestes = exactement ce que la règle absolue interdit.
+
+**Décision.** Un **Camera Engine en 5 couches** : `Context → Intent → Strategy → Scheduler → Adapter`.
+- La **logique métier n'appelle jamais Mapbox** : elle émet des **intents** sémantiques.
+- La **Strategy est pure** (intent + environnement → plan `{pose, motion}`) : hiérarchie de zoom,
+  règles de pitch, reduce-motion. Testable sans carte.
+- Un **Scheduler unique possède la caméra** : priorités (`USER > EXPLICIT > NAVIGATION > AUTO`),
+  **dead-zone** (pas de mouvement sous les seuils → jamais de tremblement), **coalescing**,
+  **gestes prioritaires** (interruption immédiate, jamais de snap-back), **une seule anim à la fois**.
+- Un **seul Adapter** appelle `easeTo/flyTo/jumpTo` (injecté dans le Scheduler → testable via mock).
+
+Passe la règle absolue : Vision (guide silencieux du plaisir d'explorer) · Cognition (mouvements
+justes, jamais remarqués) · Performance (0 anim concurrente, dead-zone, coalescing) · Identité
+(pitch/durées/easing = signature YOOTOO, tokenisés) · Évolutivité (couches indépendantes, retrofit
+progressif sans changer l'API écran).
+
+**Conséquences.** Toute évolution caméra = un intent + une règle de Strategy (pas un `flyTo` de plus).
+Les valeurs vivent dans `design/tokens/camera.ts`. Le natif (placeholder) et un futur provider
+peuvent réutiliser Context/Intent/Strategy (purs) et n'implémenter que l'Adapter. → [CAMERA.md](../CAMERA.md).
+
+**Alternatives écartées.** Piloter la caméra directement depuis les écrans/`MapEngine` (dispersion,
+sauts, conflits gestes) ; une lib de caméra tierce (perte de contrôle sur le ressenti, dépendance).
+
+---
+
 ## ADR-000 — Template
 
 ```
