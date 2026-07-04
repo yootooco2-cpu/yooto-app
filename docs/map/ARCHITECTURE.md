@@ -31,9 +31,10 @@ Interdits (préviennent la dette) :
 **règles**. Le langage des couleurs de la carte (10 catégories) et les 4 états de marqueur y sont
 définis comme **tokens**, consommés par le Map Engine.
 
-**Cible technique (Phase Design Tokens)** : extraire un token `mapColorLanguage` (cryptogramme →
-teinte) et `markerStateTokens` (taille/anneau/halo/ombre par état) dans `src/design/tokens/`, pour
-que `photoMarkers.ts` ne code plus de valeurs en dur. → voir [ADR-005](./adr/README.md).
+**Implémenté** : `src/design/tokens/mapMarkers.ts` — `MAP_COLOR_LANGUAGE`/`mapColorFor` (langage
+couleur du cadre), `MARKER_STATE_TOKENS` (taille/anneau/halo/z par état), `DIRECTIONAL_SHADOW`,
+`EXCEPTIONAL_GOLD`, `SELECTED_COLOR`, `withAlpha`. `photoMarkers.ts` ne code plus **aucune** valeur
+visuelle en dur. → [ADR-005](./adr/README.md), [ADR-006](./adr/README.md).
 
 ---
 
@@ -47,9 +48,11 @@ le type `Merchant` (adapter `merchantsToMapMarkers`) ni le ranking.
 
 **Séparation rendu / logique déjà en place** (à préserver et étendre) :
 - **Logique pure & testée** : `viewport.ts` (`isPlausibleViewport`), `mapViewportStore.ts`,
-  `cluster/photoSelection.ts` (`photoPriority`, `selectPhotoMarkers`). Aucune dépendance carte/RN → testables.
+  `cluster/photoSelection.ts` (`photoPriority`, `selectPhotoMarkers`), `markerVisualModel.ts`
+  (état + catégorie → modèle visuel pur). Aucune dépendance carte/RN → testables.
 - **Rendu** : `MapEngine.web.tsx` (cycle de vie Mapbox), `cluster/clusterController.ts`
-  (clusters + user marker), `cluster/photoMarkers.ts` (pool borné de marqueurs photo HTML).
+  (clusters + user marker), `cluster/photoMarkers.ts` (pool borné de marqueurs photo HTML —
+  **applique** un `markerVisualModel`, ne décide rien).
 - **Contrat provider-agnostique** : `features/map/types.ts` (`MapEngineProps`, `MapMarker`) — permet
   demain `@rnmapbox/maps` (natif) ou un placeholder sans toucher les écrans.
 
@@ -59,8 +62,8 @@ le type `Merchant` (adapter `merchantsToMapMarkers`) ni le ranking.
 - **Pool borné** de marqueurs photo (≤ 140) ; tout le reste porté par les couches GL (clusters). → [Performances](./DESIGN-SYSTEM.md#performances).
 
 **Prochaines briques Map Engine** (chacune = phase + ADR) :
-`markerState(merchant, ctx)` pur · caméra contextuelle (Phase 4) · apparition éditoriale (Phase 5) ·
-terrain/3D (Phase 2) · thèmes clair/sombre du style Mapbox (Phase 1).
+caméra contextuelle (Phase 4) · apparition éditoriale (Phase 5) · terrain/3D (Phase 2) ·
+thèmes clair/sombre du style Mapbox (Phase 1).
 
 ---
 
@@ -80,6 +83,11 @@ côté hooks). Consommé par les 3 écrans **via une seule source de tri**.
   signaux plug-in (`registry.ts`, `merchantSignals.ts`).
 - Utilisé **partout pareil** : `buildHomeSections` (Accueil), `useMerchantSearch` (Carte + Commerçants).
   → aucun pipeline parallèle. Voir la correction du 2026-07 (unification moteur).
+
+**État réel (implémenté)** :
+- **Importance des marqueurs** : `markerState(merchant)` **pur** (`editorial/markerState.ts`) —
+  décide `standard`/`recommended`/`exceptional` sur les mêmes signaux que le tri (mission, photo,
+  note). Le **style** vit dans le Map Engine (`markerVisualModel`). → [ADR-004](./adr/README.md).
 
 **Prochaines briques Discovery** :
 - **Zoom-aware** : quels commerces à quel niveau de zoom (Phase 5, apparition éditoriale).

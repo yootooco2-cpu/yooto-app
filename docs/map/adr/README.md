@@ -88,6 +88,31 @@ Tokens (dette évitée : une seule source de couleurs pour la carte).
 
 ---
 
+## ADR-006 — Couleur du CADRE distincte du badge cryptogramme
+**Statut :** Accepté
+
+**Contexte.** Le cryptogramme porte déjà une couleur (`cryptogramColor`, dans `cryptograms.ts`),
+pensée pour un **pictogramme blanc sur pastille**. Réutiliser ces teintes telles quelles pour
+l'anneau/halo des marqueurs donnait des couleurs proches, peu mémorisables (cf. ADR-005), et
+mélangeait deux rôles : *identité pictogramme* vs *langage de reconnaissance de catégorie*.
+
+**Décision.** Le marqueur a **deux rôles couleur séparés** : (1) le **badge** garde la couleur
+du cryptogramme (identité) ; (2) le **cadre** (anneau + halo) suit un **langage de couleurs
+dédié**, tokenisé dans `src/design/tokens/mapMarkers.ts` (`MAP_COLOR_LANGUAGE`, `mapColorFor`),
+ancré sur la charte §4 (vert sauge, terracotta, bordeaux…). Total sur les cryptogrammes connus
++ **repli neutre premium** → un marqueur ne retombe jamais par hasard sur une teinte étrangère.
+Passe la règle absolue : Cognition (teintes distinctes = reconnaître sans lire), Identité (palette
+YOOTOO), Évolutivité (source unique, `photoMarkers` ne code plus aucune couleur en dur).
+
+**Conséquences.** Deux sources de couleur coexistent **par intention**, chacune avec son rôle
+documenté. Le badge et le cadre peuvent diverger sur une catégorie sans incohérence. Toute
+évolution de teinte de marqueur se fait dans `mapMarkers.ts` uniquement.
+
+**Alternatives écartées.** Réutiliser `cryptogramColor` pour le cadre (couleurs trop proches,
+rôle mélangé) ; une palette par état plutôt que par catégorie (casse la reconnaissance).
+
+---
+
 ## ADR-000 — Template
 
 ```

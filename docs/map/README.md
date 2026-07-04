@@ -47,8 +47,8 @@ contexte → décision → conséquences. On ne revient pas dessus sans un nouve
 | Chapitre | Statut |
 |---|---|
 | Vision · Philosophie · Principes | ✅ Défini |
-| Langage des couleurs | ✅ Défini (validé V2.1) |
-| États des marqueurs | ✅ Défini (validé V2.1) |
+| Langage des couleurs | ✅ **Implémenté** (tokens `mapMarkers.ts`) |
+| États des marqueurs | ✅ **Implémenté** (Cartes Vivantes V2.1) |
 | Animations · Accessibilité · Performances | ✅ Défini |
 | Caméra | 🟡 Phase 4 — cadre + questions ouvertes |
 | Apparition éditoriale (zoom) | 🟡 Phase 5 — cadre + questions ouvertes |

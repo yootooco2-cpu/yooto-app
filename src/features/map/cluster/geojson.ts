@@ -1,3 +1,5 @@
+import type { MarkerImportance } from '@/design/tokens/mapMarkers';
+
 import type { MapCoordinate, MapMarker } from '@/features/map';
 
 /** Bornes France métropolitaine — au-delà, coordonnée jugée aberrante. */
@@ -22,6 +24,8 @@ export interface MerchantFeatureProperties {
   rating: number;
   open: number; // 0 | 1
   producer: number; // 0 | 1
+  /** État éditorial intrinsèque (pilote l'anneau/halo au rendu du marqueur photo). */
+  state: MarkerImportance;
 }
 
 export interface MerchantPointFeature {
@@ -58,6 +62,7 @@ export function buildMerchantFeatureCollection(markers: MapMarker[]): MerchantFe
         rating: m.rating ?? 0,
         open: m.open ? 1 : 0,
         producer: m.producer ? 1 : 0,
+        state: m.state ?? 'standard',
       },
     }));
 

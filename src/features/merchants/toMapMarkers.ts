@@ -1,3 +1,4 @@
+import { markerState } from '@/features/discovery/editorial/markerState';
 import type { MapMarker } from '@/features/map';
 
 import { cryptogramForMerchant } from './cryptograms';
@@ -22,6 +23,8 @@ export function merchantsToMapMarkers(merchants: Merchant[]): MapMarker<Merchant
     rating: merchant.rating,
     open: merchant.isOpenNow,
     producer: merchant.isProducer,
+    // État éditorial intrinsèque (Discovery) → anneau/halo du marqueur (Design System).
+    state: markerState(merchant),
     // `pin` n'est significatif que pour les données de démo. Pour les données réelles
     // (pin absent → {0,0}), on laisse le placeholder dériver la position des coordonnées.
     placeholderPosition:

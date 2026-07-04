@@ -1,8 +1,14 @@
 import type { Map as MapboxMap, Marker as MapboxMarker } from 'mapbox-gl';
 
 import { colors } from '@/design/tokens/colors';
+import {
+  MARKER_BADGE_SIZE,
+  MARKER_POP,
+  type MarkerImportance,
+} from '@/design/tokens/mapMarkers';
+import { markerVisualModel, type MarkerVisualModel } from '@/features/map';
 import { cryptogramAssetUri } from '@/features/merchants/cryptogramAssets';
-import { cryptogramColor, type CryptogramId } from '@/features/merchants/cryptograms';
+import type { CryptogramId } from '@/features/merchants/cryptograms';
 
 type Mapbox = typeof import('mapbox-gl')['default'];
 
@@ -16,48 +22,80 @@ export interface VisibleMerchant {
   rating: number;
   /** Producteur local (0 | 1) — priorité d'affichage. */
   producer: number;
+  /** État éditorial intrinsèque → anneau/halo (Design System). */
+  state: MarkerImportance;
 }
 
 const POOL_MAX = 140;
-const CRYPTO_SIZE = 18;
 
-function styleBase(el: HTMLDivElement, photo: string) {
+/** `true` si l'utilisateur a demandé à réduire les animations (accessibilité). */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/** Cadre du marqueur : la photo est le héros ; anneau + halo + ombre viennent du modèle. */
+function createFrame(): HTMLDivElement {
+  const el = document.createElement('div');
   // `absolute` (jamais `relative`) : Mapbox positionne le marqueur UNIQUEMENT via `transform`.
-  // En `relative`, chaque marqueur occuperait 40px dans le flux du canvas-container → empilement
-  // vertical (N×40px) qui pousse la majorité des marqueurs hors de l'écran.
+  // En `relative`, chaque marqueur occuperait sa taille dans le flux → empilement vertical.
   el.style.position = 'absolute';
   el.style.top = '0';
   el.style.left = '0';
-  el.style.width = '40px';
-  el.style.height = '40px';
-  el.style.borderRadius = '20px';
+  el.style.borderRadius = '50%';
   el.style.borderStyle = 'solid';
+  el.style.boxSizing = 'border-box';
   el.style.cursor = 'pointer';
-  el.style.boxShadow = '0 2px 6px rgba(23,32,26,0.35)';
-  el.style.backgroundSize = 'cover';
-  el.style.backgroundPosition = 'center';
-  // Pas de transition sur `transform` : Mapbox y écrit la position à chaque frame → sinon lag/traînée.
-  el.style.transition = 'border-color 0.12s ease, box-shadow 0.12s ease, opacity 0.2s ease';
-  if (photo) {
-    el.style.backgroundImage = `url("${photo}")`;
-    el.style.backgroundColor = colors.surface;
-  } else {
-    el.style.backgroundColor = colors.primary;
-  }
+  // JAMAIS de transition sur `transform` (Mapbox y écrit la position → lag/traînée).
+  el.style.transition =
+    'border-color 0.12s ease, border-width 0.12s ease, box-shadow 0.12s ease, width 0.12s ease, height 0.12s ease, opacity 0.2s ease';
+  return el;
 }
 
-/** Contour = couleur de la catégorie au repos ; primary + halo quand sélectionné. */
-function styleSelected(el: HTMLDivElement, active: boolean, ringColor: string) {
-  // NE JAMAIS écrire `el.style.transform` : Mapbox y stocke la position du marqueur. La mise en
-  // avant passe UNIQUEMENT par bordure + halo (box-shadow) + z-index (aucun conflit de position).
-  el.style.borderColor = active ? colors.primary : ringColor;
-  el.style.borderWidth = active ? '4px' : '3px';
-  // Sélection : anneau blanc + halo primary + ombre portée → nettement au-dessus des autres.
-  el.style.boxShadow = active
-    ? `0 0 0 3px #FFFFFF, 0 0 0 6px ${colors.primary}, 0 6px 16px rgba(23,32,26,0.5)`
-    : '0 2px 6px rgba(23,32,26,0.35)';
-  // z-index élevé et sans ambiguïté : le marqueur sélectionné passe devant tous les autres.
-  el.style.zIndex = active ? '6' : '1';
+/** Élément interne portant la PHOTO (héros) + profondeur. Le pop s'anime ICI (jamais le cadre). */
+function createPhoto(photo: string): HTMLDivElement {
+  const inner = document.createElement('div');
+  inner.className = 'photo';
+  inner.style.position = 'absolute';
+  inner.style.inset = '0';
+  inner.style.borderRadius = '50%';
+  inner.style.overflow = 'hidden';
+  inner.style.backgroundSize = 'cover';
+  inner.style.backgroundPosition = 'center';
+  // Profondeur : reflet de lumière discret en haut, ombre douce en bas (cohérent haut-gauche).
+  inner.style.boxShadow =
+    'inset 0 1px 2px rgba(255,255,255,0.22), inset 0 -2px 3px rgba(23,32,26,0.18)';
+  inner.style.pointerEvents = 'none';
+  if (photo) {
+    inner.style.backgroundImage = `url("${photo}")`;
+    inner.style.backgroundColor = colors.surface;
+  } else {
+    inner.style.backgroundColor = colors.primary;
+  }
+  return inner;
+}
+
+/** Applique un modèle visuel (taille, anneau, halo, ombre, z) — AUCUNE décision ici. */
+function applyModel(el: HTMLDivElement, model: MarkerVisualModel): void {
+  // NE JAMAIS écrire `el.style.transform` : Mapbox y stocke la position (ADR-002).
+  el.style.width = `${model.size}px`;
+  el.style.height = `${model.size}px`;
+  el.style.borderColor = model.borderColor;
+  el.style.borderWidth = `${model.borderWidth}px`;
+  el.style.boxShadow = model.boxShadow;
+  el.style.zIndex = String(model.zIndex);
+}
+
+/** Pop one-shot au clic : scale 100 → 105 → 100 %, ~200 ms, sur l'élément interne uniquement. */
+function popOnce(inner: HTMLDivElement): void {
+  if (prefersReducedMotion() || typeof inner.animate !== 'function') return;
+  inner.animate(
+    [{ transform: 'scale(1)' }, { transform: `scale(${MARKER_POP.scale})` }, { transform: 'scale(1)' }],
+    { duration: MARKER_POP.durationMs, easing: 'ease-out' },
+  );
 }
 
 /** Petit cryptogramme officiel superposé en haut-droite de la pastille photo. */
@@ -66,29 +104,34 @@ function createCryptogramBadge(id: CryptogramId): HTMLDivElement {
   badge.style.position = 'absolute';
   badge.style.top = '-4px';
   badge.style.right = '-4px';
-  badge.style.width = `${CRYPTO_SIZE}px`;
-  badge.style.height = `${CRYPTO_SIZE}px`;
+  badge.style.width = `${MARKER_BADGE_SIZE}px`;
+  badge.style.height = `${MARKER_BADGE_SIZE}px`;
   badge.style.backgroundImage = `url("${cryptogramAssetUri(id)}")`;
   badge.style.backgroundSize = 'contain';
   badge.style.backgroundRepeat = 'no-repeat';
   badge.style.backgroundPosition = 'center';
   badge.style.pointerEvents = 'none';
   badge.style.filter = 'drop-shadow(0 1px 1px rgba(23,32,26,0.35))';
-  // Fondu doux quand le cryptogramme apparaît/disparaît selon le zoom (aucun flicker).
   badge.style.transition = 'opacity 0.2s ease';
   return badge;
 }
 
+interface MarkerEntry {
+  marker: MapboxMarker;
+  el: HTMLDivElement;
+  photo: HTMLDivElement;
+  badge: HTMLDivElement;
+  cryptogramId: CryptogramId;
+  state: MarkerImportance;
+}
+
 /**
- * PhotoMarkerLayer — gère un POOL BORNÉ de marqueurs photo HTML pour les seuls
- * commerces non clusterisés visibles. Le DOM ne contient jamais des milliers de
- * marqueurs : Mapbox GL porte tout le reste (clusters). Réutilise/retire à la volée.
+ * PhotoMarkerLayer — POOL BORNÉ de marqueurs photo HTML pour les seuls commerces non
+ * clusterisés visibles. Le DOM ne contient jamais des milliers de marqueurs (Mapbox GL porte
+ * le reste via les clusters). Le rendu ne fait qu'APPLIQUER un modèle visuel (`markerVisualModel`).
  */
 export class PhotoMarkerLayer {
-  private markers = new Map<
-    string,
-    { marker: MapboxMarker; el: HTMLDivElement; ringColor: string; badge: HTMLDivElement }
-  >();
+  private markers = new Map<string, MarkerEntry>();
   private selectedId: string | null = null;
   private cryptogramVisible = true;
   /** Plafond de marqueurs photo simultanés (exposé pour le debug/monitoring). */
@@ -100,10 +143,20 @@ export class PhotoMarkerLayer {
     private readonly onSelect: (id: string) => void,
   ) {}
 
+  private restyle(entry: MarkerEntry, selected: boolean): void {
+    applyModel(entry.el, markerVisualModel(entry.state, entry.cryptogramId, { selected }));
+  }
+
   setSelected(id: string | null): void {
+    const previous = this.selectedId;
     this.selectedId = id;
     for (const [markerId, entry] of this.markers) {
-      styleSelected(entry.el, markerId === id, entry.ringColor);
+      this.restyle(entry, markerId === id);
+    }
+    // Pop one-shot sur le marqueur qui vient d'être sélectionné (feedback, jamais permanent).
+    if (id && id !== previous) {
+      const entry = this.markers.get(id);
+      if (entry) popOnce(entry.photo);
     }
   }
 
@@ -131,26 +184,39 @@ export class PhotoMarkerLayer {
       }
     }
 
+    const reduce = prefersReducedMotion();
     for (const p of capped) {
       if (this.markers.has(p.id)) continue;
-      const el = document.createElement('div');
-      styleBase(el, p.photo);
-      const ringColor = cryptogramColor(p.cryptogramId);
-      styleSelected(el, p.id === this.selectedId, ringColor);
+      const el = createFrame();
+      const photo = createPhoto(p.photo);
+      el.appendChild(photo);
       const badge = createCryptogramBadge(p.cryptogramId);
       badge.style.opacity = this.cryptogramVisible ? '1' : '0';
       el.appendChild(badge);
+      const entry: MarkerEntry = {
+        marker: null as unknown as MapboxMarker,
+        el,
+        photo,
+        badge,
+        cryptogramId: p.cryptogramId,
+        state: p.state,
+      };
+      this.restyle(entry, p.id === this.selectedId);
       el.addEventListener('click', (event) => {
         event.stopPropagation();
         this.onSelect(p.id);
       });
-      // Fondu d'apparition : évite le « pop » brutal quand un marqueur photo entre au zoom.
-      el.style.opacity = '0';
-      requestAnimationFrame(() => {
+      // Fondu d'apparition (désactivé si `prefers-reduced-motion`).
+      if (reduce) {
         el.style.opacity = '1';
-      });
-      const marker = new this.mapboxgl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(this.map);
-      this.markers.set(p.id, { marker, el, ringColor, badge });
+      } else {
+        el.style.opacity = '0';
+        requestAnimationFrame(() => {
+          el.style.opacity = '1';
+        });
+      }
+      entry.marker = new this.mapboxgl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(this.map);
+      this.markers.set(p.id, entry);
     }
   }
 
