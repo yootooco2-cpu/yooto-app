@@ -14,16 +14,18 @@ type Props = {
   merchant: Merchant;
   onPress: () => void;
   onClose: () => void;
+  /** Aplati (sans bord/ombre/fond) quand rendu DANS le bottom sheet — surface unique. */
+  flat?: boolean;
 };
 
 /** Mini-fiche du commerce sélectionné, affichée en bas de la carte. */
-export function MapMerchantPreview({ merchant, onPress, onClose }: Props) {
+export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }: Props) {
   const meta = [CATEGORY_LABELS[merchant.category]];
   if (merchant.city) meta.push(merchant.city);
   if (typeof merchant.rating === 'number') meta.push(`★ ${merchant.rating.toFixed(1)}`);
 
   return (
-    <Animated.View style={styles.card} entering={FadeInDown.duration(220)}>
+    <Animated.View style={[styles.card, flat && styles.cardFlat]} entering={FadeInDown.duration(220)}>
       <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8} style={styles.close}>
         <YText variant="subtitle" color="muted">
           ✕
@@ -65,6 +67,13 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     gap: spacing.sm,
     ...shadows.md,
+  },
+  cardFlat: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    padding: 0,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   close: {
     position: 'absolute',
