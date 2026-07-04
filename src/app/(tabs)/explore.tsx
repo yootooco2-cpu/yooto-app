@@ -9,7 +9,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { MapEngine, MapMerchantPreview } from '@/components/map';
+import { MapEngine, MapMerchantPreview, MerchantFocusPanel } from '@/components/map';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
@@ -21,6 +21,7 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
+import { useFocusStore, useIsDesktopWeb } from '@/features/layout';
 import { LocationPrompt, useSmartLocation } from '@/features/location';
 import {
   isPlausibleViewport,
@@ -118,6 +119,17 @@ export default function MapScreen() {
   const moved = Boolean(liveViewport && searchArea && viewportMoved(searchArea, liveViewport));
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
+  // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
+  // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
+  const isDesktopWeb = useIsDesktopWeb();
+  const isFocus = useFocusStore((s) => s.isFocus);
+  const setFocus = useFocusStore((s) => s.setFocus);
+  useEffect(() => {
+    setFocus(isDesktopWeb && selectedId !== null);
+  }, [isDesktopWeb, selectedId, setFocus]);
+  // Filet de sécurité : quitter l'écran carte restaure la tab bar.
+  useEffect(() => () => setFocus(false), [setFocus]);
+
   const onSearchHere = () => {
     if (liveViewport) setSearchArea(liveViewport);
   };
@@ -190,7 +202,8 @@ export default function MapScreen() {
             <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
           </YCard>
         ) : (
-          <>
+          <View style={styles.mapRow}>
+            <View style={[styles.mapCol, isFocus && styles.mapColFocused]}>
             {/* La carte est rendue IMMÉDIATEMENT (jamais bloquée par le chargement des données)
                 → visible en < 3 s ; les marqueurs apparaissent dès que les données arrivent. */}
             <MapEngine
@@ -245,7 +258,7 @@ export default function MapScreen() {
 
             {/* Bottom sheet PERSISTANT : bascule contenu preview (commerce sélectionné) ↔ liste.
                 Ne se démonte plus à la sélection → transition fluide, position conservée. */}
-            {selectedMerchant || (!isLoading && count > 0) ? (
+            {!isFocus && (selectedMerchant || (!isLoading && count > 0)) ? (
               <BottomSheet
                 ref={sheetRef}
                 index={0}
@@ -293,7 +306,11 @@ export default function MapScreen() {
                 <LocationPrompt onAuthorize={smart.authorize} onDismiss={smart.dismiss} />
               </View>
             ) : null}
-          </>
+            </View>
+            {isFocus ? (
+              <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel} />
+            ) : null}
+          </View>
         )}
       </View>
     </YScreen>
@@ -311,6 +328,20 @@ const styles = StyleSheet.create({
   },
   mapArea: {
     flex: 1,
+  },
+  mapRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  mapCol: {
+    flex: 1,
+  },
+  // Focus desktop : la carte occupe 60 % (flex 3) et le panneau 40 % (flex 2) — tout en flex.
+  mapColFocused: {
+    flex: 3,
+  },
+  focusPanel: {
+    flex: 2,
   },
   recenterFab: {
     position: 'absolute',

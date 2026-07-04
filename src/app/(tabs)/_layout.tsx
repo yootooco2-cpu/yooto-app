@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { type ColorValue, Image, type ImageSourcePropType, View } from 'react-native';
 
 import { colors } from '@/design/tokens/colors';
+import { useFocusStore } from '@/features/layout';
 
 const homeIcon = require('@/assets/images/tabIcons/home.png') as ImageSourcePropType;
 const exploreIcon = require('@/assets/images/tabIcons/explore.png') as ImageSourcePropType;
@@ -75,16 +76,20 @@ function DeSaisonIcon({ color, size }: { color: ColorValue; size: number }) {
 }
 
 export default function TabsLayout() {
+  // Source unique : en mode Focus Commerce (desktop), la tab bar est masquée — ICI et nulle part ailleurs.
+  const isFocus = useFocusStore((s) => s.isFocus);
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedText,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        },
+        tabBarStyle: isFocus
+          ? { display: 'none' }
+          : {
+              backgroundColor: colors.surface,
+              borderTopColor: colors.border,
+            },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
