@@ -78,6 +78,15 @@ export const TIER_BY_RAW_CATEGORY: Record<string, EditorialTier> = {
   grocery_store: 'max',
   epicerie: 'max',
   epicerie_fine: 'max',
+  butcher: 'max',
+  boucherie: 'max',
+  charcuterie: 'max',
+  fishmonger: 'max',
+  poissonnerie: 'max',
+  seafood: 'max',
+  seafood_market: 'max',
+  cooperative: 'max',
+  cooperative_alimentaire: 'max',
 
   // ── medium : découverte « plaisir » secondaire ────────────────────────────────────────
   florist: 'medium',
@@ -154,6 +163,12 @@ export const MAX_TIER_TERMS: readonly string[] = [
   'brasserie',
   'domaine',
   'vignoble',
+  'boucherie',
+  'charcuterie',
+  'poissonnerie',
+  'amap',
+  'vente directe',
+  'circuit court',
 ];
 
 export const MEDIUM_TIER_TERMS: readonly string[] = [
@@ -167,6 +182,10 @@ export const MEDIUM_TIER_TERMS: readonly string[] = [
 
 export const LOW_TIER_TERMS: readonly string[] = [
   'couvreur',
+  'toiture',
+  'facade',
+  'ravalement',
+  'etancheite',
   'plombier',
   'plomberie',
   'electricien',
@@ -180,11 +199,15 @@ export const LOW_TIER_TERMS: readonly string[] = [
 
 export const VERYLOW_TIER_TERMS: readonly string[] = [
   'chatterie',
+  'cattery',
+  'chenil',
+  'mastiff',
   'elevage',
   'pension animale',
   'toilettage',
   'grossiste',
   'industriel',
+  'froid industriel',
   'pompes funebres',
 ];
 

@@ -97,3 +97,11 @@ export function editorialScore(merchant: Merchant): number {
 
   return score;
 }
+
+/**
+ * Score de ranking éditorial CENTRALISÉ (nom canonique). Alias de `editorialScore` :
+ * combine catégorie prioritaire (resolveTier + mots-clés), note, review_count (confidence),
+ * présence photo, ouvert, producteur/circuit court, et pénalité mots-clés hors intention.
+ * Utilisé partout où les commerces sont triés (Accueil, Commerçants, Carte).
+ */
+export const getMerchantEditorialScore = editorialScore;
