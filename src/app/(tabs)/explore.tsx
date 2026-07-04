@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MapEngine, MapMerchantPreview, MerchantFocusPanel } from '@/components/map';
+import { DesktopNavRail } from '@/components/layout/DesktopNavRail';
 import { MerchantDetail } from '@/components/merchants/MerchantDetail';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
@@ -169,7 +170,10 @@ export default function MapScreen() {
   const showEmpty = !isLoading && !isError && searchArea !== null && count === 0;
 
   return (
-    <YScreen gap="sm" padding="lg">
+    <View style={styles.root}>
+      {isFocus ? <DesktopNavRail /> : null}
+      <View style={styles.screenWrap}>
+        <YScreen gap="sm" padding="lg">
       <YSearchBar value={query} onChangeText={setQuery} />
 
       <ScrollView
@@ -316,11 +320,21 @@ export default function MapScreen() {
           </View>
         )}
       </View>
-    </YScreen>
+        </YScreen>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // Racine : en Focus desktop, [rail pleine hauteur | contenu]. Hors Focus, un seul enfant → rendu actuel.
+  root: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  screenWrap: {
+    flex: 1,
+  },
   filtersScroll: {
     flexGrow: 0,
   },
