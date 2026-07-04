@@ -40,30 +40,6 @@ const TIER_APPEAL: Record<EditorialTier, number> = {
 // Bonus « producteur d'exception » (concern distinct du tier : sous-qualité producteur).
 const PREMIUM_PRODUCER_TERMS = ['domaine', 'vignoble', 'vigneron', 'viticulteur'] as const;
 
-// Termes hors-mission NON ambigus → FORCENT le tier veryLow (override), même si la catégorie
-// brute Google fuit vers un tier élevé (ex. un « élevage » catégorisé `farm`/`ranch`). Aucun
-// commerce cœur YOOTOO n'emploie ces termes. « elevage » est traité à part (ambigu avec un
-// éleveur alimentaire) : il ne force veryLow que pour un non-producteur.
-const OFF_MISSION_TERMS = [
-  'chatterie',
-  'cattery',
-  'chenil',
-  'mastiff',
-  'animal breeding',
-  'pension canine',
-  'pension feline',
-  'pension animale',
-  'toilettage',
-  'pompes funebres',
-  'funeraire',
-  'toiture',
-  'facade',
-  'ravalement',
-  'etancheite',
-  'couvreur',
-  'froid industriel',
-] as const;
-
 /** Accent-insensitive, lowercased. */
 function normalize(s: string): string {
   return s
@@ -92,26 +68,20 @@ export function editorialScore(merchant: Merchant): number {
   if (hasRealPhoto(merchant)) score += W.realPhoto;
   else score += W.noPhotoPenalty;
 
-  // 2. Attrait de catégorie — SOURCE UNIQUE : resolveTier (categoryTiers). Le tier tient
-  //    compte de la catégorie brute Google/YOOTOO ET des mots-clés du nom/description.
-  let tier = resolveTier(
+  // 2. Attrait de catégorie — SOURCE UNIQUE : resolveTier (categoryTiers), qui applique déjà le
+  //    garde-fou hors-mission (nom/description) AVANT la catégorie brute → un « élevage » tagué
+  //    `ranch` ressort veryLow ici, sans logique dupliquée.
+  const tier = resolveTier(
     merchant.rawCategory,
     merchant.rawMerchantType,
     merchant.name,
     merchant.description,
   );
-  // Garde-fou anti-contournement : un commerce mal catégorisé (ex. « Élevage EDEN » tagué
-  // `farm` → max) est ramené à veryLow dès qu'un terme hors-mission NON ambigu apparaît, ou
-  // « elevage » pour un non-producteur. Impossible à contourner par une catégorie brute.
-  const isYootooProducer = merchant.isProducer || merchant.category === 'producer';
-  const offMission =
-    OFF_MISSION_TERMS.some((t) => haystack.includes(t)) ||
-    (haystack.includes('elevage') && !isYootooProducer);
-  if (offMission) tier = 'veryLow';
   score += TIER_APPEAL[tier];
 
-  // 3. Qualité producteur.
-  if (merchant.isProducer || merchant.category === 'producer') {
+  // 3. Qualité producteur — JAMAIS pour un commerce hors-mission (ex. « élevage » tagué ranch,
+  //    ramené à veryLow) : un éleveur animalier ne doit pas toucher le bonus producteur.
+  if ((merchant.isProducer || merchant.category === 'producer') && tier !== 'veryLow') {
     score += W.producer;
     if (PREMIUM_PRODUCER_TERMS.some((t) => haystack.includes(t))) score += W.premiumProducer;
   }

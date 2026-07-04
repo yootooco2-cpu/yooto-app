@@ -211,6 +211,31 @@ export const VERYLOW_TIER_TERMS: readonly string[] = [
   'pompes funebres',
 ];
 
+/**
+ * Termes NON ambigus hors mission YOOTOO, testés sur le NOM + description AVANT la catégorie
+ * brute → forcent veryLow même si Google promeut la catégorie (`ranch`/`farm`…). Corrige à la
+ * racine les élevages animaliers, pensions, pompes funèbres et services techniques mal
+ * catégorisés (ex. « Elevage EDEN » tagué `ranch` → sinon producteur/max).
+ */
+export const HARD_NEGATIVE_TERMS: readonly string[] = [
+  'elevage',
+  'eleveur',
+  'chatterie',
+  'cattery',
+  'chenil',
+  'canin',
+  'felin',
+  'chiot',
+  'mastiff',
+  'animal breeding',
+  'pension canine',
+  'pension feline',
+  'pension animale',
+  'toilettage',
+  'pompes funebres',
+  'funeraire',
+];
+
 /** Minuscule, sans accents ni diacritiques. Pure. */
 function normalize(input: string | undefined | null): string {
   return (input ?? '')
@@ -242,13 +267,18 @@ export function resolveTier(
   name?: string | null,
   description?: string | null,
 ): EditorialTier {
+  const haystack = normalize(`${name ?? ''} ${description ?? ''}`);
+
+  // 0. Garde-fou PRIORITAIRE : un nom/description clairement hors mission force veryLow AVANT
+  //    toute promotion par la catégorie brute (corrige `ranch`/`farm` mal attribués par Google).
+  if (haystack && HARD_NEGATIVE_TERMS.some((t) => haystack.includes(t))) return 'veryLow';
+
   const raw = normalize(rawCategory);
   if (raw && TIER_BY_RAW_CATEGORY[raw]) return TIER_BY_RAW_CATEGORY[raw];
 
   const type = normalize(merchantType);
   if (type && TIER_BY_RAW_CATEGORY[type]) return TIER_BY_RAW_CATEGORY[type];
 
-  const haystack = normalize(`${name ?? ''} ${description ?? ''}`);
   const byTerm = haystack ? firstTermTier(haystack) : null;
   if (byTerm) return byTerm;
 

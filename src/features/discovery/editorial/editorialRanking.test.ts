@@ -20,9 +20,15 @@ const CORE = {
   epicerie: mk({ name: 'Épicerie Vrac & Co', rawCategory: 'grocery_store', rating: 4.1, reviewCount: 48, isOpenNow: true, photoUrl: PHOTO, description: 'Zéro déchet, bio, local.' }),
 };
 
-// « Elevage EDEN » : note Google excellente ET catégorie brute qui fuit vers `farm` (tier max)
-// → sans garde-fou, il remonterait en tête. Le mot « elevage » (non-producteur) force veryLow.
-const EDEN = mk({ name: 'Elevage EDEN', rawCategory: 'farm', rating: 5.0, reviewCount: 300, isOpenNow: true, photoUrl: PHOTO, description: 'Elevage de chiens et chats de race, mastiff.' });
+// « Elevage EDEN » — DONNÉES RÉELLES Supabase : category 'ranch' → normalisé 'producer'
+// (isProducer true), photo réelle, note 4.7, description VIDE. Sans garde-fou, `ranch` → tier
+// max + bonus producteur → il remontait #1. Le mot « elevage » dans le NOM force veryLow AVANT
+// la catégorie brute (resolveTier), et le bonus producteur est neutralisé sur un tier veryLow.
+const EDEN = mk({ name: 'Elevage EDEN', rawCategory: 'ranch', category: 'producer', isProducer: true, rating: 4.7, isOpenNow: true, photoUrl: PHOTO, description: '' });
+
+// Garde anti-sur-pénalisation : un vrai producteur viticole catégorisé 'ranch' (nom « Domaine »)
+// NE doit PAS être rétrogradé — seul le signal animalier du nom déclasse.
+const DOMAINE_RANCH = mk({ name: 'Domaine des 4 vents', rawCategory: 'ranch', category: 'producer', isProducer: true, rating: 4.6, reviewCount: 40, isOpenNow: true, photoUrl: PHOTO, description: 'Vigneron, vente directe.' });
 
 const OFF = {
   eden: EDEN,
@@ -44,10 +50,16 @@ describe('rankMerchantsEditorially — priorité éditoriale YOOTOO', () => {
     }
   });
 
-  it('« Elevage EDEN » (note 5.0, catégorie brute fuyante `farm`) passe DERRIÈRE tout le cœur YOOTOO', () => {
+  it('« Elevage EDEN » (réel : ranch→producer, note 4.7) passe DERRIÈRE tout le cœur YOOTOO', () => {
     for (const core of Object.values(CORE)) {
       expect(getMerchantEditorialScore(core)).toBeGreaterThan(getMerchantEditorialScore(EDEN));
     }
+  });
+
+  it('un vrai producteur viticole catégorisé `ranch` (« Domaine ») N’est PAS rétrogradé', () => {
+    // Le domaine viticole reste très au-dessus de l'élevage, malgré la même catégorie brute `ranch`.
+    expect(getMerchantEditorialScore(DOMAINE_RANCH)).toBeGreaterThan(getMerchantEditorialScore(EDEN));
+    expect(getMerchantEditorialScore(DOMAINE_RANCH)).toBeGreaterThan(getMerchantEditorialScore(CORE.epicerie));
   });
 
   it('helper unique : EDEN n’apparaît jamais avant un producteur/primeur/boulangerie/boucherie/poissonnerie/épicerie', () => {
