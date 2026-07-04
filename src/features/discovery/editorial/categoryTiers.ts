@@ -78,6 +78,15 @@ export const TIER_BY_RAW_CATEGORY: Record<string, EditorialTier> = {
   grocery_store: 'max',
   epicerie: 'max',
   epicerie_fine: 'max',
+  butcher: 'max',
+  boucherie: 'max',
+  charcuterie: 'max',
+  fishmonger: 'max',
+  poissonnerie: 'max',
+  seafood: 'max',
+  seafood_market: 'max',
+  cooperative: 'max',
+  cooperative_alimentaire: 'max',
 
   // ── medium : découverte « plaisir » secondaire ────────────────────────────────────────
   florist: 'medium',
@@ -154,6 +163,12 @@ export const MAX_TIER_TERMS: readonly string[] = [
   'brasserie',
   'domaine',
   'vignoble',
+  'boucherie',
+  'charcuterie',
+  'poissonnerie',
+  'amap',
+  'vente directe',
+  'circuit court',
 ];
 
 export const MEDIUM_TIER_TERMS: readonly string[] = [
@@ -167,6 +182,10 @@ export const MEDIUM_TIER_TERMS: readonly string[] = [
 
 export const LOW_TIER_TERMS: readonly string[] = [
   'couvreur',
+  'toiture',
+  'facade',
+  'ravalement',
+  'etancheite',
   'plombier',
   'plomberie',
   'electricien',
@@ -180,12 +199,41 @@ export const LOW_TIER_TERMS: readonly string[] = [
 
 export const VERYLOW_TIER_TERMS: readonly string[] = [
   'chatterie',
+  'cattery',
+  'chenil',
+  'mastiff',
   'elevage',
   'pension animale',
   'toilettage',
   'grossiste',
   'industriel',
+  'froid industriel',
   'pompes funebres',
+];
+
+/**
+ * Termes NON ambigus hors mission YOOTOO, testés sur le NOM + description AVANT la catégorie
+ * brute → forcent veryLow même si Google promeut la catégorie (`ranch`/`farm`…). Corrige à la
+ * racine les élevages animaliers, pensions, pompes funèbres et services techniques mal
+ * catégorisés (ex. « Elevage EDEN » tagué `ranch` → sinon producteur/max).
+ */
+export const HARD_NEGATIVE_TERMS: readonly string[] = [
+  'elevage',
+  'eleveur',
+  'chatterie',
+  'cattery',
+  'chenil',
+  'canin',
+  'felin',
+  'chiot',
+  'mastiff',
+  'animal breeding',
+  'pension canine',
+  'pension feline',
+  'pension animale',
+  'toilettage',
+  'pompes funebres',
+  'funeraire',
 ];
 
 /** Minuscule, sans accents ni diacritiques. Pure. */
@@ -219,13 +267,18 @@ export function resolveTier(
   name?: string | null,
   description?: string | null,
 ): EditorialTier {
+  const haystack = normalize(`${name ?? ''} ${description ?? ''}`);
+
+  // 0. Garde-fou PRIORITAIRE : un nom/description clairement hors mission force veryLow AVANT
+  //    toute promotion par la catégorie brute (corrige `ranch`/`farm` mal attribués par Google).
+  if (haystack && HARD_NEGATIVE_TERMS.some((t) => haystack.includes(t))) return 'veryLow';
+
   const raw = normalize(rawCategory);
   if (raw && TIER_BY_RAW_CATEGORY[raw]) return TIER_BY_RAW_CATEGORY[raw];
 
   const type = normalize(merchantType);
   if (type && TIER_BY_RAW_CATEGORY[type]) return TIER_BY_RAW_CATEGORY[type];
 
-  const haystack = normalize(`${name ?? ''} ${description ?? ''}`);
   const byTerm = haystack ? firstTermTier(haystack) : null;
   if (byTerm) return byTerm;
 

@@ -1,7 +1,7 @@
 import type { Merchant } from '@/features/merchants';
 
 import { recommendCached } from './cache';
-import { editorialScore } from './editorial/editorialScore';
+import { rankMerchantsEditorially } from './editorial/editorialScore';
 import type { DiscoveryContext } from './types';
 
 // homeSections — EDITORIAL ranking for the Home screen sections ONLY.
@@ -51,39 +51,27 @@ export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSections
   const limitP = opts.limits?.nearbyProducers ?? 8
   const limitD = opts.limits?.toDiscover ?? 8
 
-  // Precompute once (deterministic + avoids repeated work in comparators).
-  const scoreOf = new Map<string, number>()
-  for (const m of merchants) scoreOf.set(m.id, editorialScore(m))
-  const score = (m: Merchant): number => scoreOf.get(m.id) ?? 0
-
-  const byEditorial = (a: Merchant, b: Merchant): number => {
-    const d = score(b) - score(a)
-    return d !== 0 ? d : a.name.localeCompare(b.name)
-  }
-
-  // « Recommandés » : relevance pool (engine) re-ranked editorially. Fallback to all
-  // merchants when no context is provided.
+  // « Recommandés » : pool de pertinence (moteur) re-trié éditorialement via le helper UNIQUE.
+  // Repli sur tous les commerces si aucun contexte n'est fourni.
   const relevanceBase = opts.context
     ? recommendCached(merchants, opts.context, { limit: Math.max(limitR * 3, 24) }).map((s) => s.merchant)
     : merchants
-  const recommendedToday = [...relevanceBase].sort(byEditorial).slice(0, limitR)
+  const recommendedToday = rankMerchantsEditorially(relevanceBase).slice(0, limitR)
 
-  // « Producteurs proches » : producers by editorial score, distance as tie-break.
+  // « Producteurs proches » : éditorial PRIMAIRE (helper unique) ; distance en tie-break
+  // (ordre d'entrée trié par distance + tri STABLE du helper).
   const producers = merchants.filter((m) => m.isProducer || m.category === 'producer')
-  const nearbyProducers = [...producers]
-    .sort((a, b) => {
-      const d = score(b) - score(a)
-      if (d !== 0) return d
-      const da = a.distanceKm ?? Number.POSITIVE_INFINITY
-      const db = b.distanceKm ?? Number.POSITIVE_INFINITY
-      return da !== db ? da - db : a.name.localeCompare(b.name)
-    })
-    .slice(0, limitP)
+  const producersByDistance = [...producers].sort((a, b) => {
+    const da = a.distanceKm ?? Number.POSITIVE_INFINITY
+    const db = b.distanceKm ?? Number.POSITIVE_INFINITY
+    return da !== db ? da - db : a.name.localeCompare(b.name)
+  })
+  const nearbyProducers = rankMerchantsEditorially(producersByDistance).slice(0, limitP)
 
-  // « À découvrir » : the next best editorially, excluding the two sections above, with a
-  // diversity cap (max 2 per bucket) so premium producers/domaines don't monopolize it.
+  // « À découvrir » : la suite éditoriale (helper unique), hors sections ci-dessus, avec un cap
+  // de diversité (max 2 par bucket) pour éviter la monopolisation par les domaines premium.
   const used = new Set<string>([...recommendedToday, ...nearbyProducers].map((m) => m.id))
-  const candidates = [...merchants].sort(byEditorial).filter((m) => !used.has(m.id))
+  const candidates = rankMerchantsEditorially(merchants).filter((m) => !used.has(m.id))
   const MAX_PER_BUCKET = 2
   const bucketCount = new Map<Merchant['category'], number>()
   const toDiscover: Merchant[] = []

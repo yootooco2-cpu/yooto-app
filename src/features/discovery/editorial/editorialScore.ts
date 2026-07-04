@@ -68,8 +68,9 @@ export function editorialScore(merchant: Merchant): number {
   if (hasRealPhoto(merchant)) score += W.realPhoto;
   else score += W.noPhotoPenalty;
 
-  // 2. Attrait de catégorie — SOURCE UNIQUE : resolveTier (categoryTiers). Le tier tient
-  //    compte de la catégorie brute Google/YOOTOO ET des mots-clés du nom/description.
+  // 2. Attrait de catégorie — SOURCE UNIQUE : resolveTier (categoryTiers), qui applique déjà le
+  //    garde-fou hors-mission (nom/description) AVANT la catégorie brute → un « élevage » tagué
+  //    `ranch` ressort veryLow ici, sans logique dupliquée.
   const tier = resolveTier(
     merchant.rawCategory,
     merchant.rawMerchantType,
@@ -78,8 +79,9 @@ export function editorialScore(merchant: Merchant): number {
   );
   score += TIER_APPEAL[tier];
 
-  // 3. Qualité producteur.
-  if (merchant.isProducer || merchant.category === 'producer') {
+  // 3. Qualité producteur — JAMAIS pour un commerce hors-mission (ex. « élevage » tagué ranch,
+  //    ramené à veryLow) : un éleveur animalier ne doit pas toucher le bonus producteur.
+  if ((merchant.isProducer || merchant.category === 'producer') && tier !== 'veryLow') {
     score += W.producer;
     if (PREMIUM_PRODUCER_TERMS.some((t) => haystack.includes(t))) score += W.premiumProducer;
   }
@@ -96,4 +98,25 @@ export function editorialScore(merchant: Merchant): number {
   if (merchant.isOpenNow) score += W.openNow;
 
   return score;
+}
+
+/**
+ * Score de ranking éditorial CENTRALISÉ (nom canonique). Alias de `editorialScore` :
+ * combine catégorie prioritaire (resolveTier + mots-clés), note, review_count (confidence),
+ * présence photo, ouvert, producteur/circuit court, et pénalité mots-clés hors intention.
+ * Utilisé partout où les commerces sont triés (Accueil, Commerçants, Carte).
+ */
+export const getMerchantEditorialScore = editorialScore;
+
+/**
+ * SOURCE UNIQUE de tri éditorial YOOTOO. Trie une liste de commerces par score éditorial
+ * DÉCROISSANT (clé PRIMAIRE), tri STABLE : à score égal, l'ordre d'entrée (Discovery Engine)
+ * est conservé. Ne supprime rien (rétrograde uniquement). À utiliser partout où les commerces
+ * sont classés : Accueil, Carte et Commerçants.
+ */
+export function rankMerchantsEditorially<T extends Merchant>(merchants: readonly T[]): T[] {
+  return merchants
+    .map((m, i) => ({ m, i, s: getMerchantEditorialScore(m) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.m);
 }

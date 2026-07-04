@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 
 import {
   buildDiscoveryContext,
+  rankMerchantsEditorially,
   recommendCached,
   resolveIntent,
   trackEvent,
@@ -86,8 +87,11 @@ export function useMerchantSearch() {
     () => buildDiscoveryContext({ userLocation, intent, preferences }),
     [userLocation, intent, preferences],
   );
+  // Ranking éditorial YOOTOO en clé PRIMAIRE (helper UNIQUE, partagé Accueil/Carte/Commerçants),
+  // appliqué APRÈS le filtrage recherche/filtres. Tri STABLE : l'ordre du Discovery Engine
+  // (pertinence/intent) départage les ex æquo. Élevages/pompes funèbres/couvreurs rétrogradés.
   const results = useMemo(
-    () => recommendCached(queried, discoveryContext).map((scored) => scored.merchant),
+    () => rankMerchantsEditorially(recommendCached(queried, discoveryContext).map((s) => s.merchant)),
     [queried, discoveryContext],
   );
   const markers = useMemo(() => merchantsToMapMarkers(results), [results]);
