@@ -62,8 +62,8 @@ Mapbox, un seul composant possède la caméra.
 | Intent | union sémantique | `features/map/camera/types.ts` | Design tokens | ✅ C2 |
 | **Mood** | intention émotionnelle (pure) | `features/map/camera/mood.ts` | types | ✅ **C3** |
 | **Strategy** | **fonction pure** | `features/map/camera/strategy.ts` | Mood, tokens, geo | ✅ **C3** |
-| Scheduler | machine à états pure + horloge injectée | `features/map/camera/scheduler.ts` | Strategy, Adapter (injecté) | ⬜ C5 |
-| Adapter | seul code Mapbox | `components/map/camera/mapboxCameraAdapter.ts` | mapbox-gl | ⬜ C4 |
+| **Scheduler** | machine à états pure + horloge & driver injectés | `features/map/camera/scheduler.ts` | Strategy, ports injectés | ✅ **C5** |
+| Adapter | seul code Mapbox (implémente `CameraDriver`) | `components/map/camera/mapboxCameraAdapter.ts` | mapbox-gl | ⬜ C4 |
 | Tokens | valeurs | `design/tokens/camera.ts` | rien | ✅ C2 |
 
 Invariant : **Intent → Mood → Strategy sont purs et testables** (aucun Mapbox, aucun DOM). Seul
@@ -318,7 +318,7 @@ code avant validation de cette architecture.**
 | **PR-C2** ✅ | Tokens `design/tokens/camera.ts` + types purs (`CameraPose`, `CameraMotion`, `CameraContext`, `CameraIntent`) | unit |
 | **PR-C3** ✅ | **Mood** (`mood.ts`) + **Strategy pure** `resolveCameraPlan(intent, env) → CameraPlan\|null` + geo mercator (`geo.ts`) | unit (cœur) |
 | **PR-C4** | **Adapter Mapbox** `applyCameraPlan(driver, plan)` — seul appelant `easeTo/flyTo/jumpTo` | contrat (driver mock) |
-| **PR-C5** | **Scheduler** + machine à états (priorités, dead-zone, coalescing, gestes, interruption) — horloge & driver injectés | unit (machine) |
+| **PR-C5** ✅ | **Scheduler** + machine à états (priorités, dead-zone, coalescing, gestes, interruption, reduce-motion) — horloge & driver injectés ; port `CameraDriver` défini pour C4 | unit (machine) |
 | **PR-C6** | **Câblage** : router `initialCamera` / recenter / firstOpen / sélection via le Scheduler ; retirer les `flyTo` ad hoc | intégration + revue |
 | **PR-C7** | **Contextes fins** : nudge sheet, navigation entre commerces, retour carte, autoZoom cluster | revue |
 | **PR-C8** *(opt.)* | Modificateur territoire (si/quand la source de données est décidée — Phase 2) | unit |

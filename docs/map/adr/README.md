@@ -144,6 +144,41 @@ sauts, conflits gestes) ; une lib de caméra tierce (perte de contrôle sur le r
 
 ---
 
+## ADR-008 — Le Scheduler arbitre ; la Strategy décide ; l'Adapter reste idiot
+**Statut :** Accepté
+
+**Contexte.** La Strategy (ADR-007) sait produire un *bon* plan. Mais plusieurs sources émettent des
+plans **quasi simultanément** (recherche, sheet, sélection, GPS, retour fiche, Discovery) et
+l'utilisateur peut toucher la carte à tout instant. Sans arbitre : double animation, triple zoom,
+rebonds, et surtout la caméra qui *lutte* contre le geste — exactement ce que la règle absolue interdit.
+Une bonne caméra tient autant à ses **décisions** qu'à ses animations.
+
+**Décision.** Trois responsabilités **séparées** :
+- **Strategy** (pure) *décide quoi* : intent → `CameraPlan`. Ne sait rien de la concurrence ni du temps.
+- **Scheduler** (pur, `scheduler.ts`) *arbitre quand* : reçoit des plans et répond **maintenant /
+  plus tard / jamais**. Il porte : priorité **utilisateur absolue** (un geste interrompt tout, rien
+  ne re-part), **coalescing** (fusion des demandes rapprochées → un seul mouvement), **dead-zone**
+  (on ne lance pas un mouvement inutile), **file à une place** (le meilleur plan, pas de starvation),
+  **reduce-motion** forcé. Machine à états simple et **100 % testable** : le temps et l'exécution
+  sont **injectés** (`SchedulerTimer`, `CameraDriver`).
+- **Adapter** (C4) *exécute bêtement* : traduit un plan en `easeTo/flyTo/jumpTo`. **Aucune décision** :
+  il ne connaît ni priorité, ni file, ni gestes. Idiot par conception → interchangeable, testable via mock.
+
+Passe la règle absolue : Vision (la caméra « pense avant d'agir ») · Cognition (elle évite les
+mouvements parasites) · Performance (0 anim concurrente, dead-zone) · Identité (arbitrage = signature) ·
+Évolutivité (Scheduler indépendant du provider ; l'Adapter se remplace sans toucher l'arbitrage).
+
+**Conséquences.** La logique la plus sensible (l'arbitrage) vit dans une unité pure, testée sur les cas
+durs (préemption, fusion, starvation, interruption, anti-spam). « La meilleure animation est celle que
+le Scheduler a décidé de ne jamais lancer. » L'Adapter, resté idiot, ne peut pas introduire de dette
+de décision.
+
+**Alternatives écartées.** Fusionner arbitrage + exécution dans l'Adapter (Adapter « intelligent » →
+Mapbox difficile à mocker, logique non testable) ; mettre l'arbitrage dans la Strategy (elle devrait
+connaître le temps, la concurrence et l'état courant → plus pure).
+
+---
+
 ## ADR-000 — Template
 
 ```
