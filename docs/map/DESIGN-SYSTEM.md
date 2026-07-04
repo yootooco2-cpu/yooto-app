@@ -44,10 +44,13 @@ Principes cognitifs appliqués :
 
 ---
 
-## 4. Langage des couleurs ✅
+## 4. Langage des couleurs ✅ (implémenté)
 
-La couleur d'un commerce = sa **catégorie** (dérivée du cryptogramme, source unique de la DA).
-Objectif : reconnaître une catégorie **sans lire**. Palette mémorisable, distincte, calme.
+La couleur du **cadre** d'un marqueur (anneau + halo) = sa **catégorie**. Objectif : reconnaître
+une catégorie **sans lire**. Palette mémorisable, distincte, calme. Implémenté comme token unique :
+`src/design/tokens/mapMarkers.ts` (`MAP_COLOR_LANGUAGE`, `mapColorFor`) — `photoMarkers` ne code
+**aucune couleur en dur**. Le **badge cryptogramme** garde, lui, sa propre couleur d'identité
+(deux rôles distincts → [ADR-006](./adr/README.md)).
 
 | Catégorie | Teinte | Hex |
 |---|---|---|
@@ -67,7 +70,7 @@ sert l'**anneau**, le **halo teinté** et le **badge cryptogramme**. → [ADR-00
 
 ---
 
-## 5. États des marqueurs ✅ (4 états)
+## 5. États des marqueurs ✅ (4 états — implémenté)
 
 La **photo est le héros** (anneau = liseré fin). L'**anneau/aura raconte l'état**. Variations
 **statiques**, fixées à la création — aucune animation permanente.
@@ -86,9 +89,16 @@ Détails validés :
 - **Badge cryptogramme** conservé (identité), estompé au très fort zoom.
 - **Sélectionné = seul état à couleur fixe** (vert YOOTOO) ; **Exceptionnel = seule aura fixe** (or).
 
-Source de l'état (Discovery) — `markerState(merchant, ctx)` **pur** :
-`Exceptionnel` = tier `max` + vraie photo + note haute ; `Recommandé` = haut score éditorial ;
-`Sélectionné` = focus ; sinon `Standard`. *(Contextuel en Phase 6 : marché du samedi, etc.)*
+Chaîne implémentée (3 couches indépendantes) :
+`markerState(merchant)` **pur** (Discovery, `editorial/markerState.ts`) décide l'importance
+intrinsèque → l'adaptateur la porte sur le `MapMarker` → la feature GeoJSON → `markerVisualModel(state, cryptogramId, {selected})`
+**pur** (Map Engine, `features/map/markerVisualModel.ts`) la traduit en pixels depuis les tokens →
+`photoMarkers` **applique** (aucune décision au rendu).
+
+Règles `markerState` : hors-mission (`veryLow`/`low`) ou **sans vraie photo** → jamais promu
+(`Standard`) ; `Exceptionnel` = `max` + note ≥ 4.5 ; `Recommandé` = `max` **ou** producteur ≥ 4.0
+(`medium`) ; sinon `Standard`. `Sélectionné` est un **focus transitoire** appliqué au rendu (pas
+un état éditorial), avec **pop one-shot** au clic. *(Contextuel en Phase 6 : marché du samedi, etc.)*
 
 Référence visuelle : proxy de calibration V2.1 (living-markers).
 

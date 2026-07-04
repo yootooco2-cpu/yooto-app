@@ -1,6 +1,7 @@
 import type { GeoJSONSource, Map as MapboxMap, MapMouseEvent, Marker as MapboxMarker } from 'mapbox-gl';
 
 import { colors } from '@/design/tokens/colors';
+import type { MarkerImportance } from '@/design/tokens/mapMarkers';
 import { getMapConfig, type MapCoordinate, type MapMarker } from '@/features/map';
 import { accuracyToHaloPx } from '@/features/location/mapLocation';
 import {
@@ -153,7 +154,14 @@ export class MapClusterController {
     const points: VisibleMerchant[] = [];
     for (const f of features) {
       const props = f.properties as
-        | { id?: string; photo?: string; cryptogramId?: string; rating?: number; producer?: number }
+        | {
+            id?: string;
+            photo?: string;
+            cryptogramId?: string;
+            rating?: number;
+            producer?: number;
+            state?: MarkerImportance;
+          }
         | null;
       const id = props?.id;
       if (!id || seen.has(id)) continue;
@@ -169,6 +177,7 @@ export class MapClusterController {
         cryptogramId: (props?.cryptogramId as CryptogramId) ?? 'autres',
         rating: props?.rating ?? 0,
         producer: props?.producer ?? 0,
+        state: props?.state ?? 'standard',
       });
     }
 

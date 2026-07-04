@@ -7,6 +7,8 @@
  * ses objets via un adapter (ex. `merchantsToMapMarkers`).
  */
 
+import type { MarkerImportance } from '@/design/tokens/mapMarkers';
+
 export interface MapCoordinate {
   latitude: number;
   longitude: number;
@@ -56,6 +58,11 @@ export interface MapMarker<TData = unknown> {
   rating?: number;
   open?: boolean;
   producer?: boolean;
+  /**
+   * État éditorial INTRINSÈQUE (Design System) — pilote l'anneau/halo du marqueur.
+   * Fourni par l'adaptateur via `markerState`. La sélection est un état transitoire, à part.
+   */
+  state?: MarkerImportance;
   /** Position relative en % (0–100) pour le rendu placeholder sans provider. */
   placeholderPosition?: { x: number; y: number };
   data?: TData;

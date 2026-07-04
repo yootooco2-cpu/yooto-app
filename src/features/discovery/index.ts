@@ -11,6 +11,7 @@ export {
   rankMerchantsEditorially,
   visualQualityScore,
 } from './editorial/editorialScore';
+export { markerState, type MarkerImportance } from './editorial/markerState';
 export type { HomeSections, HomeSectionLimits, BuildHomeSectionsOptions } from './homeSections';
 export { recommendCached, contextSignature } from './cache';
 export { getRankingV2, setRankingV2 } from './flags';
