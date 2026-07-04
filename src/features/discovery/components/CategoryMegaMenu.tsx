@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -48,23 +48,59 @@ export function CategoryMegaMenu({
   const active = categories.find((c) => c.id === openId) ?? null;
   const accent = active ? cryptogramColor(active.icon) : colors.primary;
 
+  // Hover premium (web) : le menu ne se ferme QUE lorsque la souris quitte tout le bloc
+  // (barre + panneau). Un délai (~140ms) + annulation au survol (root ET panneau) évitent
+  // les fermetures accidentelles pendant la traversée bouton → sous-menu.
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpenId(null), 140);
+  }, [cancelClose]);
+  const openNow = useCallback(
+    (id: MerchantCategoryId) => {
+      cancelClose();
+      setOpenId(id);
+    },
+    [cancelClose],
+  );
+  const closeNow = useCallback(() => {
+    cancelClose();
+    setOpenId(null);
+  }, [cancelClose]);
+  useEffect(() => cancelClose, [cancelClose]);
+
   // Web : fermeture auto quand la souris quitte TOUT le bloc (barre + panneau). En RN Web,
   // `onHoverOut` suit la sémantique `mouseleave` : il ne se déclenche pas en passant sur un
   // descendant (chip → panneau) → aucun flicker, fermeture seulement à la sortie complète.
   return (
     <Pressable
       style={styles.root}
-      onHoverOut={IS_WEB ? () => setOpenId(null) : undefined}
+      onHoverIn={IS_WEB ? cancelClose : undefined}
+      onHoverOut={IS_WEB ? scheduleClose : undefined}
       focusable={false}
       accessible={false}>
       <MerchantCategoryBar
         isActive={(id) => id === openId}
-        onToggle={(id) => setOpenId((cur) => (cur === id ? null : id))}
-        onHover={(id) => setOpenId(id)}
+        onToggle={(id) => {
+          cancelClose();
+          setOpenId((cur) => (cur === id ? null : id));
+        }}
+        onHover={(id) => openNow(id)}
       />
 
       {active ? (
-        <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, shadows.md]}>
+        <Pressable
+          onHoverIn={IS_WEB ? cancelClose : undefined}
+          onHoverOut={IS_WEB ? scheduleClose : undefined}
+          focusable={false}
+          accessible={false}>
+          <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, shadows.md]}>
           <View style={styles.panelHeader}>
             <Cryptogram id={active.icon} size={30} />
             <YText variant="subtitle" style={{ color: accent }}>
@@ -79,7 +115,7 @@ export function CategoryMegaMenu({
                   key={subcategory.id}
                   onPress={() => {
                     onSelectSubcategory(active, subcategory);
-                    setOpenId(null);
+                    closeNow();
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={subcategory.label}
@@ -105,7 +141,7 @@ export function CategoryMegaMenu({
                 fullWidth
                 onPress={() => {
                   onSelectCategory(active);
-                  setOpenId(null);
+                  closeNow();
                 }}
               />
             </View>
@@ -116,12 +152,13 @@ export function CategoryMegaMenu({
                 fullWidth
                 onPress={() => {
                   onViewMap(active);
-                  setOpenId(null);
+                  closeNow();
                 }}
               />
             </View>
           </View>
-        </Animated.View>
+          </Animated.View>
+        </Pressable>
       ) : null}
     </Pressable>
   );
