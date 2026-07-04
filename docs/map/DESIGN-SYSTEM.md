@@ -147,13 +147,13 @@ Budget = **fluidité au pan/zoom** avant tout. Décisions structurantes :
 
 ## 9. Chapitres cadrés (à figer à leur phase — pas de spec inventée)
 
-### Caméra 🟡 Phase 4
-Cible : caméra **invisible** (elle anticipe, cadre, accompagne). Pitch contextuel — recherche 0°,
-exploration ~20°, commerce sélectionné ~45°. Transitions ~800 ms, courbes douces. **Le territoire
-influence la caméra** : plus basse en centre historique, plus haute en résidentiel, plus de
-perspective près des monuments.
-*Questions ouvertes* : source du « type de quartier » (land-use Mapbox vs données YOOTOO) ; coût du
-`queryRenderedFeatures` ; réconciliation avec la persistance de viewport existante.
+### Caméra 🟠 Phase 4 — architecture proposée
+Caméra **invisible** (guide silencieux). Architecture complète : **[CAMERA.md](./CAMERA.md)** —
+pipeline `Context → Intent → Strategy → Scheduler → Adapter` (la logique métier n'appelle jamais
+Mapbox), 6 niveaux de zoom, règles de pitch, machine à états, tokens, plan d'implémentation en
+petites PR. → [ADR-007](./adr/README.md). *À valider avant tout code.*
+*Questions ouvertes* : source du « type de quartier » (modificateur territoire) ; valeurs à calibrer
+sur la vraie carte ; padding sheet-aware exact.
 
 ### Apparition éditoriale au zoom 🟡 Phase 5 — **la signature**
 Au zoom, les commerces **ne surgissent pas tous ensemble** : ils apparaissent dans l'**ordre
