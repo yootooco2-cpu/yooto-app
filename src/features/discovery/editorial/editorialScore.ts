@@ -1,4 +1,4 @@
-import { getMerchantCoverPhoto } from '@/features/merchants/photos';
+import { getMerchantCoverPhoto, isRealPhotoUrl } from '@/features/merchants/photos';
 import type { Merchant } from '@/features/merchants/types';
 
 import { resolveTier, type EditorialTier } from './categoryTiers';
@@ -39,6 +39,78 @@ const TIER_APPEAL: Record<EditorialTier, number> = {
 
 // Bonus « producteur d'exception » (concern distinct du tier : sous-qualité producteur).
 const PREMIUM_PRODUCER_TERMS = ['domaine', 'vignoble', 'vigneron', 'viticulteur'] as const;
+
+// ── Qualité VISUELLE (métadonnées photos + signaux textuels — AUCUNE analyse d'image) ───────
+// Valorise une vraie identité visuelle locale/terroir (vraies photos Google, plusieurs photos,
+// vocabulaire domaine/cave/producteur…) ; réduit légèrement l'impression événementielle
+// (mariage/réception/buffet). Poids MODÉRÉS : couche #3, sous la mission (#1) et la qualité de
+// fiche (#2), au-dessus de la note Google (#4).
+const V = {
+  realPhoto: 12, // vraie photo Google (pas le fallback YOOTOO)
+  fallbackPenalty: -18, // aucune vraie photo → fallback YOOTOO
+  perExtraPhoto: 4, // par photo réelle supplémentaire
+  extraPhotoCap: 16, // plafond (≈ 4 photos en plus)
+  identityWord: 5, // par mot d'identité locale/terroir
+  identityCap: 15,
+  eventWord: -6, // par mot événementiel (réduction légère)
+  eventCap: -18,
+} as const;
+
+// Vocabulaire d'identité locale / terroir / artisanat (nom + description + tags). Bonus léger
+// → un faux positif reste bénin (jamais de suppression). Sans accents (haystack normalisé).
+const IDENTITY_TERMS = [
+  'domaine',
+  'vignoble',
+  'vigne',
+  'vigneron',
+  'cave',
+  'vin',
+  'terroir',
+  'producteur',
+  'ferme',
+  'marche',
+  'primeur',
+  'boulangerie',
+  'fromagerie',
+  'epicerie',
+  'artisan',
+  'local',
+  'circuit court',
+] as const;
+
+// Impression trop événementielle / hors-terroir → réduction légère.
+const EVENT_TERMS = [
+  'mariage',
+  'reception',
+  'evenementiel',
+  'buffet',
+  'traiteur mariage',
+  'salle de reception',
+] as const;
+
+/**
+ * Sous-score de QUALITÉ VISUELLE (métadonnées + texte uniquement — pas d'analyse d'image).
+ * Favorise les vraies photos Google, la richesse (plusieurs photos) et l'identité terroir ;
+ * pénalise l'absence/fallback et l'impression événementielle. Pur & additif. Ne supprime rien.
+ */
+export function visualQualityScore(merchant: Merchant): number {
+  const real = hasRealPhoto(merchant);
+  let score = real ? V.realPhoto : V.fallbackPenalty;
+
+  // Richesse : nb de VRAIES photos (galerie réelle + cover, ou photo_count), plafonné.
+  const galleryReal = (merchant.galleryPhotos ?? []).filter(isRealPhotoUrl).length;
+  const photos = Math.max(merchant.photoCount ?? 0, galleryReal + (real ? 1 : 0));
+  if (real && photos > 1) score += Math.min((photos - 1) * V.perExtraPhoto, V.extraPhotoCap);
+
+  // Identité locale/terroir vs événementiel (nom + description + tags).
+  const haystack = normalize(`${merchant.name} ${merchant.description} ${(merchant.tags ?? []).join(' ')}`);
+  const identity = IDENTITY_TERMS.filter((t) => haystack.includes(t)).length;
+  score += Math.min(identity * V.identityWord, V.identityCap);
+  const events = EVENT_TERMS.filter((t) => haystack.includes(t)).length;
+  score += Math.max(events * V.eventWord, V.eventCap);
+
+  return score;
+}
 
 /** Accent-insensitive, lowercased. */
 function normalize(s: string): string {
@@ -96,6 +168,10 @@ export function editorialScore(merchant: Merchant): number {
 
   // 5. Ouvert maintenant — petit bonus ; ne pénalise jamais un commerce fermé/inconnu.
   if (merchant.isOpenNow) score += W.openNow;
+
+  // 6. Qualité VISUELLE (couche #3) : vraies photos + richesse + identité terroir/local,
+  //    moins l'impression événementielle. Métadonnées + texte uniquement.
+  score += visualQualityScore(merchant);
 
   return score;
 }

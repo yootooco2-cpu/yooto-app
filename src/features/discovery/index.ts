@@ -5,7 +5,7 @@ export { rankMerchants } from './ranking';
 export { reasonsFromContributions } from './discoveryReasons';
 export { recommend, getDiscoveryReasons } from './recommendationEngine';
 export { buildHomeSections, editorialScore } from './homeSections';
-export { getMerchantEditorialScore, rankMerchantsEditorially } from './editorial/editorialScore';
+export { getMerchantEditorialScore, rankMerchantsEditorially, visualQualityScore } from './editorial/editorialScore';
 export type { HomeSections, HomeSectionLimits, BuildHomeSectionsOptions } from './homeSections';
 export { recommendCached, contextSignature } from './cache';
 export { getRankingV2, setRankingV2 } from './flags';

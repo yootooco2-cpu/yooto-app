@@ -169,6 +169,13 @@ export const MAX_TIER_TERMS: readonly string[] = [
   'amap',
   'vente directe',
   'circuit court',
+  // Marchands de vin / caves terroir souvent mal catégorisés « bar » par Google — remontés.
+  'maison de vin',
+  'cave a vin',
+  'bar a vin',
+  'cave a manger',
+  'oenologie',
+  'sommelier',
 ];
 
 export const MEDIUM_TIER_TERMS: readonly string[] = [
