@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { MapEngine, MapMerchantPreview, MerchantFocusPanel } from '@/components/map';
+import { MerchantDetail } from '@/components/merchants/MerchantDetail';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
@@ -307,8 +308,10 @@ export default function MapScreen() {
               </View>
             ) : null}
             </View>
-            {isFocus ? (
-              <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel} />
+            {isFocus && selectedMerchant ? (
+              <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel}>
+                <MerchantDetail merchant={selectedMerchant} onBack={() => setSelectedId(null)} />
+              </MerchantFocusPanel>
             ) : null}
           </View>
         )}
