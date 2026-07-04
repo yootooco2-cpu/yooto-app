@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 
 import {
   buildDiscoveryContext,
+  editorialDiversification,
   rankMerchantsEditorially,
   recommendCached,
   resolveIntent,
@@ -90,8 +91,15 @@ export function useMerchantSearch() {
   // Ranking éditorial YOOTOO en clé PRIMAIRE (helper UNIQUE, partagé Accueil/Carte/Commerçants),
   // appliqué APRÈS le filtrage recherche/filtres. Tri STABLE : l'ordre du Discovery Engine
   // (pertinence/intent) départage les ex æquo. Élevages/pompes funèbres/couvreurs rétrogradés.
+  // Ranking éditorial (moteur UNIQUE) PUIS diversification LÉGÈRE des premières cartes (Carte +
+  // Commerçants) : évite un mur d'une même famille en tête, sans remonter un commerce moins bon
+  // et sans toucher le classement profond (au-delà de la fenêtre = ordre éditorial exact).
   const results = useMemo(
-    () => rankMerchantsEditorially(recommendCached(queried, discoveryContext).map((s) => s.merchant)),
+    () =>
+      editorialDiversification(
+        rankMerchantsEditorially(recommendCached(queried, discoveryContext).map((s) => s.merchant)),
+        { window: 20 },
+      ),
     [queried, discoveryContext],
   );
   const markers = useMemo(() => merchantsToMapMarkers(results), [results]);
