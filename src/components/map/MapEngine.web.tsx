@@ -183,6 +183,17 @@ export function MapEngine({
     });
   }, [recenterToken, ready, userLocation]);
 
+  // --- Redimensionnement du conteneur (ex. split Focus desktop) : Mapbox doit recalculer sa taille ---
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      mapRef.current?.resize();
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
   if (!token) {
     return (
       <MapPlaceholder
