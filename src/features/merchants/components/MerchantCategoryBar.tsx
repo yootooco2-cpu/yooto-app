@@ -16,19 +16,20 @@ import {
 const IS_WEB = Platform.OS === 'web';
 
 interface Props {
-  active: MerchantCategoryId | null;
+  /** Prédicat d'activation — supporte mono-sélection (Accueil/Commerçants) ET multi (Carte). */
+  isActive: (id: MerchantCategoryId) => boolean;
   onToggle: (id: MerchantCategoryId) => void;
   /** Web : survol d'une catégorie (ouvre le panneau de découverte sur l'Accueil). */
   onHover?: (id: MerchantCategoryId) => void;
 }
 
 /**
- * MerchantCategoryBar — rangée horizontale de catégories PARTAGÉE (Accueil + Commerçants).
+ * MerchantCategoryBar — rangée horizontale de catégories PARTAGÉE (Accueil + Commerçants + Carte).
  * Pastilles pictogramme (cryptogramme officiel) + label. Tap = sélection/désélection ;
  * survol web (optionnel) = ouverture immédiate. Purement présentationnel : ne remonte que
  * l'id (le filtrage/panneau vit dans l'écran consommateur). Source unique de la DA.
  */
-export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
+export function MerchantCategoryBar({ isActive, onToggle, onHover }: Props) {
   return (
     <ScrollView
       horizontal
@@ -36,7 +37,7 @@ export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
       style={styles.scroll}
       contentContainerStyle={styles.row}>
       {MERCHANT_CATEGORY_FILTERS.map((cat) => {
-        const isActive = cat.id === active;
+        const active = isActive(cat.id);
         const color = cryptogramColor(cat.icon);
         return (
           <Pressable
@@ -44,11 +45,11 @@ export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
             onPress={() => onToggle(cat.id)}
             onHoverIn={IS_WEB && onHover ? () => onHover(cat.id) : undefined}
             accessibilityRole="button"
-            accessibilityState={{ selected: isActive }}
+            accessibilityState={{ selected: active }}
             accessibilityLabel={cat.label}
-            style={[styles.chip, isActive && { borderColor: color, backgroundColor: `${color}18` }]}>
+            style={[styles.chip, active && { borderColor: color, backgroundColor: `${color}18` }]}>
             <Image source={cryptogramAsset(cat.icon)} style={styles.icon} contentFit="contain" />
-            <YText variant="caption" style={[styles.label, isActive ? { color } : null]}>
+            <YText variant="caption" style={[styles.label, active ? { color } : null]}>
               {cat.label}
             </YText>
           </Pressable>

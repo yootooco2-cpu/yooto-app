@@ -56,7 +56,7 @@ export default function MerchantsScreen() {
 
       {/* Catégories principales sous la recherche (navigation guidée). */}
       <MerchantCategoryBar
-        active={activeCategory}
+        isActive={(id) => id === activeCategory}
         onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
       />
 

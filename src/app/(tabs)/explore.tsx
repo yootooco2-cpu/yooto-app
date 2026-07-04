@@ -7,7 +7,7 @@ import BottomSheet, {
 } from '@gorhom/bottom-sheet';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { LinearTransition, SlideInLeft, SlideInRight, SlideOutLeft, SlideOutRight } from 'react-native-reanimated';
 
 import { MapEngine, MapMerchantPreview, MerchantFocusPanel } from '@/components/map';
@@ -16,7 +16,6 @@ import { MerchantDetail } from '@/components/merchants/MerchantDetail';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
-import { YChip } from '@/components/ui/YChip';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
@@ -33,11 +32,13 @@ import {
   type MapViewport,
 } from '@/features/map';
 import {
-  QUICK_FILTERS,
+  merchantsToMapMarkers,
   useMerchantSearch,
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
+import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
+import { merchantCategoryById, type MerchantCategoryId } from '@/features/merchants/merchantCategoryFilters';
 
 /** Un commerce est-il dans l'emprise du viewport ? (bbox simple, France → pas d'antiméridien). */
 function inBounds(m: Merchant, v: MapViewport): boolean {
@@ -81,9 +82,13 @@ const SNAP_POINTS = ['15%', '55%', '90%'];
 
 export default function MapScreen() {
   const router = useRouter();
-  const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
-    useMerchantSearch();
+  const { query, setQuery, userLocation, results, isLoading, isError, refetch } = useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Filtre catégories de la Carte : multi-sélection (OU). Vide = tous les commerces.
+  const [selectedCategories, setSelectedCategories] = useState<MerchantCategoryId[]>([]);
+  const toggleCategory = useCallback((id: MerchantCategoryId) => {
+    setSelectedCategories((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
+  }, []);
   const sheetRef = useRef<BottomSheet>(null);
 
   // Persistance session : viewport à restaurer (lu UNE fois au montage) + setter.
@@ -114,13 +119,29 @@ export default function MapScreen() {
     [setLastViewport],
   );
 
+  // Multi-sélection catégories (OU) appliquée APRÈS la recherche texte → texte ET (cat1 OU cat2).
+  // Vide = tous. Alimente markers/clusters, compteur, liste et mini-fiche de manière cohérente.
+  const categoryResults = useMemo(() => {
+    if (selectedCategories.length === 0) return results;
+    const cats = selectedCategories
+      .map(merchantCategoryById)
+      .filter((c): c is NonNullable<typeof c> => c !== null);
+    return results.filter((m) => cats.some((c) => c.match(m)));
+  }, [results, selectedCategories]);
+  const categoryMarkers = useMemo(() => merchantsToMapMarkers(categoryResults), [categoryResults]);
+
   const merchantsInArea = useMemo(
-    () => (searchArea ? results.filter((m) => inBounds(m, searchArea)) : results),
-    [results, searchArea],
+    () => (searchArea ? categoryResults.filter((m) => inBounds(m, searchArea)) : categoryResults),
+    [categoryResults, searchArea],
   );
 
   const moved = Boolean(liveViewport && searchArea && viewportMoved(searchArea, liveViewport));
-  const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
+  const selectedMerchant = categoryResults.find((m) => m.id === selectedId) ?? null;
+
+  // Si le commerce sélectionné sort du filtre catégories, on le désélectionne (ferme mini-fiche/Focus).
+  useEffect(() => {
+    if (selectedId !== null && !categoryResults.some((m) => m.id === selectedId)) setSelectedId(null);
+  }, [selectedId, categoryResults]);
 
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
@@ -200,26 +221,8 @@ export default function MapScreen() {
         <YScreen gap="sm" padding="lg">
       <YSearchBar value={query} onChangeText={setQuery} />
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
-        contentContainerStyle={styles.filters}>
-        {QUICK_FILTERS.map((filter) => (
-          <YChip
-            key={filter.id}
-            label={filter.label}
-            active={filters.includes(filter.id)}
-            onPress={() => toggleFilter(filter.id)}
-          />
-        ))}
-      </ScrollView>
-
-      {nearbyActive && location.status === 'denied' ? (
-        <YText variant="caption" color="muted">
-          Localisation indisponible — activez-la pour trier par distance.
-        </YText>
-      ) : null}
+      {/* Catégories multi-sélectionnables (OU) — même barre que /commerçants (source unique). */}
+      <MerchantCategoryBar isActive={(id) => selectedCategories.includes(id)} onToggle={toggleCategory} />
 
       <View style={styles.mapArea}>
         {isError ? (
@@ -237,7 +240,7 @@ export default function MapScreen() {
                 → visible en < 3 s ; les marqueurs apparaissent dès que les données arrivent. */}
             <MapEngine
               fill
-              markers={markers}
+              markers={categoryMarkers}
               selectedId={selectedId}
               userLocation={userLocation}
               userAccuracy={smart.accuracy}
@@ -363,14 +366,6 @@ const styles = StyleSheet.create({
   },
   screenWrap: {
     flex: 1,
-  },
-  filtersScroll: {
-    flexGrow: 0,
-  },
-  filters: {
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
-    alignItems: 'center',
   },
   mapArea: {
     flex: 1,
