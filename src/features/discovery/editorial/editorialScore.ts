@@ -201,57 +201,65 @@ export function rankMerchantsEditorially<T extends Merchant>(merchants: readonly
 export interface DiversifyOptions {
   /** Nombre de premières cartes diversifiées (vitrine). Défaut 12. */
   window?: number;
-  /** Max de commerces consécutifs d'une même famille. Défaut 2. */
-  maxRun?: number;
-  /** Bande d'excellence : on ne brasse que les commerces à `score >= topScore - band`. Défaut 50. */
+  /** Bande d'excellence : on ne brasse que les commerces à `score >= topScore - band`. Défaut 45. */
   band?: number;
-  /** Profondeur du vivier de candidats brassés (reste = ordre éditorial exact). Défaut ~window*4. */
+  /** Profondeur du vivier de candidats brassés (reste = ordre éditorial exact). Défaut ~window*5. */
   poolSize?: number;
   /** Clé de « famille » d'un commerce. Défaut : cryptogramme (boulangerie ≠ caviste ≠ producteur…). */
   familyOf?: (m: Merchant) => string;
 }
 
 /**
- * Diversification éditoriale LÉGÈRE des premières cartes (vitrine Accueil / sections éditoriales).
- * `rankMerchantsEditorially` reste le moteur ; cette étape ne réordonne QUE la fenêtre de tête, en
- * piochant PARMI les commerces déjà excellents (dans la bande de qualité du meilleur score) → ne
- * fait JAMAIS remonter un commerce « moins bon » uniquement pour varier. Évite plus de `maxRun`
- * commerces consécutifs de la même famille QUAND une alternative excellente d'une autre famille
- * existe ; sinon conserve l'ordre (la qualité prime). Déterministe (aucun hasard). Le reste de la
- * liste garde l'ordre éditorial exact → classement profond de l'annuaire inchangé.
+ * Diversification éditoriale des premières cartes (vitrine Accueil / Carte / Commerçants).
+ * `rankMerchantsEditorially` reste le moteur ; cette étape réordonne UNIQUEMENT la fenêtre de tête
+ * en ROUND-ROBIN par famille : le meilleur commerce de CHAQUE famille d'abord, puis le 2ᵉ de chaque,
+ * etc. → variété maximale (« marché local »), jamais 2 commerces consécutifs de la même famille.
+ * On ne pioche QUE dans la bande d'excellence (score ≥ meilleur − band) → aucun commerce « moins
+ * bon » n'est remonté pour varier. Déterministe (aucun hasard). Au-delà de la fenêtre, l'ordre
+ * éditorial exact est conservé → classement profond de l'annuaire inchangé.
  */
 export function editorialDiversification<T extends Merchant>(
   ranked: readonly T[],
   opts: DiversifyOptions = {},
 ): T[] {
   const window = opts.window ?? 12;
-  const maxRun = opts.maxRun ?? 2;
-  const band = opts.band ?? 50;
-  const poolSize = opts.poolSize ?? Math.max(window * 4, window + 12);
+  const band = opts.band ?? 45;
+  const poolSize = opts.poolSize ?? Math.max(window * 5, window + 20);
   const familyOf = opts.familyOf ?? ((m) => cryptogramForMerchant(m));
-  if (ranked.length <= maxRun) return [...ranked];
+  if (ranked.length <= 1) return [...ranked];
 
   const scoreOf = new Map<string, number>();
   for (const m of ranked) scoreOf.set(m.id, getMerchantEditorialScore(m));
   const floor = (scoreOf.get(ranked[0].id) ?? 0) - band;
 
-  // Candidats brassables : dans la fenêtre `poolSize` ET dans la bande d'excellence.
+  // Vivier brassable : dans la fenêtre `poolSize` ET dans la bande d'excellence.
   const eligible = ranked.slice(0, poolSize).filter((m) => (scoreOf.get(m.id) ?? -Infinity) >= floor);
 
+  // Regroupe par famille (ordre de score préservé dans chaque famille).
+  const byFamily = new Map<string, T[]>();
+  for (const m of eligible) {
+    const key = familyOf(m);
+    const arr = byFamily.get(key);
+    if (arr) arr.push(m);
+    else byFamily.set(key, [m]);
+  }
+  // Familles ordonnées par leur MEILLEUR commerce (score décroissant) → ordre du round-robin.
+  const families = [...byFamily.values()].sort(
+    (a, b) => (scoreOf.get(b[0].id) ?? 0) - (scoreOf.get(a[0].id) ?? 0),
+  );
+
+  // Round-robin : 1 carte par famille et par tour → variété, jamais 2 mêmes familles d'affilée.
   const chosen: T[] = [];
-  const usedFam: string[] = [];
-  const pending = [...eligible]; // déjà en ordre de score décroissant
-  while (chosen.length < window && pending.length) {
-    const headFam = familyOf(pending[0]);
-    const overused = usedFam.length >= maxRun && usedFam.slice(-maxRun).every((f) => f === headFam);
-    let pick = 0;
-    if (overused) {
-      const alt = pending.findIndex((m) => familyOf(m) !== headFam);
-      if (alt >= 0) pick = alt; // pas d'alternative excellente → on garde le run (qualité prime)
+  for (let round = 0; chosen.length < window; round++) {
+    let added = false;
+    for (const list of families) {
+      if (chosen.length >= window) break;
+      if (list.length > round) {
+        chosen.push(list[round]);
+        added = true;
+      }
     }
-    const [m] = pending.splice(pick, 1);
-    chosen.push(m);
-    usedFam.push(familyOf(m));
+    if (!added) break;
   }
 
   const chosenIds = new Set(chosen.map((m) => m.id));

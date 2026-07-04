@@ -51,13 +51,12 @@ export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSections
   const limitP = opts.limits?.nearbyProducers ?? 8
   const limitD = opts.limits?.toDiscover ?? 8
 
-  // « Recommandés » : pool de pertinence (moteur) re-trié éditorialement via le helper UNIQUE.
-  // Repli sur tous les commerces si aucun contexte n'est fourni.
+  // « Recommandés » : MÊME moteur que Carte/Commerçants — ranking éditorial sur TOUT le corpus
+  // (la pertinence ne sert qu'à départager les ex æquo), PUIS diversification LÉGÈRE de la vitrine.
+  // Plus de pré-filtre `limit` (ancien pipeline parallèle qui remontait des traiteurs hors éditorial).
   const relevanceBase = opts.context
-    ? recommendCached(merchants, opts.context, { limit: Math.max(limitR * 3, 24) }).map((s) => s.merchant)
+    ? recommendCached(merchants, opts.context).map((s) => s.merchant)
     : merchants
-  // Vitrine « Recommandés » : ordre éditorial PUIS diversification LÉGÈRE des premières cartes
-  // (évite un mur de domaines viticoles) — sans jamais remonter un commerce moins bon.
   const recommendedToday = editorialDiversification(rankMerchantsEditorially(relevanceBase), {
     window: limitR,
   }).slice(0, limitR)
