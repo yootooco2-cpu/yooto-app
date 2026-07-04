@@ -40,6 +40,30 @@ const TIER_APPEAL: Record<EditorialTier, number> = {
 // Bonus « producteur d'exception » (concern distinct du tier : sous-qualité producteur).
 const PREMIUM_PRODUCER_TERMS = ['domaine', 'vignoble', 'vigneron', 'viticulteur'] as const;
 
+// Termes hors-mission NON ambigus → FORCENT le tier veryLow (override), même si la catégorie
+// brute Google fuit vers un tier élevé (ex. un « élevage » catégorisé `farm`/`ranch`). Aucun
+// commerce cœur YOOTOO n'emploie ces termes. « elevage » est traité à part (ambigu avec un
+// éleveur alimentaire) : il ne force veryLow que pour un non-producteur.
+const OFF_MISSION_TERMS = [
+  'chatterie',
+  'cattery',
+  'chenil',
+  'mastiff',
+  'animal breeding',
+  'pension canine',
+  'pension feline',
+  'pension animale',
+  'toilettage',
+  'pompes funebres',
+  'funeraire',
+  'toiture',
+  'facade',
+  'ravalement',
+  'etancheite',
+  'couvreur',
+  'froid industriel',
+] as const;
+
 /** Accent-insensitive, lowercased. */
 function normalize(s: string): string {
   return s
@@ -70,12 +94,20 @@ export function editorialScore(merchant: Merchant): number {
 
   // 2. Attrait de catégorie — SOURCE UNIQUE : resolveTier (categoryTiers). Le tier tient
   //    compte de la catégorie brute Google/YOOTOO ET des mots-clés du nom/description.
-  const tier = resolveTier(
+  let tier = resolveTier(
     merchant.rawCategory,
     merchant.rawMerchantType,
     merchant.name,
     merchant.description,
   );
+  // Garde-fou anti-contournement : un commerce mal catégorisé (ex. « Élevage EDEN » tagué
+  // `farm` → max) est ramené à veryLow dès qu'un terme hors-mission NON ambigu apparaît, ou
+  // « elevage » pour un non-producteur. Impossible à contourner par une catégorie brute.
+  const isYootooProducer = merchant.isProducer || merchant.category === 'producer';
+  const offMission =
+    OFF_MISSION_TERMS.some((t) => haystack.includes(t)) ||
+    (haystack.includes('elevage') && !isYootooProducer);
+  if (offMission) tier = 'veryLow';
   score += TIER_APPEAL[tier];
 
   // 3. Qualité producteur.
@@ -105,3 +137,16 @@ export function editorialScore(merchant: Merchant): number {
  * Utilisé partout où les commerces sont triés (Accueil, Commerçants, Carte).
  */
 export const getMerchantEditorialScore = editorialScore;
+
+/**
+ * SOURCE UNIQUE de tri éditorial YOOTOO. Trie une liste de commerces par score éditorial
+ * DÉCROISSANT (clé PRIMAIRE), tri STABLE : à score égal, l'ordre d'entrée (Discovery Engine)
+ * est conservé. Ne supprime rien (rétrograde uniquement). À utiliser partout où les commerces
+ * sont classés : Accueil, Carte et Commerçants.
+ */
+export function rankMerchantsEditorially<T extends Merchant>(merchants: readonly T[]): T[] {
+  return merchants
+    .map((m, i) => ({ m, i, s: getMerchantEditorialScore(m) }))
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.m);
+}

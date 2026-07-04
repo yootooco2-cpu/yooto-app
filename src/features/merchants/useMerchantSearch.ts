@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 
 import {
   buildDiscoveryContext,
-  getMerchantEditorialScore,
+  rankMerchantsEditorially,
   recommendCached,
   resolveIntent,
   trackEvent,
@@ -87,16 +87,13 @@ export function useMerchantSearch() {
     () => buildDiscoveryContext({ userLocation, intent, preferences }),
     [userLocation, intent, preferences],
   );
-  const results = useMemo(() => {
-    const ranked = recommendCached(queried, discoveryContext).map((scored) => scored.merchant);
-    // Ranking éditorial YOOTOO en clé PRIMAIRE : producteurs/primeurs/marchés/boulangeries/
-    // fromageries/boucheries/poissonneries devant ; élevages/couvreurs/pompes funèbres derrière.
-    // Tri STABLE : l'ordre du Discovery Engine (pertinence/intent) départage les ex æquo.
-    return ranked
-      .map((m, i) => ({ m, i, s: getMerchantEditorialScore(m) }))
-      .sort((a, b) => b.s - a.s || a.i - b.i)
-      .map((x) => x.m);
-  }, [queried, discoveryContext]);
+  // Ranking éditorial YOOTOO en clé PRIMAIRE (helper UNIQUE, partagé Accueil/Carte/Commerçants),
+  // appliqué APRÈS le filtrage recherche/filtres. Tri STABLE : l'ordre du Discovery Engine
+  // (pertinence/intent) départage les ex æquo. Élevages/pompes funèbres/couvreurs rétrogradés.
+  const results = useMemo(
+    () => rankMerchantsEditorially(recommendCached(queried, discoveryContext).map((s) => s.merchant)),
+    [queried, discoveryContext],
+  );
   const markers = useMemo(() => merchantsToMapMarkers(results), [results]);
 
   return {
