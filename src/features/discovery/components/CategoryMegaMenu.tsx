@@ -22,6 +22,8 @@ const IS_WEB = Platform.OS === 'web';
 export interface CategoryMegaMenuProps {
   /** Catégories affichées (défaut : catalogue officiel partagé avec /merchants). */
   categories?: MerchantCategoryFilter[];
+  /** Catégorie filtrée en cours (highlight persistant, en plus du survol). Ex. /merchants. */
+  selectedId?: MerchantCategoryId | null;
   /** Sous-catégorie choisie → injecte une recherche puis navigue. */
   onSelectSubcategory: (category: MerchantCategoryFilter, subcategory: CategorySubEntry) => void;
   /** « Voir les commerçants » → filtre /merchants sur la catégorie. */
@@ -43,6 +45,7 @@ export interface CategoryMegaMenuProps {
  */
 export function CategoryMegaMenu({
   categories = MERCHANT_CATEGORY_FILTERS,
+  selectedId = null,
   onSelectSubcategory,
   onSelectCategory,
   onViewMap,
@@ -81,7 +84,7 @@ export function CategoryMegaMenu({
       onPointerEnter={IS_WEB ? cancelClose : undefined}
       onPointerLeave={IS_WEB ? scheduleClose : undefined}>
       <MerchantCategoryBar
-        isActive={(id) => id === openId}
+        isActive={(id) => id === openId || id === selectedId}
         onToggle={(id) => {
           cancelClose();
           setOpenId((cur) => (cur === id ? null : id));

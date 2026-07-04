@@ -17,7 +17,7 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
-import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
+import { CategoryMegaMenu } from '@/features/discovery/components/CategoryMegaMenu';
 import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
 
 export default function MerchantsScreen() {
@@ -54,10 +54,18 @@ export default function MerchantsScreen() {
 
       <YSearchBar value={query} onChangeText={setQuery} />
 
-      {/* Catégories principales sous la recherche (navigation guidée). */}
-      <MerchantCategoryBar
-        isActive={(id) => id === activeCategory}
-        onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
+      {/* Catégories + méga-menu de sous-catégories (survol/tap) — filtrage EN PLACE de la grille. */}
+      <CategoryMegaMenu
+        selectedId={activeCategory}
+        onSelectSubcategory={(category, subcategory) => {
+          setActiveCategory(category.id);
+          setQuery(subcategory.query);
+        }}
+        onSelectCategory={(category) => {
+          setActiveCategory(category.id);
+          setQuery('');
+        }}
+        onViewMap={() => router.push('/explore')}
       />
 
       <ScrollView
