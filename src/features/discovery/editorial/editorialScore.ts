@@ -1,3 +1,4 @@
+import { cryptogramForMerchant } from '@/features/merchants/cryptograms';
 import { getMerchantCoverPhoto, isRealPhotoUrl } from '@/features/merchants/photos';
 import type { Merchant } from '@/features/merchants/types';
 
@@ -195,4 +196,64 @@ export function rankMerchantsEditorially<T extends Merchant>(merchants: readonly
     .map((m, i) => ({ m, i, s: getMerchantEditorialScore(m) }))
     .sort((a, b) => b.s - a.s || a.i - b.i)
     .map((x) => x.m);
+}
+
+export interface DiversifyOptions {
+  /** Nombre de premières cartes diversifiées (vitrine). Défaut 12. */
+  window?: number;
+  /** Max de commerces consécutifs d'une même famille. Défaut 2. */
+  maxRun?: number;
+  /** Bande d'excellence : on ne brasse que les commerces à `score >= topScore - band`. Défaut 50. */
+  band?: number;
+  /** Profondeur du vivier de candidats brassés (reste = ordre éditorial exact). Défaut ~window*4. */
+  poolSize?: number;
+  /** Clé de « famille » d'un commerce. Défaut : cryptogramme (boulangerie ≠ caviste ≠ producteur…). */
+  familyOf?: (m: Merchant) => string;
+}
+
+/**
+ * Diversification éditoriale LÉGÈRE des premières cartes (vitrine Accueil / sections éditoriales).
+ * `rankMerchantsEditorially` reste le moteur ; cette étape ne réordonne QUE la fenêtre de tête, en
+ * piochant PARMI les commerces déjà excellents (dans la bande de qualité du meilleur score) → ne
+ * fait JAMAIS remonter un commerce « moins bon » uniquement pour varier. Évite plus de `maxRun`
+ * commerces consécutifs de la même famille QUAND une alternative excellente d'une autre famille
+ * existe ; sinon conserve l'ordre (la qualité prime). Déterministe (aucun hasard). Le reste de la
+ * liste garde l'ordre éditorial exact → classement profond de l'annuaire inchangé.
+ */
+export function editorialDiversification<T extends Merchant>(
+  ranked: readonly T[],
+  opts: DiversifyOptions = {},
+): T[] {
+  const window = opts.window ?? 12;
+  const maxRun = opts.maxRun ?? 2;
+  const band = opts.band ?? 50;
+  const poolSize = opts.poolSize ?? Math.max(window * 4, window + 12);
+  const familyOf = opts.familyOf ?? ((m) => cryptogramForMerchant(m));
+  if (ranked.length <= maxRun) return [...ranked];
+
+  const scoreOf = new Map<string, number>();
+  for (const m of ranked) scoreOf.set(m.id, getMerchantEditorialScore(m));
+  const floor = (scoreOf.get(ranked[0].id) ?? 0) - band;
+
+  // Candidats brassables : dans la fenêtre `poolSize` ET dans la bande d'excellence.
+  const eligible = ranked.slice(0, poolSize).filter((m) => (scoreOf.get(m.id) ?? -Infinity) >= floor);
+
+  const chosen: T[] = [];
+  const usedFam: string[] = [];
+  const pending = [...eligible]; // déjà en ordre de score décroissant
+  while (chosen.length < window && pending.length) {
+    const headFam = familyOf(pending[0]);
+    const overused = usedFam.length >= maxRun && usedFam.slice(-maxRun).every((f) => f === headFam);
+    let pick = 0;
+    if (overused) {
+      const alt = pending.findIndex((m) => familyOf(m) !== headFam);
+      if (alt >= 0) pick = alt; // pas d'alternative excellente → on garde le run (qualité prime)
+    }
+    const [m] = pending.splice(pick, 1);
+    chosen.push(m);
+    usedFam.push(familyOf(m));
+  }
+
+  const chosenIds = new Set(chosen.map((m) => m.id));
+  return [...chosen, ...ranked.filter((m) => !chosenIds.has(m.id))];
 }

@@ -1,7 +1,7 @@
 import type { Merchant } from '@/features/merchants';
 
 import { recommendCached } from './cache';
-import { rankMerchantsEditorially } from './editorial/editorialScore';
+import { editorialDiversification, rankMerchantsEditorially } from './editorial/editorialScore';
 import type { DiscoveryContext } from './types';
 
 // homeSections — EDITORIAL ranking for the Home screen sections ONLY.
@@ -56,7 +56,11 @@ export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSections
   const relevanceBase = opts.context
     ? recommendCached(merchants, opts.context, { limit: Math.max(limitR * 3, 24) }).map((s) => s.merchant)
     : merchants
-  const recommendedToday = rankMerchantsEditorially(relevanceBase).slice(0, limitR)
+  // Vitrine « Recommandés » : ordre éditorial PUIS diversification LÉGÈRE des premières cartes
+  // (évite un mur de domaines viticoles) — sans jamais remonter un commerce moins bon.
+  const recommendedToday = editorialDiversification(rankMerchantsEditorially(relevanceBase), {
+    window: limitR,
+  }).slice(0, limitR)
 
   // « Producteurs proches » : éditorial PRIMAIRE (helper unique) ; distance en tie-break
   // (ordre d'entrée trié par distance + tri STABLE du helper).
