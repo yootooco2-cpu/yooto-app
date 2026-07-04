@@ -250,6 +250,7 @@ export default function MerchantDetailScreen() {
   const hasContact = Boolean(
     addressLines.length || phone || email || website || instagram || facebook || googleMapsUrl,
   );
+  const hasHours = Boolean(openingHours && openingHours.length > 0);
 
   const scoreStats: { label: string; value: number }[] = [];
   if (typeof merchant.localScore === 'number') scoreStats.push({ label: 'Impact local', value: merchant.localScore });
@@ -408,12 +409,29 @@ export default function MerchantDetailScreen() {
         ))}
       </YCard>
 
-      {/* Informations pratiques — carte premium à icônes */}
-      {hasContact ? (
+      {/* Informations pratiques — adresse, horaires, contact (bloc structuré unique) */}
+      {hasContact || hasHours ? (
         <YCard padding="md">
           <YText variant="subtitle">Informations pratiques</YText>
           {addressLines.length > 0 ? (
             <IconRow icon="map-pin" label="Adresse" value={addressLines.join(', ')} onPress={onDirections} />
+          ) : null}
+          {hasHours ? (
+            <View style={styles.hoursRow}>
+              <View style={styles.iconBadge}>
+                <Feather name="clock" size={15} color={colors.primary} />
+              </View>
+              <View style={styles.iconRowText}>
+                <YText variant="caption" color="muted">
+                  Horaires
+                </YText>
+                {openingHours?.map((line) => (
+                  <YText key={line} variant="caption">
+                    {line}
+                  </YText>
+                ))}
+              </View>
+            </View>
           ) : null}
           {phone ? (
             <IconRow icon="phone" label="Téléphone" value={phone} onPress={() => openUrl(`tel:${phone}`)} />
@@ -433,21 +451,6 @@ export default function MerchantDetailScreen() {
           {googleMapsUrl ? (
             <IconRow icon="map" label="Google Maps" value="Ouvrir dans Google Maps" onPress={() => openUrl(googleMapsUrl)} />
           ) : null}
-        </YCard>
-      ) : null}
-
-      {/* Horaires */}
-      {openingHours && openingHours.length > 0 ? (
-        <YCard padding="md">
-          <View style={styles.cardHeader}>
-            <Feather name="clock" size={16} color={colors.primary} />
-            <YText variant="subtitle">Horaires</YText>
-          </View>
-          {openingHours.map((line) => (
-            <YText key={line} variant="caption" color="muted">
-              {line}
-            </YText>
-          ))}
         </YCard>
       ) : null}
 
@@ -610,6 +613,12 @@ const styles = StyleSheet.create({
   iconRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  hoursRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: spacing.md,
     paddingVertical: spacing.xs,
   },
