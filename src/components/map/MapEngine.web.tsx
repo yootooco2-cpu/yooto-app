@@ -88,6 +88,9 @@ export function MapEngine({
   const centerLat = camera.center.latitude;
   const centerLng = camera.center.longitude;
   const zoom = camera.zoom;
+  // R3 — ouverture cinématique : pitch/bearing d'ouverture (0 si viewport restauré → à plat).
+  const pitch = camera.pitch ?? 0;
+  const bearing = camera.bearing ?? 0;
 
   // --- Cycle de vie : carte + contrôleur de clustering ---
   useEffect(() => {
@@ -106,6 +109,8 @@ export function MapEngine({
           style: mapStyle as string,
           center: [centerLng, centerLat],
           zoom,
+          pitch,
+          bearing,
         });
         mapRef.current = map;
 
@@ -219,7 +224,7 @@ export function MapEngine({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [token, mapStyle, centerLat, centerLng, zoom, hasRestoredCamera]);
+  }, [token, mapStyle, centerLat, centerLng, zoom, pitch, bearing, hasRestoredCamera]);
 
   // --- Données (commerces + position) : mise à jour sans recharge ---
   useEffect(() => {

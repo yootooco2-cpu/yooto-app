@@ -18,6 +18,10 @@ export interface MapCoordinate {
 export interface MapRegion {
   center: MapCoordinate;
   zoom: number;
+  /** Inclinaison d'ouverture (°) — 0 = vue de dessus. Optionnel (défaut 0). */
+  pitch?: number;
+  /** Orientation d'ouverture (°) — 0 = nord. Optionnel (défaut 0). */
+  bearing?: number;
 }
 
 /** Emprise géographique (bounding box) du viewport courant. */
