@@ -38,6 +38,8 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
+import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
+import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
 
 /** Un commerce est-il dans l'emprise du viewport ? (bbox simple, France → pas d'antiméridien). */
 function inBounds(m: Merchant, v: MapViewport): boolean {
@@ -105,10 +107,23 @@ export default function MapScreen() {
     [setLastViewport],
   );
 
-  const merchantsInArea = useMemo(
-    () => (searchArea ? results.filter((m) => inBounds(m, searchArea)) : results),
-    [results, searchArea],
+  // Catégorie principale sélectionnée : MÊME source partagée (store) que l'Accueil et
+  // /commerçants. La barre de catégories vit sous la recherche (identique aux autres écrans) ;
+  // ici elle post-filtre les marqueurs de la carte ET la liste, sans toucher useMerchantSearch.
+  const activeCategory = useMerchantSearchStore((s) => s.activeCategory);
+  const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
+  const categoryFilter = useMemo(() => merchantCategoryById(activeCategory), [activeCategory]);
+
+  // Marqueurs affichés = filtrés par catégorie (sinon tous). `data` = commerce d'origine.
+  const shownMarkers = useMemo(
+    () => (categoryFilter ? markers.filter((mk) => !!mk.data && categoryFilter.match(mk.data)) : markers),
+    [markers, categoryFilter],
   );
+
+  const merchantsInArea = useMemo(() => {
+    const base = categoryFilter ? results.filter(categoryFilter.match) : results;
+    return searchArea ? base.filter((m) => inBounds(m, searchArea)) : base;
+  }, [results, searchArea, categoryFilter]);
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
@@ -168,6 +183,13 @@ export default function MapScreen() {
         <YScreen gap="sm" padding="lg">
       <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
 
+      {/* Barre de catégories PARTAGÉE (identique à l'Accueil et à /commerçants), juste sous la
+          recherche. Tap = sélection/désélection ; pilote le store `activeCategory` commun. */}
+      <MerchantCategoryBar
+        active={activeCategory}
+        onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
+      />
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -205,7 +227,7 @@ export default function MapScreen() {
                 → visible en < 3 s ; les marqueurs apparaissent dès que les données arrivent. */}
             <MapEngine
               fill
-              markers={markers}
+              markers={shownMarkers}
               selectedId={selectedId}
               userLocation={userLocation}
               userAccuracy={smart.accuracy}
