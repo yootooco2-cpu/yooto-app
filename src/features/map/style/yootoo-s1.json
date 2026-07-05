@@ -4205,27 +4205,60 @@ false
 "type": "symbol",
 "source": "composite",
 "source-layer": "poi_label",
-"minzoom": 6,
+"minzoom": 13,
 "filter": [
+"all",
+[
 "<=",
 [
 "get",
 "filterrank"
 ],
-[
-"+",
-[
-"step",
-[
-"zoom"
-],
-0,
-16,
-1,
-17,
-2
-],
 1
+],
+[
+"!",
+[
+"match",
+[
+"get",
+"maki"
+],
+[
+"bank",
+"pharmacy",
+"fuel",
+"fast-food",
+"atm",
+"car",
+"car-rental",
+"car-repair",
+"parking",
+"parking-garage",
+"town-hall",
+"government",
+"post",
+"police",
+"fire-station",
+"hospital",
+"doctor",
+"dentist",
+"veterinary",
+"school",
+"college",
+"convenience",
+"telephone",
+"toilet",
+"charging-station",
+"bus",
+"commercial",
+"laundry",
+"hairdresser",
+"optician"
+],
+true,
+false
+]
 ]
 ],
 "layout": {
@@ -4305,10 +4338,10 @@ false
 ]
 },
 "paint": {
-"text-halo-color": "hsl(220, 0%, 100%)",
-"text-halo-width": 0.5,
-"text-halo-blur": 0.5,
-"text-color": "hsl(220, 1%, 62%)"
+"text-halo-color": "#F3EEE2",
+"text-halo-width": 1.1,
+"text-halo-blur": 0.4,
+"text-color": "#55503F"
 },
 "metadata": {
 "mapbox:featureComponent": "point-of-interest-labels",
