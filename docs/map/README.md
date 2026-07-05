@@ -78,6 +78,7 @@ contexte → décision → conséquences. On ne revient pas dessus sans un nouve
 | États des marqueurs | ✅ **Implémenté** (Cartes Vivantes V2.1) |
 | Animations · Accessibilité · Performances | ✅ Défini |
 | Caméra | 🟢 [Camera Engine](./CAMERA.md) câblé (C2–C6) — toute la caméra passe par le Spatial Engine |
+| Style de carte | 🟠 [direction artistique](./STYLE.md) + [guide Studio S1](./STYLE_S1_STUDIO.md) (à exécuter) |
 | Apparition éditoriale (zoom) | 🟡 Phase 5 — cadre + questions ouvertes |
 | Terrain · Bâtiments 3D | 🟡 Phase 2 — cadre + questions ouvertes |
 | Bottom Sheet premium | 🟡 cadre + cible |

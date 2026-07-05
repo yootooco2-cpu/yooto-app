@@ -216,10 +216,45 @@ SDK non interchangeable).
 
 ---
 
+## ADR-010 — Style de carte propriétaire : un papier chaud qui recule
+**Statut :** Proposé (direction artistique) — implémentation Studio par étapes (S1…S5)
+
+**Contexte.** Le style par défaut est `mapbox://styles/mapbox/streets-v12` : froid, saturé, saturé de
+POI, pensé pour la **navigation**. Il crie plus fort que les commerces et n'a aucune identité — une
+capture est indiscernable de Google/Mapbox. Or la carte est **la première chose vue** ; elle doit dire
+« endroit où j'ai envie d'aller » en moins d'une seconde, sans logo.
+
+**Décision.** Un **style propriétaire YOOTOO** dont le principe directeur est : **le fond recule pour
+que les marqueurs (les commerçants) soient les héros.** Concrètement :
+- **Papier chaud faiblement saturé** (crème/sable), même famille que l'app (`#F7F4EC`, `#1F7A4D`).
+- **Contrastes calibrés pour la lisibilité et le *pop* des marqueurs**, pas pour la dramaturgie du
+  fond : la seule couleur forte de la scène, ce sont les 10 teintes + l'or des marqueurs.
+- **Hiérarchie ville → quartier → rue → commerce** (jamais l'inverse) ; voirie secondaire qui
+  **s'efface** ; **POI génériques supprimés** (la carte raconte le territoire, pas la base Mapbox).
+- **Eau = repère** (teal-sauge qui guide l'œil) ; **végétation en 3 couches** (promenade/fraîcheur).
+- **Une seule lumière** (haut-gauche, chaude), cohérente avec l'ombre des marqueurs et la future 3D.
+- **Nuit = ambiance** (bleu-vert profond, tiède, rassurant), **pas** une inversion ; les commerces
+  ouverts ressortent.
+
+Passe la règle absolue : Vision (donne envie de sortir) · Cognition (calme, lisible, marqueurs
+d'abord) · Performance (moins de POI/couches = plus léger) · Identité (reconnaissable en < 1 s) ·
+Évolutivité (2D parfaite d'abord, 3D/nuit se branchent au-dessus). → [STYLE.md](../STYLE.md).
+
+**Conséquences.** Le style vit comme **artefact Mapbox Studio** (URL via `EXPO_PUBLIC_MAPBOX_STYLE_URL`,
+déjà lue par `config.ts`) → **aucun code applicatif** à changer pour le jour ; versionnable en JSON
+(S5). La saturation basse du fond est un **engagement permanent** (dans les deux modes) : toute future
+couche doit le respecter, sinon elle vole la vedette aux commerçants. **Exécution S1** : voir
+[STYLE_S1_STUDIO.md](../STYLE_S1_STUDIO.md) (couche par couche).
+
+**Alternatives écartées.** Garder Streets v12 / passer à Mapbox **Standard** (trop reconnaissables →
+« thème Mapbox », pas une identité ; Standard imposerait aussi son look 3D) ; un fond **beau et
+saturé** (rivalise avec les marqueurs, casse la hiérarchie) ; une simple **inversion** pour la nuit
+(froid, anxiogène, aucune ambiance).
+
+---
+
 ## ADR-011 — L'or est une distinction éditoriale RARE (marker state bandé par score)
 **Statut :** Accepté
-
-> ADR-010 est réservé au style de carte (branche `docs/map-style`, PR ouverte). Numéro conservé.
 
 **Contexte.** Audit du corpus réel (676 commerces, Montpellier, 2026-07) : la règle initiale
 (`exceptionnel = tier max + photo + note ≥ 4.5`) donnait **36,5 % d'or**. Une couronne portée par plus
