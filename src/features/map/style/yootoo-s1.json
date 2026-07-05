@@ -586,7 +586,28 @@
         ]
       ],
       "paint": {
-        "fill-extrusion-color": "#EAE1D0",
+        "fill-extrusion-color": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "coalesce",
+            [
+              "get",
+              "height"
+            ],
+            0
+          ],
+          3,
+          "#E3D7BF",
+          12,
+          "#EAE1D0",
+          30,
+          "#EFE7D6",
+          60,
+          "#F3ECDD"
+        ],
         "fill-extrusion-height": [
           "interpolate",
           [
