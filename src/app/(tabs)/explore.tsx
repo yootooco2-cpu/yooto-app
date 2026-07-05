@@ -5,7 +5,7 @@ import BottomSheet, {
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -125,12 +125,17 @@ export default function MapScreen() {
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
   const isDesktopWeb = useIsDesktopWeb();
+  // L'écran carte reste MONTÉ quand on change d'onglet (tabs) : sans cette garde, le Focus
+  // (qui masque la tab bar) resterait actif sur Accueil tant qu'un commerce est sélectionné.
+  const isScreenFocused = useIsFocused();
   const isFocus = useFocusStore((s) => s.isFocus);
   const setFocus = useFocusStore((s) => s.setFocus);
   useEffect(() => {
-    setFocus(isDesktopWeb && selectedId !== null);
-  }, [isDesktopWeb, selectedId, setFocus]);
-  // Filet de sécurité : quitter l'écran carte restaure la tab bar.
+    // Focus Commerce UNIQUEMENT si l'écran carte est au premier plan → dès qu'on navigue
+    // ailleurs, on relâche le Focus et la tab bar réapparaît.
+    setFocus(isScreenFocused && isDesktopWeb && selectedId !== null);
+  }, [isScreenFocused, isDesktopWeb, selectedId, setFocus]);
+  // Filet de sécurité : démontage de l'écran carte restaure la tab bar.
   useEffect(() => () => setFocus(false), [setFocus]);
 
   const onSearchHere = () => {
