@@ -9,7 +9,13 @@ import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { MapEngine, MapMerchantPreview, MerchantFocusPanel } from '@/components/map';
+import {
+  MapEngine,
+  MapMerchantPreview,
+  MapQuickAccessSheet,
+  MerchantFocusPanel,
+  type QuickAccessSection,
+} from '@/components/map';
 import { DesktopNavRail } from '@/components/layout/DesktopNavRail';
 import { MerchantDetail } from '@/components/merchants/MerchantDetail';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
@@ -40,6 +46,7 @@ import {
 } from '@/features/merchants';
 import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
 import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
+import { FavoritesList } from '@/features/favorites';
 
 /** Un commerce est-il dans l'emprise du viewport ? (bbox simple, France → pas d'antiméridien). */
 function inBounds(m: Merchant, v: MapViewport): boolean {
@@ -77,6 +84,7 @@ export default function MapScreen() {
   const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
     useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [quickAccessOpen, setQuickAccessOpen] = useState(false);
   const sheetRef = useRef<BottomSheet>(null);
 
   // Persistance session : viewport à restaurer (lu UNE fois au montage) + setter.
@@ -176,6 +184,23 @@ export default function MapScreen() {
   const count = merchantsInArea.length;
   const showEmpty = !isLoading && !isError && searchArea !== null && count === 0;
 
+  // Accès rapide — architecture À SECTIONS : V1 = « Favoris ». Ajouter « Collections »,
+  // « Récents »… = pousser une entrée ici, sans toucher ni le sheet ni le reste de l'écran.
+  const openMerchantFromQuickAccess = useCallback((id: string) => {
+    setSelectedId(id);
+    setQuickAccessOpen(false);
+  }, []);
+  const quickAccessSections = useMemo<QuickAccessSection[]>(
+    () => [
+      {
+        id: 'favorites',
+        title: 'Favoris',
+        render: () => <FavoritesList merchants={results} onSelect={openMerchantFromQuickAccess} />,
+      },
+    ],
+    [results, openMerchantFromQuickAccess],
+  );
+
   return (
     <View style={styles.root}>
       {isFocus ? <DesktopNavRail /> : null}
@@ -235,6 +260,23 @@ export default function MapScreen() {
               initialCamera={initialCamera}
               onSelectMarker={setSelectedId}
               onViewportChange={handleViewport}
+            />
+
+            {/* Accès rapide « Favoris » — FAB glass discret en haut à GAUCHE (sous la barre de
+                recherche, côté opposé au recentrage). N'entre jamais en concurrence avec la recherche. */}
+            <Pressable
+              onPress={() => setQuickAccessOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Favoris"
+              style={[styles.favFab, glass.panel, shadows.md]}>
+              <Feather name="heart" size={18} color={glass.onDark} />
+            </Pressable>
+
+            {/* Bottom sheet « Favoris » (overlay Modal, aucun impact moteur carte). */}
+            <MapQuickAccessSheet
+              open={quickAccessOpen}
+              onClose={() => setQuickAccessOpen(false)}
+              sections={quickAccessSections}
             />
 
             {/* « Me recentrer » — visible uniquement si la position est connue et hors du viewport. */}
@@ -375,10 +417,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  counterChip: {
+  // Accès rapide « Favoris » — miroir du recentrage, côté GAUCHE (le verre dépoli vient du token).
+  favFab: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.sm,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 5,
+  },
+  counterChip: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm + 52,
     backgroundColor: colors.surface,
     borderRadius: radii.pill,
     borderWidth: 1,
