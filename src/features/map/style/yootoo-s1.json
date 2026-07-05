@@ -752,7 +752,10 @@ false
 "LineString"
 ]
 ],
-"layout": {},
+"layout": {
+"line-join": "round",
+"line-cap": "round"
+},
 "paint": {
 "line-width": [
 "interpolate",
@@ -768,7 +771,7 @@ false
 18,
 4
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 10,
 0
@@ -820,7 +823,8 @@ false
 ]
 ],
 "layout": {
-"line-cap": "round"
+"line-cap": "round",
+"line-join": "round"
 },
 "paint": {
 "line-width": [
@@ -837,7 +841,7 @@ false
 18,
 4
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 10,
 0
@@ -897,7 +901,7 @@ false
 18,
 6
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 "step",
 [
@@ -939,6 +943,10 @@ false
 "metadata": {
 "mapbox:featureComponent": "walking-cycling",
 "mapbox:group": "Walking, cycling, etc., tunnels"
+},
+"layout": {
+"line-join": "round",
+"line-cap": "round"
 }
 },
 {
@@ -988,7 +996,7 @@ false
 18,
 12
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 "step",
 [
@@ -1022,6 +1030,10 @@ false
 "metadata": {
 "mapbox:featureComponent": "walking-cycling",
 "mapbox:group": "Walking, cycling, etc., tunnels"
+},
+"layout": {
+"line-join": "round",
+"line-cap": "round"
 }
 },
 {
@@ -1208,24 +1220,34 @@ false
 "trunk",
 "primary"
 ],
-"#E7DECB",
+"#E8DCC4",
 [
 "secondary",
 "tertiary"
 ],
 "#ECE4D3",
 [
+"street",
+"street_limited",
+"minor"
+],
+"#F1EBDE",
+[
 "service",
 "track",
-"link"
+"link",
+"driveway"
 ],
-"#F1EADC",
-"#EEE7D8"
+"#F2ECDF",
+"#EFE8D9"
 ]
 },
 "metadata": {
 "mapbox:featureComponent": "road-network",
 "mapbox:group": "Road network, tunnels"
+},
+"layout": {
+"line-join": "round"
 }
 },
 {
@@ -1368,15 +1390,8 @@ false
 ]
 ],
 "layout": {
-"line-join": [
-"step",
-[
-"zoom"
-],
-"miter",
-14,
-"round"
-]
+"line-join": "round",
+"line-cap": "round"
 },
 "paint": {
 "line-width": [
@@ -1393,7 +1408,7 @@ false
 18,
 4
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 10,
 0
@@ -1475,15 +1490,7 @@ false
 ],
 "layout": {
 "line-cap": "round",
-"line-join": [
-"step",
-[
-"zoom"
-],
-"miter",
-14,
-"round"
-]
+"line-join": "round"
 },
 "paint": {
 "line-width": [
@@ -1504,7 +1511,7 @@ false
 18,
 4
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 10,
 0
@@ -1553,7 +1560,8 @@ false
 ]
 ],
 "layout": {
-"line-join": "round"
+"line-join": "round",
+"line-cap": "round"
 },
 "paint": {
 "line-width": [
@@ -1572,7 +1580,7 @@ false
 18,
 6
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 "step",
 [
@@ -1670,15 +1678,8 @@ true
 ]
 ],
 "layout": {
-"line-join": [
-"step",
-[
-"zoom"
-],
-"miter",
-14,
-"round"
-]
+"line-join": "round",
+"line-cap": "round"
 },
 "paint": {
 "line-width": [
@@ -1695,7 +1696,7 @@ true
 18,
 12
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 "step",
 [
@@ -1930,15 +1931,7 @@ false
 14,
 "round"
 ],
-"line-join": [
-"step",
-[
-"zoom"
-],
-"miter",
-14,
-"round"
-]
+"line-join": "round"
 },
 "paint": {
 "line-width": [
@@ -2066,19 +2059,26 @@ false
 "trunk",
 "primary"
 ],
-"#E7DECB",
+"#E8DCC4",
 [
 "secondary",
 "tertiary"
 ],
 "#ECE4D3",
 [
+"street",
+"street_limited",
+"minor"
+],
+"#F1EBDE",
+[
 "service",
 "track",
-"link"
+"link",
+"driveway"
 ],
-"#F1EADC",
-"#EEE7D8"
+"#F2ECDF",
+"#EFE8D9"
 ]
 },
 "metadata": {
@@ -2141,7 +2141,8 @@ false
 "metadata": {
 "mapbox:featureComponent": "transit",
 "mapbox:group": "Transit, surface"
-}
+},
+"layout": {}
 },
 {
 "id": "bridge-path-trail",
@@ -2263,7 +2264,10 @@ false
 "LineString"
 ]
 ],
-"layout": {},
+"layout": {
+"line-join": "round",
+"line-cap": "round"
+},
 "paint": {
 "line-width": [
 "interpolate",
@@ -2279,7 +2283,7 @@ false
 18,
 4
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 10,
 0
@@ -2331,7 +2335,8 @@ false
 ]
 ],
 "layout": {
-"line-cap": "round"
+"line-cap": "round",
+"line-join": "round"
 },
 "paint": {
 "line-width": [
@@ -2348,7 +2353,7 @@ false
 18,
 4
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 10,
 0
@@ -2408,7 +2413,7 @@ false
 18,
 6
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 "step",
 [
@@ -2450,6 +2455,10 @@ false
 "metadata": {
 "mapbox:featureComponent": "walking-cycling",
 "mapbox:group": "Walking, cycling, etc., barriers-bridges"
+},
+"layout": {
+"line-join": "round",
+"line-cap": "round"
 }
 },
 {
@@ -2499,7 +2508,7 @@ false
 18,
 12
 ],
-"line-color": "#F1EADC",
+"line-color": "#EDE3D0",
 "line-dasharray": [
 "step",
 [
@@ -2533,6 +2542,10 @@ false
 "metadata": {
 "mapbox:featureComponent": "walking-cycling",
 "mapbox:group": "Walking, cycling, etc., barriers-bridges"
+},
+"layout": {
+"line-join": "round",
+"line-cap": "round"
 }
 },
 {
@@ -2713,7 +2726,8 @@ false
 "metadata": {
 "mapbox:featureComponent": "road-network",
 "mapbox:group": "Road network, bridges"
-}
+},
+"layout": {}
 },
 {
 "id": "bridge-simple",
@@ -2816,7 +2830,8 @@ false
 "butt",
 14,
 "round"
-]
+],
+"line-join": "round"
 },
 "paint": {
 "line-width": [
@@ -2924,19 +2939,26 @@ false
 "trunk",
 "primary"
 ],
-"#E7DECB",
+"#E8DCC4",
 [
 "secondary",
 "tertiary"
 ],
 "#ECE4D3",
 [
+"street",
+"street_limited",
+"minor"
+],
+"#F1EBDE",
+[
 "service",
 "track",
-"link"
+"link",
+"driveway"
 ],
-"#F1EADC",
-"#EEE7D8"
+"#F2ECDF",
+"#EFE8D9"
 ]
 },
 "metadata": {
@@ -2994,7 +3016,8 @@ false
 "metadata": {
 "mapbox:featureComponent": "transit",
 "mapbox:group": "Transit, bridges"
-}
+},
+"layout": {}
 },
 {
 "id": "admin-1-boundary-bg",
