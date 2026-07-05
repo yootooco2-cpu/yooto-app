@@ -95,10 +95,24 @@ intrinsèque → l'adaptateur la porte sur le `MapMarker` → la feature GeoJSON
 **pur** (Map Engine, `features/map/markerVisualModel.ts`) la traduit en pixels depuis les tokens →
 `photoMarkers` **applique** (aucune décision au rendu).
 
-Règles `markerState` : hors-mission (`veryLow`/`low`) ou **sans vraie photo** → jamais promu
-(`Standard`) ; `Exceptionnel` = `max` + note ≥ 4.5 ; `Recommandé` = `max` **ou** producteur ≥ 4.0
-(`medium`) ; sinon `Standard`. `Sélectionné` est un **focus transitoire** appliqué au rendu (pas
-un état éditorial), avec **pop one-shot** au clic. *(Contextuel en Phase 6 : marché du samedi, etc.)*
+Règles `markerState` — bandées par le **score éditorial** (source unique, ADR-003 · [ADR-011](./adr/README.md)) :
+hors-mission (`veryLow`/`low`) ou **sans vraie photo** → jamais promu (`Standard`) ; sinon
+`Exceptionnel` = score ≥ `GOLD_SCORE`, `Recommandé` = score ≥ `RECOMMENDED_SCORE`, sinon `Standard`.
+`Sélectionné` est un **focus transitoire** appliqué au rendu (pas un état éditorial), avec **pop
+one-shot** au clic. *(Contextuel en Phase 6 : marché du samedi, etc.)*
+
+**L'OR est RARE — c'est une distinction éditoriale, pas une récompense algorithmique.** Il signifie :
+*« s'il fallait vous faire découvrir UN seul lieu aujourd'hui, ce serait probablement celui-ci ».*
+La **rareté fait sa valeur** — sa couronne n'apparaît que pour la plus haute confiance de YOOTOO.
+
+Distribution réelle (audit corpus Montpellier, 676 commerces — 2026-07) : seuils calés pour
+**or ≈ 2,8 % · recommandé ≈ 15 % · standard ≈ 82 %** (un fond calme qui laisse les héros ressortir).
+*Avant calibrage, l'or touchait 36,5 % des commerces — la couronne ne distinguait plus rien.*
+
+> **Observation à traiter plus tard (non résolue ici) :** trié par score pur, le haut du classement
+> est monopolisé par les **domaines viticoles** (bonus producteur cumulés). L'or « toutes catégories »
+> demanderait une **diversité éditoriale** (dé-doublonnage par famille sur l'écran) — chantier
+> Discovery distinct, à décider depuis le terrain, pas ici.
 
 Référence visuelle : proxy de calibration V2.1 (living-markers).
 

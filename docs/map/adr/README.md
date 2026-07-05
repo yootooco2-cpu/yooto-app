@@ -216,6 +216,41 @@ SDK non interchangeable).
 
 ---
 
+## ADR-011 — L'or est une distinction éditoriale RARE (marker state bandé par score)
+**Statut :** Accepté
+
+> ADR-010 est réservé au style de carte (branche `docs/map-style`, PR ouverte). Numéro conservé.
+
+**Contexte.** Audit du corpus réel (676 commerces, Montpellier, 2026-07) : la règle initiale
+(`exceptionnel = tier max + photo + note ≥ 4.5`) donnait **36,5 % d'or**. Une couronne portée par plus
+d'un tiers des commerces **ne distingue plus rien** — l'opposé de l'ambition (« la rareté fait sa
+valeur »). Constat **sourcé par la donnée**, pas par intuition (méthode observer→comprendre→décider).
+
+**Décision.** L'importance d'un marqueur est **bandée par le score éditorial** (`getMerchantEditorialScore`,
+la source unique — ADR-003), après deux garde-fous inchangés (hors-mission → standard ; sans vraie
+photo → standard) :
+- **Exceptionnel (or)** = score ≥ `GOLD_SCORE` (146) → **≈ 2,8 %** du corpus. L'or = la **plus haute
+  confiance éditoriale** de YOOTOO (« s'il fallait vous montrer un seul lieu, ce serait celui-ci »),
+  **jamais** une récompense algorithmique. Une simple note haute ne suffit plus.
+- **Recommandé** = score ≥ `RECOMMENDED_SCORE` (120) → **≈ 15 %**.
+- **Standard** = le reste (**≈ 82 %**) : un fond calme qui laisse les héros ressortir.
+
+Passe la règle absolue : Cognition (hiérarchie enfin lisible, l'or *signifie* quelque chose) ·
+Identité (la couronne rare devient une signature) · Évolutivité (seuils = 2 constantes nommées,
+source unique) · Vision (la rareté donne envie d'aller *là*). Le **visuel** des états est inchangé
+(V2.1) : seule leur **allocation** change → « comme si ça avait toujours été ainsi ».
+
+**Conséquences.** Seuils **calibrés sur Montpellier** → à recalibrer par ville (documenté, comme les
+hex du style). **Observation non résolue** (loggée pour un futur chantier Discovery, pas traitée ici) :
+le haut du score pur est dominé par les **domaines viticoles** → l'or « toutes catégories » demandera
+une **diversité éditoriale** décidée depuis le terrain.
+
+**Alternatives écartées.** Garder la règle par note (36,5 % d'or, aucune hiérarchie) ; durcir la seule
+note à 4.9 (ne capte pas la *confiance* — nombre d'avis, profondeur de fiche) ; rendre l'or relatif
+top-N par écran (contextuel — c'est la Phase 6, plus lourd, à valider au terrain).
+
+---
+
 ## ADR-000 — Template
 
 ```
