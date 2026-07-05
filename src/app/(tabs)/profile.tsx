@@ -1,6 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { YLogo } from '@/components/brand/YLogo';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YScreen } from '@/components/ui/YScreen';
@@ -42,6 +43,9 @@ const SPACES: Space[] = [
 export default function ProfileScreen() {
   return (
     <YScreen scroll gap="lg" padding="lg">
+      {/* En-tête de marque YOOTOO */}
+      <YLogo size={34} />
+
       {/* Hero utilisateur */}
       <View style={styles.hero}>
         <View style={styles.avatar}>

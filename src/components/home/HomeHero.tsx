@@ -7,6 +7,7 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
+import { YLogo } from '@/components/brand/YLogo';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
@@ -50,6 +51,8 @@ export function HomeHero({ greeting, scrollY }: Props) {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(220)} style={[styles.content, contentStyle]}>
+        <YLogo size={38} />
+
         <YText variant="caption" color="muted">
           {greeting}
         </YText>
