@@ -10,6 +10,7 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { getMapConfig } from '@/features/map';
 import type { MapEngineProps } from '@/features/map';
+import { installEcussonTrees } from '@/features/map/prototype/ecussonTrees';
 import {
   CameraScheduler,
   resolveCameraPlan,
@@ -145,6 +146,15 @@ export function MapEngine({
         map.on('load', () => {
           if (cancelled) return;
           if (timeout) clearTimeout(timeout);
+          // PROTOTYPE (réversible, web-only) — infill végétal ancré sur l'Écusson. Installé
+          // AVANT le contrôleur → les couches de marqueurs commerces sont ajoutées après,
+          // donc au-dessus des arbres. Non bloquant (try/catch).
+          try {
+            installEcussonTrees(map);
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[YOOTOO/map] error (trees proto)', err);
+          }
           try {
             controllerRef.current = new MapClusterController(
               map,
