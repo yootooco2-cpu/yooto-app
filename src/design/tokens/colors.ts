@@ -21,7 +21,7 @@ export const colors = {
  */
 export const tabActiveColors = {
   index: '#4E5652', // Accueil — gris foncé (7.56:1)
-  explore: '#2C6AAE', // Carte — bleu Coopératives (5.56:1)
+  explore: '#1F5891', // Carte — bleu Coopératives profond (7.33:1)
   merchants: '#9C6B24', // Commerçants — ambre (4.62:1)
   'de-saison': '#627D2F', // De saison — vert olive (4.67:1)
   profile: '#2E2E2E', // Profil — noir mat (13.58:1)
