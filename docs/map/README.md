@@ -44,6 +44,10 @@ qui recule, une seule lumière, hiérarchie commerces→quartier→territoire) +
 de toute finition (Observation → Hypothèse → Modification → Résultat attendu → Vérification terrain).
 Aucun polish ne se code sur intuition.
 
+**[STYLE_S1_STUDIO.md](./STYLE_S1_STUDIO.md)** — guide Mapbox Studio couche par couche (eau, parcs,
+bâtiments, routes, labels, POI traités comme des personnages) : on n'organise pas des couleurs, on
+organise l'attention (surfaces → lignes → objets → texte). Le fond doit **disparaître**.
+
 ## La règle absolue — le filtre de toute décision
 
 Avant d'ajouter **quoi que ce soit** à la carte, la proposition passe ce filtre. Une seule
