@@ -56,7 +56,7 @@ contexte → décision → conséquences. On ne revient pas dessus sans un nouve
 | Langage des couleurs | ✅ **Implémenté** (tokens `mapMarkers.ts`) |
 | États des marqueurs | ✅ **Implémenté** (Cartes Vivantes V2.1) |
 | Animations · Accessibilité · Performances | ✅ Défini |
-| Caméra | 🟠 Phase 4 — [architecture proposée](./CAMERA.md) (à valider) |
+| Caméra | 🟢 [Camera Engine](./CAMERA.md) câblé (C2–C6) — toute la caméra passe par le Spatial Engine |
 | Apparition éditoriale (zoom) | 🟡 Phase 5 — cadre + questions ouvertes |
 | Terrain · Bâtiments 3D | 🟡 Phase 2 — cadre + questions ouvertes |
 | Bottom Sheet premium | 🟡 cadre + cible |

@@ -3,15 +3,37 @@ import { useEffect, useRef, useState } from 'react';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Map as MapboxMap } from 'mapbox-gl';
 
+import { MapboxCameraBridge } from '@/components/map/camera/mapboxCameraBridge';
 import { MapClusterController } from '@/components/map/cluster/clusterController';
 import { MapPlaceholder } from '@/components/map/MapPlaceholder';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { getMapConfig } from '@/features/map';
 import type { MapEngineProps } from '@/features/map';
+import {
+  CameraScheduler,
+  resolveCameraPlan,
+  type CameraContext,
+  type CameraIntent,
+  type SchedulerTimer,
+} from '@/features/map/camera';
 
 /** Délai de sécurité : au-delà, si la carte n'a pas chargé, on bascule en erreur (jamais infini). */
 const LOAD_TIMEOUT_MS = 7000;
+
+/** Préférence d'accessibilité — le Scheduler transforme alors tout mouvement en saut. */
+const prefersReducedMotion = (): boolean =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Horloge réelle injectée dans le Scheduler (coalescing). */
+const realTimer: SchedulerTimer = {
+  setTimer: (ms, cb) => {
+    const id = setTimeout(cb, ms);
+    return () => clearTimeout(id);
+  },
+};
 
 /**
  * Cartographic Engine — implémentation WEB (Mapbox GL JS + clustering natif).
@@ -39,13 +61,23 @@ export function MapEngine({
   const controllerRef = useRef<MapClusterController | null>(null);
   const onSelectRef = useRef(onSelectMarker);
   const onViewportRef = useRef(onViewportChange);
+  // Spatial Engine : toute la caméra passe par le Camera Engine (aucun `flyTo` direct).
+  const cameraRef = useRef<{
+    scheduler: CameraScheduler;
+    request: (intent: CameraIntent, context: CameraContext) => void;
+  } | null>(null);
+  const markersRef = useRef(markers);
+  const userLocationRef = useRef(userLocation);
+  const prevSelectedRef = useRef<string | null | undefined>(undefined);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const ready = status === 'ready';
 
-  // Garde les derniers handlers accessibles au contrôleur (sans recréer la carte).
+  // Garde les derniers handlers/données accessibles aux effets caméra (sans recréer la carte).
   useEffect(() => {
     onSelectRef.current = onSelectMarker;
     onViewportRef.current = onViewportChange;
+    markersRef.current = markers;
+    userLocationRef.current = userLocation;
   });
 
   // Caméra initiale : viewport restauré (session) s'il existe, sinon région par défaut.
@@ -117,8 +149,47 @@ export function MapEngine({
             // eslint-disable-next-line no-console
             console.error('[YOOTOO/map] error (controller init)', err);
           }
-          // `originalEvent` présent ⇒ geste utilisateur ; absent ⇒ programmatique.
-          map.on('moveend', (e: { originalEvent?: unknown }) => emitViewport(Boolean(e.originalEvent)));
+
+          // --- Spatial Engine : toute la caméra passe désormais par le Camera Engine ---
+          try {
+            const bridge = new MapboxCameraBridge(map);
+            const scheduler = new CameraScheduler(bridge, realTimer, {
+              reduceMotion: prefersReducedMotion(),
+            });
+            // Un écran émet une INTENTION ; la Strategy (pure) en fait un plan ; le Scheduler arbitre.
+            const request = (intent: CameraIntent, context: CameraContext) => {
+              const el = containerRef.current;
+              const plan = resolveCameraPlan(intent, {
+                context,
+                current: bridge.getPose(),
+                reduceMotion: prefersReducedMotion(),
+                viewport: el ? { width: el.clientWidth, height: el.clientHeight } : undefined,
+              });
+              if (plan) scheduler.submit(plan);
+            };
+            cameraRef.current = { scheduler, request };
+
+            // L'utilisateur gagne TOUJOURS : un geste réel interrompt toute caméra automatique.
+            // `originalEvent` distingue le geste (présent) de nos propres animations (absent).
+            const onGestureStart = (e: unknown) => {
+              if ((e as { originalEvent?: unknown }).originalEvent) scheduler.notifyGestureStart();
+            };
+            map.on('dragstart', onGestureStart);
+            map.on('zoomstart', onGestureStart);
+            map.on('rotatestart', onGestureStart);
+            map.on('pitchstart', onGestureStart);
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[YOOTOO/map] error (camera init)', err);
+          }
+
+          // `originalEvent` présent ⇒ geste utilisateur ; absent ⇒ programmatique (notre caméra).
+          map.on('moveend', (e: { originalEvent?: unknown }) => {
+            const userInitiated = Boolean(e.originalEvent);
+            // Fin de geste : la caméra reste où l'utilisateur l'a laissée (aucun snap-back).
+            if (userInitiated) cameraRef.current?.scheduler.notifyGestureEnd();
+            emitViewport(userInitiated);
+          });
           // On passe READY AVANT d'émettre le viewport : une erreur d'émission ne bloque jamais la carte.
           setStatus('ready');
           emitViewport(false);
@@ -142,6 +213,7 @@ export function MapEngine({
       cancelled = true;
       if (timeout) clearTimeout(timeout);
       setStatus('loading');
+      cameraRef.current = null;
       controllerRef.current?.destroy();
       controllerRef.current = null;
       mapRef.current?.remove();
@@ -155,33 +227,42 @@ export function MapEngine({
     controllerRef.current.setData(markers, userLocation, userAccuracy);
   }, [ready, markers, userLocation, userAccuracy]);
 
-  // --- Sélection : restyle sans reconstruire la carte ---
+  // --- Sélection : restyle du marqueur (sans reconstruire la carte) ---
   useEffect(() => {
     if (!ready || !controllerRef.current) return;
     controllerRef.current.setSelected(selectedId ?? null);
   }, [ready, selectedId]);
 
-  // --- Vol one-shot vers l'utilisateur au 1er fix (jamais de re-hijack ensuite) ---
+  // --- Caméra à la sélection (film 8 s : `focus`) / à la fermeture (film 30 s : `return`) ---
+  useEffect(() => {
+    if (!ready) return;
+    const cam = cameraRef.current;
+    const prev = prevSelectedRef.current;
+    prevSelectedRef.current = selectedId ?? null;
+    if (!cam) return;
+    if (selectedId) {
+      const m = markersRef.current.find((mk) => mk.id === selectedId);
+      if (m) cam.request({ kind: 'focus', target: m.coordinate }, 'merchantSelected');
+    } else if (prev) {
+      // Désélection : on retrouve son contexte (léger recul), jamais ramené ailleurs de force.
+      cam.request({ kind: 'overview' }, 'backToMap');
+    }
+  }, [ready, selectedId]);
+
+  // --- 1er fix GPS : « voici où vous êtes » (film : `follow`), une seule fois ---
   const flownToUserRef = useRef(false);
   useEffect(() => {
-    if (!ready || !userLocation || !mapRef.current || flownToUserRef.current) return;
+    if (!ready || !userLocation || flownToUserRef.current) return;
     flownToUserRef.current = true;
-    mapRef.current.flyTo({
-      center: [userLocation.longitude, userLocation.latitude],
-      zoom: 14,
-      duration: 900,
-    });
+    cameraRef.current?.request({ kind: 'focus', target: userLocation }, 'aroundMe');
   }, [ready, userLocation]);
 
   // --- Recentrage explicite (bouton « Me recentrer ») : à chaque incrément du jeton ---
   useEffect(() => {
-    if (!ready || !recenterToken || !userLocation || !mapRef.current) return;
-    mapRef.current.flyTo({
-      center: [userLocation.longitude, userLocation.latitude],
-      zoom: 15,
-      duration: 700,
-    });
-  }, [recenterToken, ready, userLocation]);
+    if (!ready || !recenterToken) return;
+    const loc = userLocationRef.current;
+    if (loc) cameraRef.current?.request({ kind: 'focus', target: loc }, 'recenter');
+  }, [recenterToken, ready]);
 
   // --- Redimensionnement du conteneur (ex. split Focus desktop) : Mapbox doit recalculer sa taille ---
   useEffect(() => {
