@@ -4489,8 +4489,6 @@ false
 "text-max-width": 7,
 "text-padding": 3,
 "text-size": [
-"*",
-[
 "interpolate",
 [
 "cubic-bezier",
@@ -4504,6 +4502,8 @@ false
 ],
 11,
 [
+"*",
+[
 "match",
 [
 "get",
@@ -4513,7 +4513,11 @@ false
 11,
 10.5
 ],
+1.1
+],
 15,
+[
+"*",
 [
 "match",
 [
@@ -4523,9 +4527,9 @@ false
 "suburb",
 15,
 14
-]
 ],
 1.1
+]
 ]
 },
 "maxzoom": 15,
