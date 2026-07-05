@@ -696,7 +696,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 0%, 87%)",
+"line-color": "#E9E1D0",
 "line-dasharray": [
 10,
 0
@@ -768,7 +768,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 0%, 87%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 10,
 0
@@ -837,7 +837,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 0%, 87%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 10,
 0
@@ -897,7 +897,7 @@ false
 18,
 6
 ],
-"line-color": "hsl(220, 0%, 87%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 "step",
 [
@@ -988,7 +988,7 @@ false
 18,
 12
 ],
-"line-color": "hsl(220, 0%, 87%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 "step",
 [
@@ -1197,7 +1197,31 @@ false
 72
 ]
 ],
-"line-color": "hsl(220, 1%, 100%)"
+"line-color": [
+"match",
+[
+"get",
+"class"
+],
+[
+"motorway",
+"trunk",
+"primary"
+],
+"#E7DECB",
+[
+"secondary",
+"tertiary"
+],
+"#ECE4D3",
+[
+"service",
+"track",
+"link"
+],
+"#F1EADC",
+"#EEE7D8"
+]
 },
 "metadata": {
 "mapbox:featureComponent": "road-network",
@@ -1282,7 +1306,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#E9E1D0",
 "line-dasharray": [
 10,
 0
@@ -1369,7 +1393,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 10,
 0
@@ -1480,7 +1504,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 10,
 0
@@ -1548,7 +1572,7 @@ false
 18,
 6
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 "step",
 [
@@ -1671,7 +1695,7 @@ true
 18,
 12
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 "step",
 [
@@ -2031,7 +2055,31 @@ false
 60
 ]
 ],
-"line-color": "hsl(220, 1%, 100%)"
+"line-color": [
+"match",
+[
+"get",
+"class"
+],
+[
+"motorway",
+"trunk",
+"primary"
+],
+"#E7DECB",
+[
+"secondary",
+"tertiary"
+],
+"#ECE4D3",
+[
+"service",
+"track",
+"link"
+],
+"#F1EADC",
+"#EEE7D8"
+]
 },
 "metadata": {
 "mapbox:featureComponent": "road-network",
@@ -2074,19 +2122,7 @@ false
 ]
 ],
 "paint": {
-"line-color": [
-"interpolate",
-[
-"linear"
-],
-[
-"zoom"
-],
-13,
-"hsl(220, 0%, 93%)",
-17,
-"hsl(220, 0%, 87%)"
-],
+"line-color": "#E9E1D0",
 "line-width": [
 "interpolate",
 [
@@ -2171,7 +2207,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#E9E1D0",
 "line-dasharray": [
 10,
 0
@@ -2243,7 +2279,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 10,
 0
@@ -2312,7 +2348,7 @@ false
 18,
 4
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 10,
 0
@@ -2372,7 +2408,7 @@ false
 18,
 6
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 "step",
 [
@@ -2463,7 +2499,7 @@ false
 18,
 12
 ],
-"line-color": "hsl(220, 1%, 100%)",
+"line-color": "#F1EADC",
 "line-dasharray": [
 "step",
 [
@@ -2672,7 +2708,7 @@ false
 96
 ]
 ],
-"line-color": "hsl(220, 1%, 97%)"
+"line-color": "#F3EEE2"
 },
 "metadata": {
 "mapbox:featureComponent": "road-network",
@@ -2877,7 +2913,31 @@ false
 72
 ]
 ],
-"line-color": "hsl(220, 1%, 100%)"
+"line-color": [
+"match",
+[
+"get",
+"class"
+],
+[
+"motorway",
+"trunk",
+"primary"
+],
+"#E7DECB",
+[
+"secondary",
+"tertiary"
+],
+"#ECE4D3",
+[
+"service",
+"track",
+"link"
+],
+"#F1EADC",
+"#EEE7D8"
+]
 },
 "metadata": {
 "mapbox:featureComponent": "road-network",
@@ -2915,7 +2975,7 @@ false
 ]
 ],
 "paint": {
-"line-color": "hsl(220, 0%, 87%)",
+"line-color": "#E9E1D0",
 "line-width": [
 "interpolate",
 [
