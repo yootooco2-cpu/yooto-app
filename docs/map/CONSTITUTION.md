@@ -18,7 +18,40 @@ d'aller ».
 
 ---
 
-## 1. Les émotions recherchées (classées)
+## 0. Les trois niveaux (l'architecture de cette Constitution)
+
+> **Nous ne construisons pas une carte Mapbox. Nous construisons une expérience YOOTOO.**
+> Mapbox est *aujourd'hui* le moyen de l'exprimer — pas la définition de ce que nous sommes.
+
+Cette Constitution est **indépendante de la technologie**. Si demain nous passons à MapLibre, Cesium,
+Unreal, Apple Maps ou un moteur qui n'existe pas encore, **elle reste valable sans être réécrite** :
+seul le Niveau 3 change.
+
+| Niveau | Ce qu'il définit | Rythme de changement | Chapitres |
+|---|---|---|---|
+| **Niveau 1 — Vision** | émotions · valeurs · expérience · principes **immuables** | **ne change jamais** (amendement solennel) | §1, §8, §9 + le « immuable » de §7 |
+| **Niveau 2 — Design System** | règles artistiques : lumière · volumes · couleurs · atmosphère · composition · hiérarchie · immersion · réalisme | **évolue lentement** (justifié terrain) | §2, §3, §5, §6 + l'« évolutif » de §7 |
+| **Niveau 3 — Implémentation** | le moteur du jour : Mapbox/shaders/assets/JSON/modèles 3D/animations/optimisations | **évolue en continu** | §4 |
+
+### La règle de préséance (absolue)
+> **Niveau 1 prime sur Niveau 2. Niveau 2 prime sur Niveau 3.**
+
+- Une contrainte technique (N3) ne justifie **jamais** de trahir une règle artistique (N2), et encore
+  moins une émotion (N1). Si le moteur ne sait pas faire → on **simule, on stylise, ou on assume** — on
+  ne renonce pas à l'expérience.
+- Inversement, aucune prouesse technique (N3) n'a de valeur si elle ne sert pas une règle artistique
+  (N2) qui elle-même sert une émotion (N1). *Le waouh gratuit est interdit par construction.*
+- N1 est **agnostique** de toute technologie et de tout style. N2 est agnostique du moteur (il parle
+  lumière/volume/couleur, pas `fill-extrusion`). N3 est le **seul** endroit où un nom de produit apparaît.
+
+### Gouvernance — chaque PR cite ses articles
+Toute PR touchant la carte doit **indiquer explicitement quels articles de la Constitution elle met en
+œuvre** (ex. *« implémente N1 §1 (immersion), via N2 §2-Lumière, N2 §6 ; N3 : lumière v3 »*). Une PR qui
+ne peut citer aucun article de Niveau 1 ou 2 n'a pas sa place (c'est du gadget — voir §8).
+
+---
+
+## 1. [Niveau 1 · Vision] Les émotions recherchées (classées)
 
 À l'ouverture, dans l'ordre d'importance. Elles sont un **escalier** : chacune rend la suivante possible.
 
@@ -42,7 +75,7 @@ que les instruments ; l'envie de sortir est la symphonie.
 
 ---
 
-## 2. Les grands piliers visuels
+## 2. [Niveau 2 · Design System] Les grands piliers visuels
 
 ### Lumière — *le pilier n°1*
 Une **seule** source, **chaude**, cohérente sur toute la carte (« heure dorée » douce). Elle raconte
@@ -102,7 +135,7 @@ défaut : surfaces mates, propres. Le grain vient de la **lumière et des ombres
 
 ---
 
-## 3. Les règles de composition
+## 3. [Niveau 2 · Design System] Les règles de composition
 
 - **Où va le regard :** 1) le commerce (marqueur, surtout l'or) → 2) le quartier → 3) le territoire.
   **Jamais l'inverse.** Le premier objet fort rencontré doit être **un commerce**.
@@ -117,9 +150,14 @@ défaut : surfaces mates, propres. Le grain vient de la **lumière et des ombres
 
 ---
 
-## 4. Les règles Mapbox (les vraies limites techniques)
+## 4. [Niveau 3 · Implémentation] Les règles du moteur *(instantané — remplaçable)*
 
-Pour ne jamais promettre ce que le moteur ne tient pas. Cible : **Mapbox GL JS v3**.
+> **Ce chapitre est le SEUL lié à une technologie.** Il décrit le moteur du jour et **change en
+> continu**. Le remplacer (MapLibre, Cesium, Unreal, Apple Maps…) **ne touche ni le Niveau 1 ni le
+> Niveau 2** : on réécrit uniquement ce tableau. Ce qui suit ne définit **pas** l'expérience — il dit
+> seulement *comment* l'exprimer aujourd'hui.
+
+Pour ne jamais promettre ce que le moteur ne tient pas. Cible actuelle : **Mapbox GL JS v3**.
 
 | Élément | Statut technique |
 |---|---|
@@ -145,7 +183,7 @@ Les 20 % impossibles (rendu photo) ne sont **pas** ce qui crée l'émotion → o
 
 ---
 
-## 5. Les règles de réalisme
+## 5. [Niveau 2 · Design System] Les règles de réalisme
 
 > **On ne veut pas une carte photoréaliste. On veut une carte crédible.** C'est essentiel.
 
@@ -165,7 +203,7 @@ Le test : *« on dirait une maquette » = perdu ; « j'ai reconnu ma ville » = 
 
 ---
 
-## 6. Les règles d'immersion (le 20/80 du waouh)
+## 6. [Niveau 2 · Design System] Les règles d'immersion (le 20/80 du waouh)
 
 Le waouh ne vient **pas** de la richesse. Il vient de **quelques ingrédients justes** :
 
@@ -185,7 +223,10 @@ chargée → rejeté. **L'immersion se gagne par la lumière, pas par le nombre 
 
 ---
 
-## 7. Les règles d'évolution (tenir des années)
+## 7. [Niveaux 1→3] Les règles d'évolution (tenir des années)
+
+> Ce chapitre **traverse les trois niveaux** : l'« immuable » est Niveau 1, l'« évolutif » est
+> Niveau 2, les leviers techniques (presets, LOD…) sont Niveau 3.
 
 ### Immuable (ne change jamais sans un amendement à cette constitution)
 - Les commerces sont les **héros** ; le fond recule.
@@ -217,7 +258,7 @@ le samedi matin, café le matin, terrasse le soir.
 
 ---
 
-## 8. Les anti-règles (ce que YOOTOO ne doit JAMAIS devenir)
+## 8. [Niveau 1 · Vision] Les anti-règles (ce que YOOTOO ne doit JAMAIS devenir)
 
 - ❌ **Un clone Google Maps** — optimisé navigation, froid, encyclopédique.
 - ❌ **Un clone Apple Plans** — beau mais générique, sans point de vue éditorial.
@@ -235,7 +276,7 @@ il a envie d'aller — on a échoué.*
 
 ---
 
-## 9. Le manifeste (une page)
+## 9. [Niveau 1 · Vision] Le manifeste (une page)
 
 > **La carte YOOTOO.**
 >
@@ -261,5 +302,7 @@ il a envie d'aller — on a échoué.*
 
 ---
 
-*Cette constitution prime sur toute implémentation. Le style Mapbox (`yootoo-s1.json`) la sert ; il ne
-la définit pas. Tout amendement doit être délibéré et tracé.*
+*Préséance : **Niveau 1 (Vision) > Niveau 2 (Design System) > Niveau 3 (Implémentation).** Le style
+`yootoo-s1.json` est du Niveau 3 : il **sert** la Constitution, il ne la définit pas, et il est
+remplaçable sans réécrire les Niveaux 1 et 2. Tout amendement au Niveau 1 est solennel ; au Niveau 2,
+délibéré et tracé ; au Niveau 3, libre tant qu'il sert les niveaux supérieurs. Chaque PR cite ses articles.*
