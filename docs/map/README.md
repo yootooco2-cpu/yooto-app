@@ -37,6 +37,13 @@ Le développement est **suspendu** : toute feature devra désormais citer une de
 observation terrain, [Journal des Moments YOOTOO](../product/YOOTOO_MOMENTS.md), ou test utilisateur.
 Chaîne imposée : **observer → comprendre → décider → développer** (on ne saute plus d'étape).
 
+## Le langage visuel définitif
+
+**[VISUAL_LANGUAGE.md](./VISUAL_LANGUAGE.md)** — l'identité visuelle *figée* (4 états, or rare, fond
+qui recule, une seule lumière, hiérarchie commerces→quartier→territoire) + le **protocole MESURE**
+de toute finition (Observation → Hypothèse → Modification → Résultat attendu → Vérification terrain).
+Aucun polish ne se code sur intuition.
+
 ## La règle absolue — le filtre de toute décision
 
 Avant d'ajouter **quoi que ce soit** à la carte, la proposition passe ce filtre. Une seule
