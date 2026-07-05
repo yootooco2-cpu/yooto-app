@@ -21,6 +21,12 @@ Elles restent **découplées** : le Design System ne connaît pas Mapbox ; le Ma
 connaît pas le ranking ; le Discovery Engine ne connaît ni Mapbox ni le DOM. Voir
 [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+## Le film de l'exploration
+
+Ce que l'utilisateur **vit** dans les 30 premières secondes : **[FIRST_30_SECONDS.md](./FIRST_30_SECONDS.md)**
+— référence produit. Toute feature future doit respecter cette mise en scène (identifier un commerce,
+un lieu, une envie de sortir, une qualité, une confiance — sans avoir cherché).
+
 ## La règle absolue — le filtre de toute décision
 
 Avant d'ajouter **quoi que ce soit** à la carte, la proposition passe ce filtre. Une seule
