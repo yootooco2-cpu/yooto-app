@@ -58,7 +58,7 @@ Mapbox, un seul composant possède la caméra.
 
 | Couche | Nature | Emplacement | Dépend de | Statut |
 |---|---|---|---|---|
-| Context | énumération + dérivation | `features/map/camera/types.ts` | rien | 🟡 câblage C6 |
+| Context | dérivé des événements écran | `MapEngine.web.tsx` (câblage) | rien | ✅ **C6** |
 | Intent | union sémantique | `features/map/camera/types.ts` | Design tokens | ✅ C2 |
 | **Mood** | intention émotionnelle (pure) | `features/map/camera/mood.ts` | types | ✅ **C3** |
 | **Strategy** | **fonction pure** | `features/map/camera/strategy.ts` | Mood, tokens, geo | ✅ **C3** |
@@ -319,7 +319,7 @@ code avant validation de cette architecture.**
 | **PR-C3** ✅ | **Mood** (`mood.ts`) + **Strategy pure** `resolveCameraPlan(intent, env) → CameraPlan\|null` + geo mercator (`geo.ts`) | unit (cœur) |
 | **PR-C4** ✅ | **Rendering Bridge** `MapboxCameraBridge` (implémente `CameraDriver` : `jump/ease/fly/stop/getPose`) — seul appelant `easeTo/flyTo/jumpTo` ; traductions pures + capacités | contrat (driver mock) |
 | **PR-C5** ✅ | **Scheduler** + machine à états (priorités, dead-zone, coalescing, gestes, interruption, reduce-motion) — horloge & driver injectés ; port `CameraDriver` défini pour C4 | unit (machine) |
-| **PR-C6** | **Câblage** : router `initialCamera` / recenter / firstOpen / sélection via le Scheduler ; retirer les `flyTo` ad hoc | intégration + revue |
+| **PR-C6** ✅ | **Câblage** : Bridge + Scheduler dans `MapEngine.web` ; sélection→`focus`, fermeture→`return`, GPS→`follow`, recentrage→`follow`, gestes→interruption ; **3 `flyTo` ad hoc retirés** | intégration + revue visuelle |
 | **PR-C7** | **Contextes fins** : nudge sheet, navigation entre commerces, retour carte, autoZoom cluster | revue |
 | **PR-C8** *(opt.)* | Modificateur territoire (si/quand la source de données est décidée — Phase 2) | unit |
 
