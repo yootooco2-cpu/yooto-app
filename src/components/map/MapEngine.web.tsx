@@ -10,6 +10,7 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { getMapConfig } from '@/features/map';
 import type { MapEngineProps } from '@/features/map';
+import { installVegetationScatter } from '@/features/map/prototype/vegetationScatter';
 import {
   CameraScheduler,
   resolveCameraPlan,
@@ -145,6 +146,15 @@ export function MapEngine({
         map.on('load', () => {
           if (cancelled) return;
           if (timeout) clearTimeout(timeout);
+          // PROTOTYPE (réversible, web-only) — végétation NATIONALE : arbres 2.5D dérivés au
+          // runtime des polygones de végétation réels des tuiles (France entière), jamais hors
+          // zones vertes. Installé AVANT le contrôleur → marqueurs commerces au-dessus. Non bloquant.
+          try {
+            installVegetationScatter(map);
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.error('[YOOTOO/map] error (veg scatter proto)', err);
+          }
           try {
             controllerRef.current = new MapClusterController(
               map,

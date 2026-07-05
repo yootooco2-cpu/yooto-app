@@ -3409,8 +3409,8 @@
           1
         ],
         "fill-extrusion-vertical-gradient": true,
-        "fill-extrusion-ambient-occlusion-intensity": 0.38,
-        "fill-extrusion-ambient-occlusion-radius": 3.0
+        "fill-extrusion-ambient-occlusion-intensity": 0.46,
+        "fill-extrusion-ambient-occlusion-radius": 3.5
       }
     },
     {
@@ -5824,10 +5824,10 @@
       "type": "directional",
       "properties": {
         "color": "#FFE7C2",
-        "intensity": 0.6,
+        "intensity": 0.66,
         "direction": [
           315,
-          62
+          66
         ],
         "cast-shadows": true,
         "shadow-intensity": [
@@ -5838,10 +5838,10 @@
           [
             "zoom"
           ],
-          15.8,
+          15.0,
           0,
-          16.4,
-          0.3
+          15.5,
+          0.44
         ]
       }
     }

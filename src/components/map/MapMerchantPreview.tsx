@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -13,6 +13,7 @@ import { spacing } from '@/design/tokens/spacing';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
 import { buildDirectionsUrl } from '@/features/merchants/directions';
 import { formatRatingFr, starFill } from '@/features/merchants/reviews';
+import { useFavoritesStore, useIsFavorite } from '@/features/favorites';
 
 type FeatherName = ComponentProps<typeof Feather>['name'];
 
@@ -60,8 +61,9 @@ function CompactAction({
  * actions rapides) sans dupliquer son code : réutilise les primitives partagées.
  */
 export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }: Props) {
-  // Favori : état visuel local (non persisté — cohérent avec la fiche complète).
-  const [saved, setSaved] = useState(false);
+  // Favori : source de vérité partagée (store Favoris) → alimente la sheet « Favoris » de la carte.
+  const saved = useIsFavorite(merchant.id);
+  const toggleFavorite = useFavoritesStore((s) => s.toggle);
 
   const categoryLine = [CATEGORY_LABELS[merchant.category], merchant.city].filter(Boolean).join(' • ');
   const stars = ((): string => {
@@ -138,10 +140,10 @@ export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }:
           <CompactAction icon="phone" label="Appeler" onPress={() => openUrl(`tel:${merchant.phone}`)} />
         ) : null}
         <CompactAction
-          icon={saved ? 'check' : 'bookmark'}
-          label={saved ? 'Enregistré' : 'Enregistrer'}
+          icon="heart"
+          label={saved ? 'Favori' : 'Favoris'}
           active={saved}
-          onPress={() => setSaved((v) => !v)}
+          onPress={() => toggleFavorite(merchant.id)}
         />
       </View>
 
