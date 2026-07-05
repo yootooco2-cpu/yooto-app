@@ -27,6 +27,12 @@ Ce que l'utilisateur **vit** dans les 30 premières secondes : **[FIRST_30_SECON
 — référence produit. Toute feature future doit respecter cette mise en scène (identifier un commerce,
 un lieu, une envie de sortir, une qualité, une confiance — sans avoir cherché).
 
+## Marcher avec la carte
+
+**[FIELD_OBSERVATION.md](./FIELD_OBSERVATION.md)** — protocole d'observation terrain (12 scénarios,
+grille de notation, feuille de session). Phase d'observation : **on n'ajoute rien**, on marche, on
+note. Toute future amélioration devra citer une ligne observée ici.
+
 ## La règle absolue — le filtre de toute décision
 
 Avant d'ajouter **quoi que ce soit** à la carte, la proposition passe ce filtre. Une seule
