@@ -5437,7 +5437,20 @@ false
 315,
 62
 ],
-"cast-shadows": false
+"cast-shadows": true,
+"shadow-intensity": [
+"interpolate",
+[
+"linear"
+],
+[
+"zoom"
+],
+15.8,
+0,
+16.4,
+0.3
+]
 }
 }
 ]
