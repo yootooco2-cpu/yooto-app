@@ -33,7 +33,10 @@ export const PHOTO_MARKER_CAP = 60;
  *  - >= ZOOM_HIDE_CRYPTOGRAMS_CLOSE : très proche → le cryptogramme devient discret (fondu).
  */
 export const ZOOM_SHOW_PHOTO_MARKERS = 9; // >= : commerces (photos) visibles dès le niveau ville
-export const ZOOM_HIDE_CRYPTOGRAMS_CLOSE = 16; // >= : très proche → cryptogramme discret/masqué
+// >= : SEULEMENT au zoom extrême le cryptogramme s'efface (laisse respirer la photo). Relevé de
+// 16 → 18.5 : le badge catégorie reste visible sur toute la plage utile (ouverture 15.4 + zoom
+// d'exploration), au lieu de disparaître dès qu'on s'approche un peu.
+export const ZOOM_HIDE_CRYPTOGRAMS_CLOSE = 18.5;
 
 /** Agrégats calculés par cluster (ex. proportion de producteurs → couleur catégorie). */
 export const CLUSTER_PROPERTIES = {
