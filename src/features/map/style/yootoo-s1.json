@@ -93,6 +93,51 @@
       }
     },
     {
+      "id": "landcover",
+      "type": "fill",
+      "source": "composite",
+      "source-layer": "landcover",
+      "maxzoom": 17,
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "class"
+          ],
+          "wood",
+          "#B2C393",
+          "scrub",
+          "#C6C89A",
+          "grass",
+          "#CCD6A6",
+          "crop",
+          "#D6D0A6",
+          "#C7D1A4"
+        ],
+        "fill-antialias": false,
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.22,
+          11,
+          0.34,
+          14,
+          0.3,
+          16,
+          0.2,
+          17,
+          0.12
+        ]
+      }
+    },
+    {
       "id": "landuse",
       "type": "fill",
       "source": "composite",
