@@ -88,9 +88,11 @@ export function MapEngine({
   const centerLat = camera.center.latitude;
   const centerLng = camera.center.longitude;
   const zoom = camera.zoom;
-  // R3 — ouverture cinématique : pitch/bearing d'ouverture (0 si viewport restauré → à plat).
-  const pitch = camera.pitch ?? 0;
-  const bearing = camera.bearing ?? 0;
+  // R3 — ouverture cinématique : on garde TOUJOURS la vue oblique d'ouverture (un peu
+  // d'horizon = meilleur repérage). Un viewport restauré ne porte pas de pitch → on retombe
+  // sur le pitch/bearing du DEFAULT_REGION plutôt qu'à plat (« vue satellite »).
+  const pitch = camera.pitch ?? defaultRegion.pitch ?? 0;
+  const bearing = camera.bearing ?? defaultRegion.bearing ?? 0;
 
   // --- Cycle de vie : carte + contrôleur de clustering ---
   useEffect(() => {

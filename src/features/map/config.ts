@@ -14,15 +14,16 @@ import type { MapRegion } from './types';
 
 /**
  * Ouverture par défaut YOOTOO (R3 — caméra cinématique) : atterrissage ÉDITORIAL sur le cœur de
- * Montpellier (Écusson / Comédie), en vue **oblique** (pitch 50°) à un zoom « quartier proche »
+ * Montpellier (Écusson / Comédie), en vue **oblique** (pitch 58°) à un zoom « quartier proche »
  * (15.4). Objectif : une première impression immersive et premium dès la première seconde — la
  * ville 3D éclairée (lumière R1 + AO R2a + ombres R2b), pas une vue de dessus plate.
- * Sert aussi de repli de cadrage. Les utilisateurs de retour gardent leur viewport restauré (à plat).
+ * Sert aussi de repli de pitch : un viewport restauré (center + zoom) rouvre à cette inclinaison
+ * plutôt qu'à plat → un peu d'horizon reste toujours visible (meilleur repérage).
  */
 const DEFAULT_REGION: MapRegion = {
   center: { latitude: 43.6108, longitude: 3.8767 },
   zoom: 15.4,
-  pitch: 50,
+  pitch: 58,
   bearing: 0,
 };
 
