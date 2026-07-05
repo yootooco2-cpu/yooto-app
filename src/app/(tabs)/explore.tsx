@@ -5,7 +5,7 @@ import BottomSheet, {
   BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
@@ -25,7 +25,7 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { useFocusStore, useIsDesktopWeb } from '@/features/layout';
-import { LocationPrompt, useSmartLocation } from '@/features/location';
+import { useSmartLocation } from '@/features/location';
 import {
   isPlausibleViewport,
   useMapViewportStore,
@@ -50,15 +50,6 @@ function inBounds(m: Merchant, v: MapViewport): boolean {
 function coordInViewport(c: MapCoordinate, v: MapViewport): boolean {
   const { west, south, east, north } = v.bounds;
   return c.longitude >= west && c.longitude <= east && c.latitude >= south && c.latitude <= north;
-}
-
-/** La carte a-t-elle « assez bougé » depuis la zone validée pour proposer une re-recherche ? */
-function viewportMoved(area: MapViewport, live: MapViewport): boolean {
-  const dLng = Math.abs(live.center.longitude - area.center.longitude);
-  const dLat = Math.abs(live.center.latitude - area.center.latitude);
-  const w = area.bounds.east - area.bounds.west;
-  const h = area.bounds.north - area.bounds.south;
-  return Math.abs(live.zoom - area.zoom) > 0.4 || dLng > w * 0.35 || dLat > h * 0.35;
 }
 
 /** Égalité stricte de viewport → permet des `setState` IDEMPOTENTS (aucune boucle de rendu). */
@@ -98,7 +89,7 @@ export default function MapScreen() {
   const [liveViewport, setLiveViewport] = useState<MapViewport | null>(null);
 
   // Programmatique (cadrage initial, zoom cluster) → auto-valide la zone. Geste utilisateur
-  // → on mémorise seulement le live et on propose « Rechercher dans cette zone ».
+  // → on mémorise seulement le live (la zone validée ne bouge plus toute seule).
   const handleViewport = useCallback(
     (v: MapViewport, userInitiated: boolean) => {
       // IDEMPOTENT : si le viewport est inchangé, on renvoie `prev` → React n'effectue aucun
@@ -119,23 +110,23 @@ export default function MapScreen() {
     [results, searchArea],
   );
 
-  const moved = Boolean(liveViewport && searchArea && viewportMoved(searchArea, liveViewport));
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
   const isDesktopWeb = useIsDesktopWeb();
+  // L'écran carte reste MONTÉ quand on change d'onglet (tabs) : sans cette garde, le Focus
+  // (qui masque la tab bar) resterait actif sur Accueil tant qu'un commerce est sélectionné.
+  const isScreenFocused = useIsFocused();
   const isFocus = useFocusStore((s) => s.isFocus);
   const setFocus = useFocusStore((s) => s.setFocus);
   useEffect(() => {
-    setFocus(isDesktopWeb && selectedId !== null);
-  }, [isDesktopWeb, selectedId, setFocus]);
-  // Filet de sécurité : quitter l'écran carte restaure la tab bar.
+    // Focus Commerce UNIQUEMENT si l'écran carte est au premier plan → dès qu'on navigue
+    // ailleurs, on relâche le Focus et la tab bar réapparaît.
+    setFocus(isScreenFocused && isDesktopWeb && selectedId !== null);
+  }, [isScreenFocused, isDesktopWeb, selectedId, setFocus]);
+  // Filet de sécurité : démontage de l'écran carte restaure la tab bar.
   useEffect(() => () => setFocus(false), [setFocus]);
-
-  const onSearchHere = () => {
-    if (liveViewport) setSearchArea(liveViewport);
-  };
 
   // Localisation intelligente (PR1) : soft-ask après délai + recentrage. Jamais au lancement.
   const setUserLocation = useMerchantSearchStore((s) => s.setUserLocation);
@@ -244,13 +235,6 @@ export default function MapScreen() {
               </View>
             ) : null}
 
-            {/* Re-recherche après déplacement/zoom utilisateur. */}
-            {moved ? (
-              <View style={styles.searchHereWrap}>
-                <YButton label="Rechercher dans cette zone" onPress={onSearchHere} />
-              </View>
-            ) : null}
-
             {/* État vide : aucune Maison dans le viewport courant. */}
             {showEmpty ? (
               <View style={styles.emptyWrap} pointerEvents="none">
@@ -307,12 +291,6 @@ export default function MapScreen() {
               </BottomSheet>
             ) : null}
 
-            {/* Localisation « service » : carte soft-ask (jamais au lancement, dismissable). */}
-            {smart.showPrompt ? (
-              <View style={styles.promptWrap}>
-                <LocationPrompt onAuthorize={smart.authorize} onDismiss={smart.dismiss} />
-              </View>
-            ) : null}
             </View>
             {isFocus && selectedMerchant ? (
               <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel}>
@@ -375,13 +353,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  promptWrap: {
-    position: 'absolute',
-    left: spacing.sm,
-    right: spacing.sm,
-    bottom: spacing.sm,
-    zIndex: 10,
-  },
   counterChip: {
     position: 'absolute',
     top: spacing.sm,
@@ -395,11 +366,6 @@ const styles = StyleSheet.create({
   },
   counterText: {
     color: glass.onDark,
-  },
-  searchHereWrap: {
-    position: 'absolute',
-    top: spacing.sm,
-    alignSelf: 'center',
   },
   emptyWrap: {
     position: 'absolute',
