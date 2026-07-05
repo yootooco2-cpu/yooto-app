@@ -532,12 +532,27 @@ false
 },
 {
 "id": "building",
-"type": "fill",
+"type": "fill-extrusion",
 "source": "composite",
 "source-layer": "building",
 "minzoom": 15,
 "filter": [
 "all",
+[
+"==",
+[
+"get",
+"extrude"
+],
+"true"
+],
+[
+"==",
+[
+"geometry-type"
+],
+"Polygon"
+],
 [
 "!=",
 [
@@ -555,10 +570,9 @@ false
 "false"
 ]
 ],
-"layout": {},
 "paint": {
-"fill-color": "#EFE8DA",
-"fill-opacity": [
+"fill-extrusion-color": "#EAE1D0",
+"fill-extrusion-height": [
 "interpolate",
 [
 "linear"
@@ -568,14 +582,46 @@ false
 ],
 15,
 0,
-16,
-1
+15.5,
+[
+"get",
+"height"
+]
 ],
-"fill-outline-color": "#ECE5D7"
-},
-"metadata": {
-"mapbox:featureComponent": "buildings",
-"mapbox:group": "Buildings, built"
+"fill-extrusion-base": [
+"interpolate",
+[
+"linear"
+],
+[
+"zoom"
+],
+15,
+0,
+15.5,
+[
+"coalesce",
+[
+"get",
+"min_height"
+],
+0
+]
+],
+"fill-extrusion-opacity": [
+"interpolate",
+[
+"linear"
+],
+[
+"zoom"
+],
+15,
+0,
+15.6,
+0.9
+],
+"fill-extrusion-vertical-gradient": true
 }
 },
 {
@@ -5265,5 +5311,15 @@ false
 "modified": "1970-01-01T00:00:00.000Z",
 "owner": "mapbox",
 "id": "light-v11",
-"draft": false
+"draft": false,
+"light": {
+"anchor": "map",
+"position": [
+1.5,
+315,
+45
+],
+"color": "#FFF2DF",
+"intensity": 0.45
+}
 }
