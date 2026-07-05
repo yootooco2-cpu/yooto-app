@@ -25,6 +25,7 @@ import {
 import type { CryptogramId } from '@/features/merchants/cryptograms';
 
 import { PhotoMarkerLayer, type VisibleMerchant } from './photoMarkers';
+import { SelectionOverlay } from './selectionOverlay';
 import { selectPhotoMarkers } from './photoSelection';
 
 type Mapbox = typeof import('mapbox-gl')['default'];
@@ -40,6 +41,10 @@ const MAX_BBOX_SPAN_DEG = 2.5;
  */
 export class MapClusterController {
   private readonly photoLayer: PhotoMarkerLayer;
+  private readonly selection: SelectionOverlay;
+  /** Coordonnées [lng,lat] par id de commerce → mise en avant du sélectionné (anneau/trajet). */
+  private coordsById = new Map<string, [number, number]>();
+  private userCoord: [number, number] | null = null;
   private installed = false;
   private userMarker: MapboxMarker | null = null;
   private selectedId: string | null = null;
@@ -53,6 +58,7 @@ export class MapClusterController {
     private readonly suppressFit = false,
   ) {
     this.photoLayer = new PhotoMarkerLayer(mapboxgl, map, onSelect);
+    this.selection = new SelectionOverlay(mapboxgl, map);
   }
 
   /** Met à jour les données (commerces + position) sans recharger la carte. */
@@ -71,8 +77,16 @@ export class MapClusterController {
       this.installLayers();
     }
 
+    // Index des coordonnées par id (pour l'anneau/trajet du sélectionné) + position utilisateur.
+    this.coordsById = new Map(markers.map((m) => [m.id, [m.coordinate.longitude, m.coordinate.latitude]]));
+    this.userCoord =
+      userLocation && isPlausibleCoordinate(userLocation)
+        ? [userLocation.longitude, userLocation.latitude]
+        : null;
+
     this.setUserLocation(userLocation ?? null, userAccuracy ?? null);
     this.syncPhotoMarkers();
+    this.updateSelectionOverlay();
     this.fit(markers, userLocation ?? null);
   }
 
@@ -82,6 +96,13 @@ export class MapClusterController {
     // Re-synchronise pour PROMOUVOIR le commerce sélectionné en marqueur photo (même s'il
     // n'était qu'un pin compact / hors cap) → sélection toujours mise en avant.
     this.syncPhotoMarkers();
+    this.updateSelectionOverlay();
+  }
+
+  /** Anneau OR au sol + trajet piéton + temps de marche pour le commerce sélectionné (le héros). */
+  private updateSelectionOverlay(): void {
+    const coord = this.selectedId ? this.coordsById.get(this.selectedId) ?? null : null;
+    this.selection.update(coord, this.userCoord);
   }
 
   destroy(): void {
@@ -91,6 +112,7 @@ export class MapClusterController {
     this.map.off('click', CLUSTERS_LAYER, this.onClusterClick);
     this.map.off('click', UNCLUSTERED_HIT_LAYER, this.onUnclusteredClick);
     this.photoLayer.clear();
+    this.selection.destroy();
     this.userMarker?.remove();
     this.userMarker = null;
     for (const layer of [CLUSTERS_LAYER, CLUSTER_COUNT_LAYER, UNCLUSTERED_HIT_LAYER]) {
@@ -105,6 +127,7 @@ export class MapClusterController {
     this.map.addLayer(clustersLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
     this.map.addLayer(clusterCountLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
     this.map.addLayer(unclusteredHitLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
+    this.selection.install(); // anneau/trajet du sélectionné — au-dessus des couches clusters
     this.map.on('click', CLUSTERS_LAYER, this.onClusterClick);
     this.map.on('click', UNCLUSTERED_HIT_LAYER, this.onUnclusteredClick);
     this.map.on('moveend', this.syncPhotoMarkers);
