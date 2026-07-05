@@ -64,6 +64,38 @@ commentaire explique.
 
 ---
 
+## 3bis. Tests de hiérarchie (mesurer *où va l'attention*)
+
+Deux mesures courtes et redoutables. Elles ne jugent pas le goût — elles vérifient que la **hiérarchie
+du regard** fonctionne (commerces → quartier → territoire) et que la carte **crée de la mémoire**.
+
+### Le test du regard (3 s)
+Montrer la carte **3 secondes**, puis **masquer l'écran**. Poser **uniquement** :
+1. Quel est le **premier commerce** dont tu te souviens ?
+2. Quel **quartier** as-tu reconnu ?
+3. Quel **élément t'a attiré en premier** ?
+
+**Lecture du résultat :**
+- Réponse 3 = *un commerce* (idéalement un marqueur or/recommandé) → **hiérarchie réussie.**
+- Réponse 3 = *« le parc » / « une route » / « le fond »* → **hiérarchie encore mauvaise** : un
+  figurant capte l'acteur principal. → attribuer au style (S1) et retravailler la couche fautive.
+- Réponse 1 vide (« aucun commerce ») → les marqueurs ne ressortent pas assez.
+
+### Le test du souvenir (après 1 min d'usage)
+Laisser explorer **~1 minute**, ranger le téléphone, puis demander :
+> **Quel commerce te revient immédiatement en tête ?**
+
+**Lecture :**
+- Un nom précis → la carte a créé de la **mémorisation** (objectif atteint).
+- *« Je ne sais plus »* → pas encore assez de mémorisation : l'acteur principal ne marque pas les
+  esprits (marqueurs trop discrets ? fond trop bavard ? or trop dilué ?).
+
+> Ces deux tests sont le **juge de la règle du cinéma** ([STYLE_S1_STUDIO §0.1](./STYLE_S1_STUDIO.md)) :
+> si un figurant gagne le test du regard, la scène est ratée — peu importe qu'elle soit « belle ».
+> À faire passer à **plusieurs personnes** (le souvenir d'une seule ne suffit pas).
+
+---
+
 ## 4. Catalogue de scénarios
 
 Pour **chacun** : Objectif · ce qu'il **cherche** · ce qu'il **ressent** · ce qu'il **regarde** · ce
@@ -198,6 +230,10 @@ GRILLE  (note /10 + mot)
   Confiance __  Envie d'explorer __  Premium __  Plaisir __
 
 SONDE 3 SECONDES : où suis-je ? ____  commerce important ? ____  regarder ensuite ? ____
+
+TEST DU REGARD (3 s puis masquer) : 1er commerce ? ____  quartier ? ____  attiré en premier ? ____
+   → si « parc / route / fond » : hiérarchie encore mauvaise (couche fautive : ____)
+TEST DU SOUVENIR (après 1 min) : commerce qui revient ? ____   (« je ne sais plus » = mémorisation insuffisante)
 
 VERBATIM (mots exacts) :
   Plaisir  → « ____ »

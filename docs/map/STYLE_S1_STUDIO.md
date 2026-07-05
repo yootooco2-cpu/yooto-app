@@ -39,7 +39,47 @@ Si non → **elle recule.**
 
 ---
 
+## 0.1 — La règle du cinéma (le casting)
+
+La carte est une **scène**. Tous les éléments n'ont **pas** le droit au premier rôle.
+
+| Rôle | Éléments | Droit à l'attention |
+|---|---|---|
+| **Acteur principal** | **les commerces** (marqueurs) | captent l'œil — ce sont les héros |
+| **Acteurs secondaires** | **routes · eau · quartiers** | soutiennent la scène : orientent, guident |
+| **Figurants** | **bâtiments · labels · végétation · détails** | présents, jamais regardés |
+
+> **Si un figurant attire plus l'œil que l'acteur principal, la scène est ratée.** On ne compose pas
+> une carte, on compose **un regard**.
+
+Trois règles de plateau, à tenir pendant tout S1 :
+
+1. **« Pourquoi existes-tu ? »** — chaque couche doit répondre. *« Parce que Mapbox la met par
+   défaut »* **n'est pas** une justification : cette couche recule ou disparaît.
+2. **Juge l'ENSEMBLE, jamais la couche seule.** Une bonne carte n'est pas une addition de bonnes
+   couches — c'est une **hiérarchie cohérente**. On valide toujours en regardant le tout.
+3. **La retenue est notre langage.** Quand une couche semble parfaite, demande encore : *peut-elle
+   être un peu plus discrète ?* Si oui — elle doit probablement l'être.
+
+---
+
 ## 1. La distribution (les 6 personnages)
+
+Le **casting** (§0.1) prime sur le registre de lecture : un « secondaire » soutient, un « figurant »
+s'efface — même si les deux sont des surfaces.
+
+| Couche (famille Mapbox) | Casting | Registre | Rôle | Visibilité cible |
+|---|---|---|---|---|
+| **Eau** (`water`, `waterway`) | secondaire | surface | repère qui oriente | présente, calme, jamais « piscine » |
+| **Routes** (`road`) | secondaire | ligne | **guider** | axes nets, secondaire effacé |
+| **Quartiers** (`landuse` habité, `place`) | secondaire | surface/texte | orienter (« quel quartier ») | lisibles, discrets |
+| **Parcs / végétation** (`landuse`, `park`) | **figurant** | surface | fraîcheur, respiration | douce, en 3 couches, recule |
+| **Bâtiments** (`building`) | **figurant** | surface | texture du bâti, prépare la 3D | très discrète (2D) |
+| **Labels** (`place-label`, `road-label`, `water-label`) | **figurant** | texte | orienter/nommer | hiérarchisés, halo crème |
+| **POI** (`poi-label`) | *hors casting* | objet | *concurrent de l'acteur principal* | **neutralisé** (sauf repères curatés) |
+
+> Rappel : les **commerces** (acteur principal) ne sont **pas** dans cette table — ils vivent dans la
+> couche marqueurs YOOTOO, au-dessus du fond. Tout ici existe pour **les servir**.
 
 | Couche (famille Mapbox) | Registre | Rôle | Importance | Visibilité cible |
 |---|---|---|---|---|
@@ -180,10 +220,12 @@ vérification terrain*, plus « si on réduit le contraste » / « si on la supp
 - le **fond accompagne sans jamais rivaliser** ;
 - l'ensemble paraît **intemporel**.
 
-Ce n'est pas une **identité graphique** qu'on vise, c'est une **identité perceptive** : c'est elle qui
-fera reconnaître YOOTOO **sans logo**. Protocole de vérification : sessions de
+Ce n'est pas une **identité graphique** qu'on vise, c'est une **identité perceptive** : quelqu'un doit
+pouvoir dire « c'est YOOTOO » sur une capture **sans logo, sans interface** — non grâce aux couleurs,
+mais grâce à **la manière dont l'attention est organisée**. Protocole de vérification : sessions de
 [FIELD_OBSERVATION](./FIELD_OBSERVATION.md) (surtout *première utilisation*, *plein soleil*,
-*centre historique*) + la sonde des 3 secondes.
+*centre historique*) + **le test du regard** (3 s puis écran masqué) et **le test du souvenir**
+(après 1 min) — voir FIELD_OBSERVATION §Tests de hiérarchie.
 
 > Objectif final : qu'en refermant l'app, l'utilisateur ne dise pas « quelle belle carte », mais
 > **« j'ai découvert un endroit où je vais revenir. »**
