@@ -584,8 +584,12 @@ false
 0,
 15.5,
 [
+"*",
+[
 "get",
 "height"
+],
+0.8
 ]
 ],
 "fill-extrusion-base": [
@@ -600,12 +604,16 @@ false
 0,
 15.5,
 [
+"*",
+[
 "coalesce",
 [
 "get",
 "min_height"
 ],
 0
+],
+0.8
 ]
 ],
 "fill-extrusion-opacity": [
