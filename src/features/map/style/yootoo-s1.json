@@ -557,7 +557,7 @@ false
 ],
 "layout": {},
 "paint": {
-"fill-color": "hsl(220, 0%, 91%)",
+"fill-color": "#EFE8DA",
 "fill-opacity": [
 "interpolate",
 [
@@ -571,7 +571,7 @@ false
 16,
 1
 ],
-"fill-outline-color": "hsl(220, 0%, 85%)"
+"fill-outline-color": "#ECE5D7"
 },
 "metadata": {
 "mapbox:featureComponent": "buildings",
