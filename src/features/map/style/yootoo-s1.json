@@ -68,7 +68,7 @@
       ],
       "layout": {},
       "paint": {
-        "fill-color": "#D4DABF",
+        "fill-color": "#B7C795",
         "fill-opacity": [
           "interpolate",
           [
@@ -80,9 +80,11 @@
           5,
           0,
           6,
-          0.6,
+          0.55,
           12,
-          0.2
+          0.34,
+          16,
+          0.3
         ]
       },
       "metadata": {
@@ -124,7 +126,9 @@
             "airport",
             "glacier",
             "pitch",
-            "sand"
+            "sand",
+            "garden",
+            "cemetery"
           ],
           true,
           "residential",
@@ -178,16 +182,22 @@
           ],
           [
             "park",
-            "grass",
-            "pitch",
-            "scrub"
+            "garden"
           ],
-          "#DEE2CC",
+          "#BFCF9B",
           [
-            "wood",
-            "agriculture"
+            "grass",
+            "pitch"
           ],
-          "#D4DABF",
+          "#C8D4A2",
+          "scrub",
+          "#C3C596",
+          "wood",
+          "#AEC08F",
+          "agriculture",
+          "#D3CDA2",
+          "cemetery",
+          "#C6CFAF",
           "#EDE7DA"
         ],
         "fill-opacity": [
@@ -210,7 +220,7 @@
               "airport"
             ],
             0.8,
-            0.2
+            0.24
           ],
           12,
           [
@@ -221,7 +231,18 @@
             ],
             "residential",
             0,
-            1
+            0.82
+          ],
+          16,
+          [
+            "match",
+            [
+              "get",
+              "class"
+            ],
+            "residential",
+            0,
+            0.8
           ]
         ]
       },
