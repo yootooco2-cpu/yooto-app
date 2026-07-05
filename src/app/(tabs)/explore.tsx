@@ -154,7 +154,7 @@ export default function MapScreen() {
   const keyExtractor = useCallback((m: Merchant) => m.id, []);
   const renderRow = useCallback(
     ({ item }: { item: Merchant }) => (
-      <MerchantListRow merchant={item} onPress={() => setSelectedId(item.id)} />
+      <MerchantListRow merchant={item} onDark onPress={() => setSelectedId(item.id)} />
     ),
     [],
   );
@@ -273,14 +273,15 @@ export default function MapScreen() {
                 enablePanDownToClose={false}
                 backdropComponent={renderBackdrop}
                 handleIndicatorStyle={styles.sheetHandle}
-                backgroundStyle={styles.sheetBackground}
+                backgroundStyle={[styles.sheetBackground, glass.panel]}
                 style={styles.sheetShadow}>
                 {selectedMerchant ? (
                   // Mode « commerce » : mini-fiche réutilisée, dans le sheet.
                   <BottomSheetView style={styles.sheetPreview}>
+                    {/* R6b : fiche en CARTE CLAIRE (non-flat) posée sur le sheet en verre sombre,
+                        fidèle à la DA (carte commerce claire sur chrome sombre). */}
                     <MapMerchantPreview
                       merchant={selectedMerchant}
-                      flat
                       onClose={() => setSelectedId(null)}
                       onPress={() =>
                         router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
@@ -291,7 +292,7 @@ export default function MapScreen() {
                   // Mode « liste » : compteur en en-tête + liste virtualisée.
                   <>
                     <View style={styles.sheetHeader}>
-                      <YText variant="label">
+                      <YText variant="label" style={{ color: glass.onDark }}>
                         {count} commerce{count > 1 ? 's' : ''} dans cette zone
                       </YText>
                     </View>
@@ -431,7 +432,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.12)',
   },
   sheetListContent: {
     paddingHorizontal: spacing.md,
@@ -442,10 +443,10 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: radii.pill,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(243,238,226,0.45)',
   },
+  // Fond du sheet : verre dépoli sombre (le token `glass.panel` fournit fond + flou + bordure).
   sheetBackground: {
-    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
   },
