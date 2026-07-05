@@ -54,7 +54,7 @@ export function MapEngine({
   initialCamera,
   fill,
 }: MapEngineProps) {
-  const { token, styleUrl, defaultRegion } = getMapConfig();
+  const { token, mapStyle, defaultRegion } = getMapConfig();
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -103,7 +103,7 @@ export function MapEngine({
         mapboxgl.accessToken = token;
         const map = new mapboxgl.Map({
           container: containerRef.current,
-          style: styleUrl,
+          style: mapStyle as string,
           center: [centerLng, centerLat],
           zoom,
         });
@@ -219,7 +219,7 @@ export function MapEngine({
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [token, styleUrl, centerLat, centerLng, zoom, hasRestoredCamera]);
+  }, [token, mapStyle, centerLat, centerLng, zoom, hasRestoredCamera]);
 
   // --- Données (commerces + position) : mise à jour sans recharge ---
   useEffect(() => {
