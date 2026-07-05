@@ -9,13 +9,13 @@
 "zoom": 11,
 "fog": {
 "range": [
--1,
-10
+1,
+12
 ],
-"color": "hsl(0, 0%, 100%)",
-"high-color": "hsl(0, 0%, 100%)",
-"space-color": "hsl(0, 0%, 100%)",
-"horizon-blend": 0.1,
+"color": "#EAE0CE",
+"high-color": "#BFCAD6",
+"space-color": "#6E86A6",
+"horizon-blend": 0.05,
 "star-intensity": 0
 },
 "projection": {
@@ -5416,14 +5416,27 @@ false
 "owner": "mapbox",
 "id": "light-v11",
 "draft": false,
-"light": {
-"anchor": "map",
-"position": [
-1.5,
-315,
-45
-],
-"color": "#FFF2DF",
-"intensity": 0.45
+"lights": [
+{
+"id": "ambient",
+"type": "ambient",
+"properties": {
+"color": "#FFF3E2",
+"intensity": 0.55
 }
+},
+{
+"id": "sun",
+"type": "directional",
+"properties": {
+"color": "#FFE7C2",
+"intensity": 0.6,
+"direction": [
+315,
+62
+],
+"cast-shadows": false
+}
+}
+]
 }
