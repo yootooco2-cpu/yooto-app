@@ -39,6 +39,7 @@ import {
   type MapViewport,
 } from '@/features/map';
 import {
+  filterCryptogramAsset,
   QUICK_FILTERS,
   useMerchantSearch,
   useMerchantSearchStore,
@@ -224,6 +225,7 @@ export default function MapScreen() {
           <YChip
             key={filter.id}
             label={filter.label}
+            icon={filterCryptogramAsset(filter.id)}
             active={filters.includes(filter.id)}
             onPress={() => toggleFilter(filter.id)}
           />
