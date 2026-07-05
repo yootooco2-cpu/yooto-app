@@ -20,6 +20,7 @@ import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
+import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
@@ -174,7 +175,7 @@ export default function MapScreen() {
       {isFocus ? <DesktopNavRail /> : null}
       <View style={styles.screenWrap}>
         <YScreen gap="sm" padding="lg">
-      <YSearchBar value={query} onChangeText={setQuery} />
+      <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
 
       <ScrollView
         horizontal
@@ -229,14 +230,14 @@ export default function MapScreen() {
                 onPress={smart.recenter}
                 accessibilityRole="button"
                 accessibilityLabel="Me recentrer"
-                style={[styles.recenterFab, shadows.md]}>
-                <Feather name="navigation" size={18} color={colors.primary} />
+                style={[styles.recenterFab, glass.panel, shadows.md]}>
+                <Feather name="navigation" size={18} color={glass.onDark} />
               </Pressable>
             ) : null}
 
             {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
             {isLoading ? (
-              <View style={[styles.counterChip, shadows.sm]}>
+              <View style={[styles.counterChip, glass.panel, shadows.sm]}>
                 <YText variant="caption" style={styles.counterText}>
                   Chargement des commerces…
                 </YText>
@@ -253,7 +254,7 @@ export default function MapScreen() {
             {/* État vide : aucune Maison dans le viewport courant. */}
             {showEmpty ? (
               <View style={styles.emptyWrap} pointerEvents="none">
-                <View style={[styles.emptyCard, shadows.md]}>
+                <View style={[styles.emptyCard, glass.panel, shadows.md]}>
                   <YText variant="body" style={styles.emptyText}>
                     Aucun commerce visible ici — dézoomez ou recherchez une autre zone.
                   </YText>
@@ -392,7 +393,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   counterText: {
-    color: colors.text,
+    color: glass.onDark,
   },
   searchHereWrap: {
     position: 'absolute',
@@ -420,7 +421,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    color: colors.text,
+    color: glass.onDark,
   },
   sheetPreview: {
     padding: spacing.md,
