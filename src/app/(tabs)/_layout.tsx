@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import { type ColorValue, Image, type ImageSourcePropType, View } from 'react-native';
 
-import { colors } from '@/design/tokens/colors';
+import { colors, tabActiveColors } from '@/design/tokens/colors';
 import { useFocusStore } from '@/features/layout';
 
 const homeIcon = require('@/assets/images/tabIcons/home.png') as ImageSourcePropType;
@@ -82,7 +82,8 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        // Couleur active définie PAR onglet (identité catégorie) via `tabBarActiveTintColor`
+        // dans chaque <Tabs.Screen>. Inactif = gris neutre partagé, identique partout.
         tabBarInactiveTintColor: colors.mutedText,
         tabBarStyle: isFocus
           ? { display: 'none' }
@@ -99,6 +100,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Accueil',
+          tabBarActiveTintColor: tabActiveColors.index,
           tabBarIcon: ({ color, size }) => (
             <Image
               source={homeIcon}
@@ -112,6 +114,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'Carte',
+          tabBarActiveTintColor: tabActiveColors.explore,
           tabBarIcon: ({ color, size }) => (
             <Image
               source={exploreIcon}
@@ -125,6 +128,7 @@ export default function TabsLayout() {
         name="merchants"
         options={{
           title: 'Commerçants',
+          tabBarActiveTintColor: tabActiveColors.merchants,
           tabBarIcon: ({ color, size }) => <MerchantsIcon color={color} size={size} />,
         }}
       />
@@ -132,6 +136,7 @@ export default function TabsLayout() {
         name="de-saison"
         options={{
           title: 'De saison',
+          tabBarActiveTintColor: tabActiveColors['de-saison'],
           tabBarIcon: ({ color, size }) => <DeSaisonIcon color={color} size={size} />,
         }}
       />
@@ -139,6 +144,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profil',
+          tabBarActiveTintColor: tabActiveColors.profile,
           tabBarIcon: ({ color, size }) => <ProfileIcon color={color} size={size} />,
         }}
       />

@@ -10,3 +10,19 @@ export const colors = {
   success: '#2E8B57',
   warning: '#C9822B',
 };
+
+/**
+ * Couleurs d'onglet ACTIF de la barre de navigation inférieure — extension de l'identité
+ * couleur des catégories YOOTOO. Un seul onglet coloré à la fois (l'actif) ; tous les
+ * inactifs restent en gris neutre (`colors.mutedText`). La barre reste blanche.
+ * Contraste vérifié ≥ 4.5:1 sur surface blanche (WCAG AA texte) — l'ambre et l'olive
+ * « conseillés » ont été légèrement assombris pour atteindre ce seuil sans changer de teinte.
+ * Identique sur iOS / Android / Web (aucune variante par plateforme).
+ */
+export const tabActiveColors = {
+  index: '#4E5652', // Accueil — gris foncé (7.56:1)
+  explore: '#5F7F3A', // Carte — vert Producteurs (4.58:1)
+  merchants: '#9C6B24', // Commerçants — ambre (4.62:1)
+  'de-saison': '#627D2F', // De saison — vert olive (4.67:1)
+  profile: '#2E2E2E', // Profil — noir mat (13.58:1)
+} as const;
