@@ -13,13 +13,17 @@ import type { MapRegion } from './types';
  */
 
 /**
- * Région par défaut YOOTOO — centrée sur MONTPELLIER à un zoom « quartier » (12). À ce zoom,
- * les zones denses restent regroupées en clusters (cf. clusterMaxZoom=14) puis se séparent en
- * zoomant. C'est aussi le repli de cadrage quand la bbox des commerces est trop large.
+ * Ouverture par défaut YOOTOO (R3 — caméra cinématique) : atterrissage ÉDITORIAL sur le cœur de
+ * Montpellier (Écusson / Comédie), en vue **oblique** (pitch 50°) à un zoom « quartier proche »
+ * (15.4). Objectif : une première impression immersive et premium dès la première seconde — la
+ * ville 3D éclairée (lumière R1 + AO R2a + ombres R2b), pas une vue de dessus plate.
+ * Sert aussi de repli de cadrage. Les utilisateurs de retour gardent leur viewport restauré (à plat).
  */
 const DEFAULT_REGION: MapRegion = {
   center: { latitude: 43.6108, longitude: 3.8767 },
-  zoom: 12,
+  zoom: 15.4,
+  pitch: 50,
+  bearing: 0,
 };
 
 // Style de TRAVAIL versionné (le « laboratoire » S1) — construit couche par couche dans le dépôt.

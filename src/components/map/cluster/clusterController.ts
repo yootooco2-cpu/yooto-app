@@ -237,20 +237,30 @@ export class MapClusterController {
       bounds.extend([userLocation.longitude, userLocation.latitude]);
     }
 
+    // R3 — ouverture cinématique : atterrissage ÉDITORIAL oblique (cœur curaté) plutôt qu'un
+    // `fitBounds` à plat. Première impression immersive (ville 3D éclairée), pas une vue de dessus.
+    const openPose = {
+      center: [defaultRegion.center.longitude, defaultRegion.center.latitude] as [number, number],
+      zoom: defaultRegion.zoom,
+      pitch: defaultRegion.pitch ?? 0,
+      bearing: defaultRegion.bearing ?? 0,
+    };
+
     if (bounds.isEmpty()) {
-      this.map.jumpTo({ center: [defaultRegion.center.longitude, defaultRegion.center.latitude], zoom: defaultRegion.zoom });
+      this.map.jumpTo(openPose);
       return;
     }
     const latSpan = bounds.getNorth() - bounds.getSouth();
     const lngSpan = bounds.getEast() - bounds.getWest();
     if (latSpan > MAX_BBOX_SPAN_DEG || lngSpan > MAX_BBOX_SPAN_DEG) {
       if (userLocation && isPlausibleCoordinate(userLocation)) {
-        this.map.jumpTo({ center: [userLocation.longitude, userLocation.latitude], zoom: 12 });
+        // Données très étalées + position connue → cadrage large à plat sur l'utilisateur.
+        this.map.jumpTo({ center: [userLocation.longitude, userLocation.latitude], zoom: 12, pitch: 0, bearing: 0 });
       } else {
-        this.map.jumpTo({ center: [defaultRegion.center.longitude, defaultRegion.center.latitude], zoom: defaultRegion.zoom });
+        this.map.jumpTo(openPose);
       }
     } else {
-      this.map.fitBounds(bounds, { padding: 48, maxZoom: 14, duration: 0 });
+      this.map.jumpTo(openPose);
     }
   }
 }
