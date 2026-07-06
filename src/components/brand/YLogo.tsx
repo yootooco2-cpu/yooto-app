@@ -42,22 +42,34 @@ export function YBrandmark({ size = 40, tone = 'ink' }: { size?: number; tone?: 
 interface LogoProps {
   size?: number;
   tone?: LogoTone;
-  /** Afficher le mot « YOOTOO » à côté de la marque. */
+  /** Afficher le mot « YOOTOO » avec la marque. */
   wordmark?: boolean;
+  /** `row` = marque + mot côte à côte ; `stack` = signature (marque au-dessus du mot). */
+  orientation?: 'row' | 'stack';
   style?: StyleProp<ViewStyle>;
 }
 
 /** Verrou logo : marque + mot-symbole « YOOTOO » (lettrage large, sobre). */
-export function YLogo({ size = 44, tone = 'ink', wordmark = true, style }: LogoProps) {
+export function YLogo({ size = 44, tone = 'ink', wordmark = true, orientation = 'row', style }: LogoProps) {
+  const stack = orientation === 'stack';
   return (
-    <View style={[styles.row, style]}>
-      <YBrandmark size={size} tone={tone} />
+    <View style={[stack ? styles.stack : styles.row, style]}>
+      {/* En signature, compense la marge interne (6 %) de la marque → bord gauche visible
+          aligné sur le mot « YOOTOO » et le reste de la grille. */}
+      <View style={stack ? { marginLeft: -size * 0.06 } : undefined}>
+        <YBrandmark size={size} tone={tone} />
+      </View>
       {wordmark ? (
         <YText
           variant="subtitle"
           style={[
             styles.word,
-            { color: WORD_COLOR[tone], fontSize: size * 0.44, letterSpacing: size * 0.12 },
+            {
+              color: WORD_COLOR[tone],
+              fontSize: size * (stack ? 0.4 : 0.44),
+              letterSpacing: size * (stack ? 0.16 : 0.12),
+              marginTop: stack ? size * 0.14 : 0,
+            },
           ]}>
           YOOTOO
         </YText>
@@ -71,6 +83,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  stack: {
+    alignSelf: 'flex-start',
+    alignItems: 'flex-start',
   },
   word: {
     fontWeight: '600',

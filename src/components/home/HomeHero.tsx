@@ -51,7 +51,8 @@ export function HomeHero({ greeting, scrollY }: Props) {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(220)} style={[styles.content, contentStyle]}>
-        <YLogo size={38} />
+        {/* Signature de marque (marque au-dessus de « YOOTOO »), puis respiration avant le salut. */}
+        <YLogo size={33} orientation="stack" style={styles.signature} />
 
         <YText variant="caption" color="muted">
           {greeting}
@@ -115,6 +116,10 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
+  },
+  // Respiration entre la signature et le salut (renforce le raffinement).
+  signature: {
+    marginBottom: spacing.sm,
   },
   locationRow: {
     flexDirection: 'row',
