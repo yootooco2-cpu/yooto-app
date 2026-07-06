@@ -1,4 +1,5 @@
-import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Platform, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { YButton } from '@/components/ui/YButton';
@@ -8,7 +9,9 @@ import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
+import { useProfileRow, useSession } from '@/features/auth';
 import { PreferenceSection } from '@/features/profile/preferences';
+import { continueWithProvider, signOut, type AuthProvider } from '@/lib/supabase/authActions';
 
 type Space = {
   title: string;
@@ -39,37 +42,121 @@ const SPACES: Space[] = [
   },
 ];
 
+/** Initiale d'affichage pour l'avatar de repli. */
+function initialOf(name: string | null, email: string | null): string {
+  const src = name ?? email ?? 'Y';
+  return src.trim().charAt(0).toUpperCase() || 'Y';
+}
+
 export default function ProfileScreen() {
+  const { status, userId, identity } = useSession();
+  const isAuthenticated = status === 'authenticated';
+  const profileRow = useProfileRow(isAuthenticated ? userId : null);
+  const [busy, setBusy] = useState<null | AuthProvider | 'signout'>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const onProvider = async (provider: AuthProvider) => {
+    if (busy) return;
+    setError(null);
+    setBusy(provider);
+    const res = await continueWithProvider(provider);
+    // Web : redirection en cours. Natif : succès → l'état bascule via onAuthStateChange.
+    if (!res.ok && res.error !== 'cancelled') {
+      setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Connexion impossible, réessayez.');
+    }
+    setBusy(null);
+  };
+
+  const onSignOut = async () => {
+    if (busy) return;
+    setBusy('signout');
+    await signOut();
+    setBusy(null);
+  };
+
   return (
     <YScreen scroll gap="lg" padding="lg">
       {/* Hero utilisateur */}
       <View style={styles.hero}>
-        <View style={styles.avatar}>
-          <YText variant="title" color="inverse">
-            Y
-          </YText>
-        </View>
-        <View style={styles.heroInfo}>
-          <YText variant="subtitle">Invité</YText>
-          <YText variant="caption" color="muted">
-            Explorateur YOOTOO
-          </YText>
-          <View style={styles.badges}>
-            <View style={styles.badge}>
-              <YText variant="caption" color="primary">
-                Nouveau
-              </YText>
-            </View>
-            <View style={styles.badge}>
-              <YText variant="caption" color="primary">
-                Local
-              </YText>
-            </View>
+        {isAuthenticated && identity?.avatarUrl ? (
+          <Image source={{ uri: identity.avatarUrl }} style={styles.avatarImg} accessibilityLabel="Photo de profil" />
+        ) : (
+          <View style={styles.avatar}>
+            <YText variant="title" color="inverse">
+              {isAuthenticated ? initialOf(identity?.displayName ?? null, identity?.email ?? null) : 'Y'}
+            </YText>
           </View>
+        )}
+        <View style={styles.heroInfo}>
+          {isAuthenticated ? (
+            <>
+              <YText variant="subtitle">{identity?.displayName ?? 'Membre YOOTOO'}</YText>
+              {identity?.email ? (
+                <YText variant="caption" color="muted">
+                  {identity.email}
+                </YText>
+              ) : null}
+              <View style={styles.badges}>
+                <View style={[styles.badge, styles.badgeOn]}>
+                  <YText variant="caption" color="inverse">
+                    Connecté
+                  </YText>
+                </View>
+                {profileRow.exists ? (
+                  <View style={styles.badge}>
+                    <YText variant="caption" color="primary">
+                      Profil enregistré ✓
+                    </YText>
+                  </View>
+                ) : null}
+              </View>
+            </>
+          ) : (
+            <>
+              <YText variant="subtitle">Invité</YText>
+              <YText variant="caption" color="muted">
+                Explorateur YOOTOO
+              </YText>
+            </>
+          )}
         </View>
       </View>
 
-      <YButton label="Se connecter" fullWidth />
+      {isAuthenticated ? (
+        <YButton
+          label="Se déconnecter"
+          variant="secondary"
+          fullWidth
+          loading={busy === 'signout'}
+          onPress={() => void onSignOut()}
+        />
+      ) : (
+        <Animated.View entering={FadeInDown.duration(220)} style={styles.authBlock}>
+          <YText variant="body" color="muted" style={styles.authLead}>
+            Connectez-vous pour retrouver vos favoris et vos avantages, partout. Sans mot de passe.
+          </YText>
+          <YButton
+            label="Continuer avec Google"
+            fullWidth
+            loading={busy === 'google'}
+            onPress={() => void onProvider('google')}
+          />
+          {Platform.OS === 'ios' ? (
+            <YButton
+              label="Continuer avec Apple"
+              variant="secondary"
+              fullWidth
+              loading={busy === 'apple'}
+              onPress={() => void onProvider('apple')}
+            />
+          ) : null}
+          {error ? (
+            <YText variant="caption" style={styles.error}>
+              {error}
+            </YText>
+          ) : null}
+        </Animated.View>
+      )}
 
       <PreferenceSection />
 
@@ -111,6 +198,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarImg: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.surface,
+  },
   heroInfo: {
     flex: 1,
     gap: spacing.xs,
@@ -127,6 +220,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
     backgroundColor: colors.surface,
+  },
+  badgeOn: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  authBlock: {
+    gap: spacing.sm,
+  },
+  authLead: {
+    marginBottom: spacing.xs,
+  },
+  error: {
+    color: colors.warning,
+    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   cardHeader: {
     flexDirection: 'row',

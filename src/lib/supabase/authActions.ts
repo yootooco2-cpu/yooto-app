@@ -57,6 +57,17 @@ export async function continueWithProvider(provider: AuthProvider): Promise<Auth
   }
 }
 
+export async function signOut(): Promise<AuthResult> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return { ok: false, error: 'not-configured' };
+  try {
+    const { error } = await supabase.auth.signOut();
+    return error ? { ok: false, error: error.message } : { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'unknown' };
+  }
+}
+
 export async function signInWithEmailLink(email: string): Promise<AuthResult> {
   const supabase = getSupabaseClient();
   if (!supabase) return { ok: false, error: 'not-configured' };
