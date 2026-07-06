@@ -47,7 +47,9 @@ import {
 } from '@/features/merchants';
 import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
 import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
-import { FavoritesList, useFavoritesSync } from '@/features/favorites';
+import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
+import { useSession } from '@/features/auth';
+import { AuthSheet } from '@/components/auth/AuthSheet';
 
 /** Un commerce est-il dans l'emprise du viewport ? (bbox simple, France → pas d'antiméridien). */
 function inBounds(m: Merchant, v: MapViewport): boolean {
@@ -89,6 +91,19 @@ export default function MapScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [quickAccessOpen, setQuickAccessOpen] = useState(false);
   const sheetRef = useRef<BottomSheet>(null);
+
+  // Déclencheur JIT : quand l'utilisateur crée quelque chose à garder (favori) et n'est pas
+  // encore authentifié, la feuille d'inscription surgit UNE fois (jamais bloquante).
+  const favoriteIds = useFavoriteIds();
+  const { status: sessionStatus } = useSession();
+  const [authSheetOpen, setAuthSheetOpen] = useState(false);
+  const authPromptedRef = useRef(false);
+  useEffect(() => {
+    if (favoriteIds.length > 0 && sessionStatus !== 'authenticated' && !authPromptedRef.current) {
+      authPromptedRef.current = true;
+      setAuthSheetOpen(true);
+    }
+  }, [favoriteIds.length, sessionStatus]);
 
   // Persistance session : viewport à restaurer (lu UNE fois au montage) + setter.
   const setLastViewport = useMapViewportStore((s) => s.setLastViewport);
@@ -281,6 +296,13 @@ export default function MapScreen() {
               open={quickAccessOpen}
               onClose={() => setQuickAccessOpen(false)}
               sections={quickAccessSections}
+            />
+
+            {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
+            <AuthSheet
+              open={authSheetOpen}
+              onClose={() => setAuthSheetOpen(false)}
+              favoritesCount={favoriteIds.length}
             />
 
             {/* « Me recentrer » — visible uniquement si la position est connue et hors du viewport. */}
