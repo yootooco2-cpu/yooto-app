@@ -2,66 +2,73 @@ import { useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 
 /**
- * FONDATION A — Device Context.
+ * FONDATION TRANSVERSE A — Device Context.
  *
- * Lit ce que l'OS fournit DÉJÀ (langue, région, devise, fuseau, thème) — « le meilleur
- * formulaire est celui qui ne se remplit pas ». Sans nouvelle dépendance native :
- *  - locale + fuseau via `Intl.DateTimeFormat().resolvedOptions()` (Hermes/RN + web) ;
- *  - thème via `useColorScheme()` (react-native).
- * Purement en LECTURE : n'applique rien (ni thème, ni i18n). Les consommateurs décident.
+ * Rôle STRICT : décrire ce que l'OS expose (langue, région, devise, fuseau, thème).
+ * PUREMENT DESCRIPTIF — aucune décision métier, aucun défaut « produit » :
+ *  - si l'OS ne fournit pas une donnée → la valeur est `null` (on rapporte « inconnu »),
+ *    et c'est au CONSOMMATEUR de choisir un repli (i18n, devise, thème…).
+ *  - `currency` est une correspondance FACTUELLE région→ISO-4217 (pas une opinion) ; `null`
+ *    si la région est inconnue/non mappée.
+ * Sans dépendance native : `Intl.DateTimeFormat().resolvedOptions()` + `useColorScheme()`.
  * `resolveDeviceContext` est PUR (testable) ; le hook n'ajoute que la lecture OS.
+ *
+ * Réutilisable hors onboarding : i18n, préférences, personnalisation, notifications,
+ * analytics, récompenses, future IA — tous consomment ce contexte sans le modifier.
  */
 export type ColorSchemeName = 'light' | 'dark';
 
 export interface DeviceContext {
-  /** BCP-47 résolu par l'OS, ex. `fr-FR`. */
-  locale: string;
-  /** Langue seule, ex. `fr`. */
-  language: string;
-  /** Région / pays (2 lettres) si présent, ex. `FR` — sinon `null`. */
+  /** BCP-47 résolu par l'OS (`fr-FR`) — `null` si indisponible. */
+  locale: string | null;
+  /** Langue seule (`fr`) — `null` si indisponible. */
+  language: string | null;
+  /** Région / pays 2 lettres (`FR`) — `null` si absent. */
   region: string | null;
-  /** Fuseau IANA, ex. `Europe/Paris` — `null` si indisponible. */
+  /** Fuseau IANA (`Europe/Paris`) — `null` si indisponible. */
   timeZone: string | null;
-  /** Devise ISO-4217 déduite de la région, ex. `EUR`. Défaut `EUR` (cœur de cible). */
-  currency: string;
-  /** Thème système. */
-  colorScheme: ColorSchemeName;
+  /** Devise ISO-4217 déduite de la région (`EUR`) — `null` si région inconnue/non mappée. */
+  currency: string | null;
+  /** Thème système — `null` si l'utilisateur n'a exprimé aucune préférence. */
+  colorScheme: ColorSchemeName | null;
 }
 
-// Région → devise (minimal, étendable). Défaut EUR. On ne « devine » jamais au-delà de l'OS.
+/** Table FACTUELLE région → devise (descriptive, pas une décision produit). Étendable. */
 const REGION_CURRENCY: Record<string, string> = {
   FR: 'EUR', MC: 'EUR', BE: 'EUR', DE: 'EUR', ES: 'EUR', IT: 'EUR', PT: 'EUR', NL: 'EUR',
   LU: 'EUR', IE: 'EUR', AT: 'EUR', FI: 'EUR', GR: 'EUR',
-  GB: 'GBP', CH: 'CHF', US: 'USD', CA: 'CAD',
+  GB: 'GBP', CH: 'CHF', US: 'USD', CA: 'CAD', JP: 'JPY',
 };
 
-const DEFAULT_LOCALE = 'fr-FR';
-const DEFAULT_CURRENCY = 'EUR';
+/** PUR : devise ISO-4217 pour une région, ou `null` si inconnue. Descriptif. */
+export function currencyForRegion(region: string | null): string | null {
+  if (!region) return null;
+  return REGION_CURRENCY[region.toUpperCase()] ?? null;
+}
 
 export interface DeviceContextInput {
   locale?: string | null;
   timeZone?: string | null;
-  colorScheme?: ColorSchemeName;
+  colorScheme?: ColorSchemeName | null;
 }
 
-/** PUR : normalise une locale OS brute en `DeviceContext`. */
+/** PUR : normalise ce que l'OS a fourni — sans défaut métier (nulls si inconnu). */
 export function resolveDeviceContext(input: DeviceContextInput = {}): DeviceContext {
-  const locale = (input.locale && input.locale.trim()) || DEFAULT_LOCALE;
-  const language = (locale.split(/[-_]/)[0] || 'fr').toLowerCase();
-  const regionMatch = locale.match(/[-_]([A-Za-z]{2})(?:[-_]|$)/);
+  const raw = input.locale?.trim() || null;
+  const language = raw ? (raw.split(/[-_]/)[0] || '').toLowerCase() || null : null;
+  const regionMatch = raw ? raw.match(/[-_]([A-Za-z]{2})(?:[-_]|$)/) : null;
   const region = regionMatch ? regionMatch[1].toUpperCase() : null;
-  const currency = (region && REGION_CURRENCY[region]) || DEFAULT_CURRENCY;
   return {
-    locale,
+    locale: raw,
     language,
     region,
     timeZone: input.timeZone ?? null,
-    currency,
-    colorScheme: input.colorScheme === 'dark' ? 'dark' : 'light',
+    currency: currencyForRegion(region),
+    colorScheme: input.colorScheme ?? null,
   };
 }
 
-/** Lecture OS (défensive : jamais d'exception si `Intl` incomplet). */
+/** Lecture OS défensive (jamais d'exception si `Intl` incomplet). */
 function readOsLocaleAndTimeZone(): { locale: string | null; timeZone: string | null } {
   try {
     const resolved = Intl.DateTimeFormat().resolvedOptions();
@@ -76,10 +83,8 @@ export function useDeviceContext(): DeviceContext {
   const scheme = useColorScheme();
   return useMemo(() => {
     const { locale, timeZone } = readOsLocaleAndTimeZone();
-    return resolveDeviceContext({
-      locale,
-      timeZone,
-      colorScheme: scheme === 'dark' ? 'dark' : 'light',
-    });
+    // useColorScheme peut renvoyer 'unspecified'/null → on ne garde que light|dark, sinon null.
+    const colorScheme: ColorSchemeName | null = scheme === 'light' || scheme === 'dark' ? scheme : null;
+    return resolveDeviceContext({ locale, timeZone, colorScheme });
   }, [scheme]);
 }

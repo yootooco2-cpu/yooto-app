@@ -1,39 +1,50 @@
-import { resolveDeviceContext } from './deviceContext';
+import { currencyForRegion, resolveDeviceContext } from './deviceContext';
 
-describe('resolveDeviceContext', () => {
-  it('décompose une locale fr-FR (langue, région, devise EUR)', () => {
-    const ctx = resolveDeviceContext({ locale: 'fr-FR', timeZone: 'Europe/Paris', colorScheme: 'light' });
-    expect(ctx).toMatchObject({ language: 'fr', region: 'FR', currency: 'EUR', timeZone: 'Europe/Paris', colorScheme: 'light' });
+describe('resolveDeviceContext (purement descriptif)', () => {
+  it('décompose fr-FR (langue, région, devise factuelle EUR)', () => {
+    expect(resolveDeviceContext({ locale: 'fr-FR', timeZone: 'Europe/Paris', colorScheme: 'light' })).toEqual({
+      locale: 'fr-FR', language: 'fr', region: 'FR', timeZone: 'Europe/Paris', currency: 'EUR', colorScheme: 'light',
+    });
   });
 
-  it('mappe la devise selon la région (en-US → USD, en-GB → GBP, de-CH → CHF)', () => {
+  it('devise déduite de la région (en-US→USD, en-GB→GBP, de-CH→CHF)', () => {
     expect(resolveDeviceContext({ locale: 'en-US' }).currency).toBe('USD');
     expect(resolveDeviceContext({ locale: 'en-GB' }).currency).toBe('GBP');
     expect(resolveDeviceContext({ locale: 'de-CH' }).currency).toBe('CHF');
   });
 
-  it('gère une locale sans région (fr) → région null, devise EUR par défaut', () => {
+  it('AUCUN défaut métier : locale absente → tout est null (le consommateur décide)', () => {
+    expect(resolveDeviceContext({})).toEqual({
+      locale: null, language: null, region: null, timeZone: null, currency: null, colorScheme: null,
+    });
+  });
+
+  it('locale sans région (fr) → région et devise null (pas d’EUR imposé)', () => {
     const ctx = resolveDeviceContext({ locale: 'fr' });
-    expect(ctx.region).toBeNull();
-    expect(ctx.currency).toBe('EUR');
     expect(ctx.language).toBe('fr');
+    expect(ctx.region).toBeNull();
+    expect(ctx.currency).toBeNull();
+  });
+
+  it('région non mappée → devise null (jamais d’exception)', () => {
+    expect(resolveDeviceContext({ locale: 'xx-KE' }).currency).toBeNull();
+    expect(resolveDeviceContext({ locale: 'xx-KE' }).region).toBe('KE');
   });
 
   it('tolère underscore et casse (es_es)', () => {
-    const ctx = resolveDeviceContext({ locale: 'es_es' });
-    expect(ctx).toMatchObject({ language: 'es', region: 'ES', currency: 'EUR' });
+    expect(resolveDeviceContext({ locale: 'es_es' })).toMatchObject({ language: 'es', region: 'ES', currency: 'EUR' });
   });
 
-  it('valeurs par défaut sûres si locale absente', () => {
-    const ctx = resolveDeviceContext({});
-    expect(ctx.locale).toBe('fr-FR');
-    expect(ctx.currency).toBe('EUR');
-    expect(ctx.colorScheme).toBe('light');
-    expect(ctx.timeZone).toBeNull();
+  it('colorScheme null si aucune préférence exprimée', () => {
+    expect(resolveDeviceContext({ locale: 'fr-FR', colorScheme: null }).colorScheme).toBeNull();
   });
+});
 
-  it('région inconnue → devise EUR par défaut (jamais d’exception)', () => {
-    expect(resolveDeviceContext({ locale: 'ja-JP' }).currency).toBe('EUR');
-    expect(resolveDeviceContext({ locale: 'ja-JP' }).region).toBe('JP');
+describe('currencyForRegion', () => {
+  it('mappe ou renvoie null (descriptif)', () => {
+    expect(currencyForRegion('FR')).toBe('EUR');
+    expect(currencyForRegion('us')).toBe('USD');
+    expect(currencyForRegion(null)).toBeNull();
+    expect(currencyForRegion('ZZ')).toBeNull();
   });
 });
