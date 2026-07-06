@@ -7,8 +7,10 @@
 -- =============================================================================
 
 -- Liaison utilisateur <-> commerce, avec rôle
+-- NB: merchant_id est BIGINT pour référencer public.merchants(id), dont le type réel
+-- (données importées) est bigint — et non uuid. Alignement sur le schéma existant.
 create table if not exists public.merchant_users (
-  merchant_id uuid not null references public.merchants (id) on delete cascade,
+  merchant_id bigint not null references public.merchants (id) on delete cascade,
   user_id     uuid not null references auth.users (id) on delete cascade,
   role        text not null default 'owner' check (role in ('owner', 'manager', 'staff')),
   created_at  timestamptz not null default now(),
@@ -20,7 +22,7 @@ create index if not exists merchant_users_user_idx on public.merchant_users (use
 -- Helper d'appartenance.
 -- SECURITY DEFINER + search_path verrouillé : évite la récursion RLS entre
 -- merchants (qui appelle ce helper) et merchant_users (qui a sa propre RLS).
-create or replace function public.is_merchant_member(mid uuid)
+create or replace function public.is_merchant_member(mid bigint)
 returns boolean
 language sql
 stable

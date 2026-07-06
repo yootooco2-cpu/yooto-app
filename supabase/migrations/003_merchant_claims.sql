@@ -18,7 +18,8 @@ $$;
 -- Table des demandes de revendication
 create table if not exists public.merchant_claims (
   id          uuid primary key default gen_random_uuid(),
-  merchant_id uuid not null references public.merchants (id) on delete cascade,
+  -- merchant_id: BIGINT pour référencer public.merchants(id) (type réel importé = bigint).
+  merchant_id bigint not null references public.merchants (id) on delete cascade,
   user_id     uuid not null references auth.users (id) on delete cascade,
   status      public.claim_status not null default 'pending',
   message     text,

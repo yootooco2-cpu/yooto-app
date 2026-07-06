@@ -11,7 +11,8 @@
 
 create table if not exists public.favorites (
   profile_id        uuid not null references public.profiles (id)  on delete cascade,
-  merchant_id       uuid not null references public.merchants (id) on delete cascade,
+  -- merchant_id: BIGINT pour référencer public.merchants(id) (type réel importé = bigint).
+  merchant_id       bigint not null references public.merchants (id) on delete cascade,
   state             text not null default 'active' check (state in ('active', 'removed')),
   client_updated_at timestamptz not null default now(),
   created_at        timestamptz not null default now(),
@@ -49,7 +50,7 @@ create policy favorites_self_update on public.favorites
 -- RPC LWW (SECURITY INVOKER → RLS s'applique, l'utilisateur ne touche que ses lignes).
 -- -----------------------------------------------------------------------------
 create or replace function public.set_favorite(
-  p_merchant uuid,
+  p_merchant bigint,
   p_state    text,
   p_client_ts timestamptz
 )
