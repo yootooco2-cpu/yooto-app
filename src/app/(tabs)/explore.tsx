@@ -47,7 +47,7 @@ import {
 } from '@/features/merchants';
 import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
 import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
-import { FavoritesList } from '@/features/favorites';
+import { FavoritesList, useFavoritesSync } from '@/features/favorites';
 
 /** Un commerce est-il dans l'emprise du viewport ? (bbox simple, France → pas d'antiméridien). */
 function inBounds(m: Merchant, v: MapViewport): boolean {
@@ -82,6 +82,8 @@ const SNAP_POINTS = ['15%', '55%', '90%'];
 
 export default function MapScreen() {
   const router = useRouter();
+  // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
+  useFavoritesSync();
   const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
     useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
