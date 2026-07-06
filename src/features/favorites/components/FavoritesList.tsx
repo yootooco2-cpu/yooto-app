@@ -1,6 +1,5 @@
 import { StyleSheet, View } from 'react-native';
 
-import { YBrandmark } from '@/components/brand/YLogo';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
@@ -29,7 +28,6 @@ export function FavoritesList({ merchants, onSelect }: Props) {
   if (favorites.length === 0) {
     return (
       <View style={styles.empty}>
-        <YBrandmark size={40} tone="cream" />
         <YText variant="subtitle" style={{ color: glass.onDark }}>
           Vous n'avez pas encore de favoris.
         </YText>

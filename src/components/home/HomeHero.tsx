@@ -7,7 +7,6 @@ import Animated, {
   useAnimatedStyle,
 } from 'react-native-reanimated';
 
-import { YLogo } from '@/components/brand/YLogo';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
@@ -51,9 +50,8 @@ export function HomeHero({ greeting, scrollY }: Props) {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(220)} style={[styles.content, contentStyle]}>
-        {/* Signature de marque (marque au-dessus de « YOOTOO »), puis respiration avant le salut. */}
-        <YLogo size={33} orientation="stack" style={styles.signature} />
-
+        {/* DA : le logo ne signe plus les écrans in-app — l'identité est portée par le contenu,
+            la carte, la typographie. Le salut ouvre directement le hero. */}
         <YText variant="caption" color="muted">
           {greeting}
         </YText>
@@ -116,10 +114,6 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: spacing.md,
-  },
-  // Respiration entre la signature et le salut (renforce le raffinement).
-  signature: {
-    marginBottom: spacing.sm,
   },
   locationRow: {
     flexDirection: 'row',
