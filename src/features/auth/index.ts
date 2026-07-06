@@ -1,3 +1,10 @@
 export { useSession } from './useSession';
 export { ensureIdentity } from './ensureIdentity';
-export { deriveSessionState, SIGNED_OUT, type SessionState, type SessionStatus } from './session';
+export {
+  deriveSessionState,
+  deriveIdentity,
+  SIGNED_OUT,
+  type SessionState,
+  type SessionStatus,
+  type SessionIdentity,
+} from './session';
