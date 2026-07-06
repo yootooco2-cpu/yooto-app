@@ -1,4 +1,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { Platform } from 'react-native';
+
+import { authStorage } from './authStorage';
 
 /**
  * Client Supabase — singleton PARESSEUX (lazy).
@@ -6,7 +9,9 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
  * - Aucune création au chargement du module (pas d'accès réseau/`window`) → rendu
  *   statique web SSR-safe, Expo Go OK.
  * - Clé ANON publique UNIQUEMENT. Jamais de `service_role` côté client.
- * - Pas d'auth en S5 : session non persistée.
+ * - AUTH (PR 1) : session PERSISTÉE (stockage sécurisé) + refresh auto + PKCE.
+ *   RÉTRO-COMPATIBLE : anon quand déconnecté (lecture publique des commerces actifs
+ *   inchangée), JWT utilisateur quand connecté. Aucune UI ne consomme encore la session.
  */
 let cachedClient: SupabaseClient | null | undefined;
 
@@ -29,8 +34,13 @@ export function getSupabaseClient(): SupabaseClient | null {
 
   cachedClient = createClient(url, anonKey, {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      storage: authStorage,
+      persistSession: true,
+      autoRefreshToken: true,
+      // Web : capte les jetons OAuth présents dans l'URL de redirection.
+      detectSessionInUrl: Platform.OS === 'web',
+      // PKCE : recommandé mobile + web (échange de code via exchangeCodeForSession).
+      flowType: 'pkce',
     },
   });
   return cachedClient;
