@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -40,6 +41,7 @@ const SPACES: Space[] = [
 ];
 
 export default function ProfileScreen() {
+  const router = useRouter();
   return (
     <YScreen scroll gap="lg" padding="lg">
       {/* Hero utilisateur */}
@@ -69,7 +71,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      <YButton label="Se connecter" fullWidth />
+      <YButton label="Se connecter" fullWidth onPress={() => router.push('/auth')} />
 
       <PreferenceSection />
 
