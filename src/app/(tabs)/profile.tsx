@@ -9,7 +9,7 @@ import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
-import { useSession } from '@/features/auth';
+import { useProfileRow, useSession } from '@/features/auth';
 import { PreferenceSection } from '@/features/profile/preferences';
 import { continueWithProvider, signOut, type AuthProvider } from '@/lib/supabase/authActions';
 
@@ -49,8 +49,9 @@ function initialOf(name: string | null, email: string | null): string {
 }
 
 export default function ProfileScreen() {
-  const { status, identity } = useSession();
+  const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
+  const profileRow = useProfileRow(isAuthenticated ? userId : null);
   const [busy, setBusy] = useState<null | AuthProvider | 'signout'>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,11 +102,13 @@ export default function ProfileScreen() {
                     Connecté
                   </YText>
                 </View>
-                <View style={styles.badge}>
-                  <YText variant="caption" color="primary">
-                    Local
-                  </YText>
-                </View>
+                {profileRow.exists ? (
+                  <View style={styles.badge}>
+                    <YText variant="caption" color="primary">
+                      Profil enregistré ✓
+                    </YText>
+                  </View>
+                ) : null}
               </View>
             </>
           ) : (

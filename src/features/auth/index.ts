@@ -1,4 +1,5 @@
 export { useSession } from './useSession';
+export { useProfileRow, type ProfileRow } from './useProfileRow';
 export { ensureIdentity } from './ensureIdentity';
 export {
   deriveSessionState,
