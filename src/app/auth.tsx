@@ -11,6 +11,8 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { typography } from '@/design/tokens/typography';
+import { signInWithEmailLink, signInWithProvider } from '@/lib/supabase/authActions';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 
 /** Bouton d'authentification sociale (approxime les conventions Google / Apple). */
 function SocialButton({
@@ -60,19 +62,32 @@ export default function AuthScreen() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState<null | 'google' | 'apple' | 'email'>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const skip = () => (router.canGoBack() ? router.back() : router.replace('/'));
+  const notConfigured = !isSupabaseConfigured();
 
-  // PROTOTYPE : les handlers matérialisent le parcours (câblage OAuth/lien magique = phase 2).
-  const onGoogle = () => {
-    // Phase 2 : supabase.auth.signInWithOAuth({ provider: 'google' }) via expo-web-browser (natif) / redirect (web).
+  const onProvider = async (provider: 'google' | 'apple') => {
+    if (busy) return;
+    setError(null);
+    setBusy(provider);
+    const res = await signInWithProvider(provider);
+    setBusy(null);
+    if (res.ok && !res.pendingRedirect) router.replace('/');
+    else if (!res.ok && res.error !== 'cancelled') {
+      setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Connexion impossible, réessayez.');
+    }
   };
-  const onApple = () => {
-    // Phase 2 : expo-apple-authentication -> supabase.auth.signInWithIdToken({ provider: 'apple', token }).
-  };
-  const onEmailLink = () => {
-    // Phase 2 : supabase.auth.signInWithOtp({ email, options: { data: { firstName, lastName, phone } } }).
-    if (email.trim()) setSent(true);
+
+  const onEmailLink = async () => {
+    if (busy || !email.trim()) return;
+    setError(null);
+    setBusy('email');
+    const res = await signInWithEmailLink(email, { firstName, lastName, phone });
+    setBusy(null);
+    if (res.ok) setSent(true);
+    else setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Envoi impossible, vérifiez l’email.');
   };
 
   return (
@@ -96,8 +111,10 @@ export default function AuthScreen() {
 
       {!showEmail ? (
         <View style={styles.actions}>
-          <SocialButton provider="google" onPress={onGoogle} />
-          {Platform.OS === 'ios' ? <SocialButton provider="apple" onPress={onApple} /> : null}
+          <SocialButton provider="google" onPress={() => void onProvider('google')} />
+          {Platform.OS === 'ios' ? (
+            <SocialButton provider="apple" onPress={() => void onProvider('apple')} />
+          ) : null}
 
           <View style={styles.divider}>
             <View style={styles.line} />
@@ -170,9 +187,9 @@ export default function AuthScreen() {
           />
 
           <YButton
-            label={sent ? 'Lien envoyé ✓' : 'Recevoir le lien de connexion'}
+            label={sent ? 'Lien envoyé ✓' : busy === 'email' ? 'Envoi…' : 'Recevoir le lien de connexion'}
             fullWidth
-            onPress={onEmailLink}
+            onPress={() => void onEmailLink()}
           />
           {sent ? (
             <YText variant="caption" color="primary" style={styles.center}>
@@ -181,6 +198,17 @@ export default function AuthScreen() {
           ) : null}
         </View>
       )}
+
+      {error ? (
+        <YText variant="caption" style={[styles.center, { color: colors.warning }]}>
+          {error}
+        </YText>
+      ) : null}
+      {notConfigured ? (
+        <YText variant="caption" color="muted" style={styles.center}>
+          Authentification en cours d'activation.
+        </YText>
+      ) : null}
 
       {/* RGPD : pourquoi ces données, et rien de plus. */}
       <YText variant="caption" color="muted" style={styles.legal}>
