@@ -22,6 +22,7 @@ import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
+import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
@@ -300,6 +301,9 @@ export default function MapScreen() {
               onClose={() => setQuickAccessOpen(false)}
               sections={quickAccessSections}
             />
+
+            {/* Navigation VERTICALE flottante (remplace la Bottom Tab Bar sur l'écran Carte). */}
+            <FloatingMapNavigation />
 
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet

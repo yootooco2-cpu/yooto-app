@@ -13,7 +13,13 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{ headerShown: false }}
-      tabBar={(props) => (isFocus ? null : <GlassTabBar {...props} />)}>
+      tabBar={(props) => {
+        // Sur l'écran Carte, la Bottom Tab Bar disparaît : la carte devient l'élément principal
+        // et la navigation passe par la barre verticale flottante (FloatingMapNavigation).
+        const active = props.state.routes[props.state.index]?.name;
+        if (isFocus || active === 'explore') return null;
+        return <GlassTabBar {...props} />;
+      }}>
       <Tabs.Screen name="index" options={{ title: 'Accueil' }} />
       <Tabs.Screen name="explore" options={{ title: 'Carte' }} />
       <Tabs.Screen name="merchants" options={{ title: 'Commerçants' }} />
