@@ -1,13 +1,13 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { type ComponentProps, useState } from 'react';
+import { type ComponentProps, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { YText } from '@/components/ui/YText';
 import { SUPPORT_EMAIL, supportMailtoUrl } from '@/constants/support';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
@@ -16,23 +16,24 @@ import { useFavoriteIds } from '@/features/favorites/favoritesStore';
 import { PreferenceSection } from '@/features/profile/preferences';
 import { signOut } from '@/lib/supabase/authActions';
 
-// Palette premium locale (dérivée des tokens YOOTOO + touches végétales pour cette page).
-const P = {
-  cream: colors.background,
-  card: colors.surface,
-  ink: colors.text,
-  muted: colors.mutedText,
-  green: colors.primary,
-  greenDeep: '#0F3D28', // carte « impact » vert profond (identique en clair/sombre)
-  lime: '#A7DE79', // chiffres de statistiques sur fond sombre
-  sage: '#EAF1E1', // fonds d'icônes / carte « De saison »
-  gold: colors.accent,
-  border: colors.border,
-  heart: '#D9645A',
-  onDark: '#F3EEE2',
-  onDarkMuted: 'rgba(243,238,226,0.72)',
-  danger: '#C0392B',
-};
+/** Palette locale de la page, dérivée du thème courant (jamais de couleur en dur). */
+interface Palette {
+  cream: string;
+  card: string;
+  ink: string;
+  muted: string;
+  green: string;
+  greenDeep: string;
+  lime: string;
+  sage: string;
+  gold: string;
+  border: string;
+  heart: string;
+  blue: string;
+  onDark: string;
+  onDarkMuted: string;
+  danger: string;
+}
 
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
@@ -50,8 +51,7 @@ function initialOf(name: string | null, email: string | null): string {
   return src.trim().charAt(0).toUpperCase() || 'Y';
 }
 
-/** Statistique de l'encart « impact ». */
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({ value, label, styles }: { value: number; label: string; styles: ReturnType<typeof makeStyles> }) {
   return (
     <View style={styles.stat}>
       <YText style={styles.statValue}>{value}</YText>
@@ -64,32 +64,25 @@ type QuickIcon =
   | { set: 'feather'; name: ComponentProps<typeof Feather>['name'] }
   | { set: 'mci'; name: ComponentProps<typeof MaterialCommunityIcons>['name'] };
 
-/** Carte d'accès rapide (grille). */
 function QuickCard({
   icon,
   tint,
   title,
   subtitle,
   onPress,
+  styles,
 }: {
   icon: QuickIcon;
   tint: string;
   title: string;
   subtitle: string;
   onPress?: () => void;
+  styles: ReturnType<typeof makeStyles>;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
       <View style={[styles.quickIcon, { backgroundColor: `${tint}1A` }]}>
-        {icon.set === 'feather' ? (
-          <Feather name={icon.name} size={18} color={tint} />
-        ) : (
-          <MaterialCommunityIcons name={icon.name} size={18} color={tint} />
-        )}
+        {icon.set === 'feather' ? <Feather name={icon.name} size={18} color={tint} /> : <MaterialCommunityIcons name={icon.name} size={18} color={tint} />}
       </View>
       <YText style={styles.quickTitle} numberOfLines={1}>
         {title}
@@ -103,6 +96,29 @@ function QuickCard({
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { colors: c, brand } = useTheme();
+  const P = useMemo<Palette>(
+    () => ({
+      cream: c.background,
+      card: c.surface,
+      ink: c.text,
+      muted: c.mutedText,
+      green: c.primary,
+      greenDeep: brand.greenDeep,
+      lime: brand.lime,
+      sage: c.tint,
+      gold: c.accent,
+      border: c.border,
+      heart: brand.heart,
+      blue: brand.blue,
+      onDark: brand.onDark,
+      onDarkMuted: brand.onDarkMuted,
+      danger: c.danger,
+    }),
+    [c, brand],
+  );
+  const styles = useMemo(() => makeStyles(P), [P]);
+
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
   const profileRow = useProfileRow(isAuthenticated ? userId : null);
@@ -111,7 +127,6 @@ export default function ProfileScreen() {
   const [signingOut, setSigningOut] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
-  // Données réelles disponibles + fallbacks honnêtes (0 quand aucune source).
   const favoritesCount = favoriteIds.length;
   const reviewsCount = 0;
   const visitedCount = 0;
@@ -130,19 +145,12 @@ export default function ProfileScreen() {
 
   const mailSupport = () => void Linking.openURL(supportMailtoUrl());
 
-  const quickItems: {
-    key: string;
-    icon: QuickIcon;
-    tint: string;
-    title: string;
-    subtitle: string;
-    onPress?: () => void;
-  }[] = [
+  const quickItems: { key: string; icon: QuickIcon; tint: string; title: string; subtitle: string; onPress?: () => void }[] = [
     { key: 'fav', icon: { set: 'feather', name: 'heart' }, tint: P.heart, title: 'Mes favoris', subtitle: `${favoritesCount} favori${favoritesCount > 1 ? 's' : ''}`, onPress: () => router.push('/explore') },
     { key: 'reviews', icon: { set: 'feather', name: 'star' }, tint: P.gold, title: 'Mes avis', subtitle: `${reviewsCount} avis laissé${reviewsCount > 1 ? 's' : ''}` },
     { key: 'visited', icon: { set: 'feather', name: 'map-pin' }, tint: P.green, title: 'Lieux visités', subtitle: `${visitedCount} découverte${visitedCount > 1 ? 's' : ''}` },
     { key: 'prefs', icon: { set: 'feather', name: 'sliders' }, tint: P.green, title: 'Mes préférences', subtitle: 'Vos goûts' },
-    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: '#1F5891', title: 'Notifications', subtitle: 'Bientôt' },
+    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: P.blue, title: 'Notifications', subtitle: 'Bientôt', onPress: () => router.push('/settings') },
     { key: 'help', icon: { set: 'feather', name: 'help-circle' }, tint: P.green, title: 'Aide & Contact', subtitle: SUPPORT_EMAIL, onPress: mailSupport },
   ];
 
@@ -152,12 +160,7 @@ export default function ProfileScreen() {
         {/* ---------- HEADER ---------- */}
         <View style={styles.header}>
           <MaterialCommunityIcons name="leaf" size={72} color={P.green} style={styles.leafAccent} />
-          <Pressable
-            onPress={() => {}}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Paramètres"
-            style={styles.gear}>
+          <Pressable onPress={() => router.push('/settings')} hitSlop={10} accessibilityRole="button" accessibilityLabel="Paramètres" style={styles.gear}>
             <Feather name="settings" size={20} color={P.muted} />
           </Pressable>
 
@@ -197,11 +200,11 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={20} color={P.onDarkMuted} />
           </View>
           <View style={styles.statsRow}>
-            <Stat value={favoritesCount} label="Favoris" />
+            <Stat value={favoritesCount} label="Favoris" styles={styles} />
             <View style={styles.statDivider} />
-            <Stat value={reviewsCount} label="Avis laissés" />
+            <Stat value={reviewsCount} label="Avis laissés" styles={styles} />
             <View style={styles.statDivider} />
-            <Stat value={visitedCount} label="Lieux visités" />
+            <Stat value={visitedCount} label="Lieux visités" styles={styles} />
           </View>
         </Animated.View>
 
@@ -209,7 +212,7 @@ export default function ProfileScreen() {
         <YText style={styles.sectionTitle}>Accès rapides</YText>
         <View style={styles.grid}>
           {quickItems.map((item) => (
-            <QuickCard key={item.key} icon={item.icon} tint={item.tint} title={item.title} subtitle={item.subtitle} onPress={item.onPress} />
+            <QuickCard key={item.key} icon={item.icon} tint={item.tint} title={item.title} subtitle={item.subtitle} onPress={item.onPress} styles={styles} />
           ))}
         </View>
 
@@ -234,32 +237,19 @@ export default function ProfileScreen() {
 
         {/* ---------- ACTION SESSION ---------- */}
         {isAuthenticated ? (
-          <Pressable
-            onPress={() => void onSignOut()}
-            disabled={signingOut}
-            accessibilityRole="button"
-            accessibilityLabel="Se déconnecter"
-            style={({ pressed }) => [styles.signOut, pressed && styles.pressed]}>
+          <Pressable onPress={() => void onSignOut()} disabled={signingOut} accessibilityRole="button" accessibilityLabel="Se déconnecter" style={({ pressed }) => [styles.signOut, pressed && styles.pressed]}>
             <Feather name="log-out" size={18} color={P.danger} />
             <YText style={styles.signOutText}>{signingOut ? 'Déconnexion…' : 'Se déconnecter'}</YText>
           </Pressable>
         ) : (
-          <Pressable
-            onPress={() => setAuthOpen(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Se connecter ou créer un compte"
-            style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}>
-            <Feather name="log-in" size={18} color={P.onDark} />
+          <Pressable onPress={() => setAuthOpen(true)} accessibilityRole="button" accessibilityLabel="Se connecter ou créer un compte" style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}>
+            <Feather name="log-in" size={18} color={brand.onDark} />
             <YText style={styles.signInText}>Se connecter · créer un compte</YText>
           </Pressable>
         )}
 
         {/* ---------- SUPPORT ---------- */}
-        <Pressable
-          onPress={mailSupport}
-          accessibilityRole="button"
-          accessibilityLabel={`Besoin d'aide ? Écrire à ${SUPPORT_EMAIL}`}
-          style={({ pressed }) => [styles.supportCard, pressed && styles.pressed]}>
+        <Pressable onPress={mailSupport} accessibilityRole="button" accessibilityLabel={`Besoin d'aide ? Écrire à ${SUPPORT_EMAIL}`} style={({ pressed }) => [styles.supportCard, pressed && styles.pressed]}>
           <View style={styles.supportIcon}>
             <MaterialCommunityIcons name="leaf" size={18} color={P.green} />
           </View>
@@ -279,150 +269,65 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: P.cream },
-  content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
+function makeStyles(P: Palette) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: P.cream },
+    content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
 
-  // Header
-  header: { alignItems: 'center', paddingTop: spacing.sm },
-  leafAccent: { position: 'absolute', top: -6, left: -10, opacity: 0.1, transform: [{ rotate: '-18deg' }] },
-  gear: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 40,
-    height: 40,
-    borderRadius: radii.pill,
-    backgroundColor: P.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  avatarWrap: { marginTop: spacing.sm },
-  avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: P.card, borderWidth: 3, borderColor: P.card, ...shadows.md },
-  avatarFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: P.green },
-  avatarInitial: { color: '#FFFFFF', fontSize: 34, fontWeight: '800' },
-  onlineDot: {
-    position: 'absolute',
-    right: 4,
-    bottom: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#3CB371',
-    borderWidth: 3,
-    borderColor: P.cream,
-  },
-  name: { marginTop: spacing.md, fontSize: 24, lineHeight: 30, fontWeight: '800', color: P.ink, letterSpacing: -0.4 },
-  email: { marginTop: 2, fontSize: 14, color: P.muted },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginTop: spacing.sm,
-    paddingVertical: 5,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-  },
-  statusOn: { backgroundColor: '#E9F3EC', borderColor: '#CBE4D3' },
-  statusGuest: { backgroundColor: P.card, borderColor: P.border },
-  statusText: { fontSize: 13, fontWeight: '700' },
-  since: { marginTop: spacing.sm, fontSize: 12, color: P.muted },
+    header: { alignItems: 'center', paddingTop: spacing.sm },
+    leafAccent: { position: 'absolute', top: -6, left: -10, opacity: 0.1, transform: [{ rotate: '-18deg' }] },
+    gear: { position: 'absolute', top: 0, right: 0, width: 40, height: 40, borderRadius: radii.pill, backgroundColor: P.card, alignItems: 'center', justifyContent: 'center', ...shadows.sm },
+    avatarWrap: { marginTop: spacing.sm },
+    avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: P.card, borderWidth: 3, borderColor: P.card, ...shadows.md },
+    avatarFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: P.green },
+    avatarInitial: { color: '#FFFFFF', fontSize: 34, fontWeight: '800' },
+    onlineDot: { position: 'absolute', right: 4, bottom: 4, width: 22, height: 22, borderRadius: 11, backgroundColor: '#3CB371', borderWidth: 3, borderColor: P.cream },
+    name: { marginTop: spacing.md, fontSize: 24, lineHeight: 30, fontWeight: '800', color: P.ink, letterSpacing: -0.4 },
+    email: { marginTop: 2, fontSize: 14, color: P.muted },
+    statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: spacing.sm, paddingVertical: 5, paddingHorizontal: spacing.md, borderRadius: radii.pill, borderWidth: 1 },
+    statusOn: { backgroundColor: P.sage, borderColor: P.border },
+    statusGuest: { backgroundColor: P.card, borderColor: P.border },
+    statusText: { fontSize: 13, fontWeight: '700' },
+    since: { marginTop: spacing.sm, fontSize: 12, color: P.muted },
 
-  // Impact
-  impactCard: { backgroundColor: P.greenDeep, borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md, ...shadows.md },
-  impactHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  impactIcon: { width: 44, height: 44, borderRadius: radii.pill, backgroundColor: 'rgba(167,222,121,0.16)', alignItems: 'center', justifyContent: 'center' },
-  impactHeadText: { flex: 1, gap: 2 },
-  impactTitle: { color: P.onDark, fontSize: 17, fontWeight: '700' },
-  impactSub: { color: P.onDarkMuted, fontSize: 13, lineHeight: 18 },
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs },
-  stat: { flex: 1, alignItems: 'center', gap: 2 },
-  statValue: { color: P.lime, fontSize: 24, fontWeight: '800' },
-  statLabel: { color: P.onDarkMuted, fontSize: 12 },
-  statDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.12)' },
+    impactCard: { backgroundColor: P.greenDeep, borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md, ...shadows.md },
+    impactHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    impactIcon: { width: 44, height: 44, borderRadius: radii.pill, backgroundColor: 'rgba(167,222,121,0.16)', alignItems: 'center', justifyContent: 'center' },
+    impactHeadText: { flex: 1, gap: 2 },
+    impactTitle: { color: P.onDark, fontSize: 17, fontWeight: '700' },
+    impactSub: { color: P.onDarkMuted, fontSize: 13, lineHeight: 18 },
+    statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs },
+    stat: { flex: 1, alignItems: 'center', gap: 2 },
+    statValue: { color: P.lime, fontSize: 24, fontWeight: '800' },
+    statLabel: { color: P.onDarkMuted, fontSize: 12 },
+    statDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.12)' },
 
-  // Sections
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: P.ink, letterSpacing: -0.3 },
+    sectionTitle: { fontSize: 18, fontWeight: '800', color: P.ink, letterSpacing: -0.3 },
 
-  // Grille accès rapides
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  quickCard: {
-    flexBasis: '30%',
-    flexGrow: 1,
-    minWidth: 96,
-    backgroundColor: P.card,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: P.border,
-    padding: spacing.md,
-    gap: 6,
-    ...shadows.sm,
-  },
-  quickIcon: { width: 34, height: 34, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
-  quickTitle: { fontSize: 14, fontWeight: '700', color: P.ink, marginTop: 2 },
-  quickSub: { fontSize: 12, color: P.muted },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+    quickCard: { flexBasis: '30%', flexGrow: 1, minWidth: 96, backgroundColor: P.card, borderRadius: radii.lg, borderWidth: 1, borderColor: P.border, padding: spacing.md, gap: 6, ...shadows.sm },
+    quickIcon: { width: 34, height: 34, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+    quickTitle: { fontSize: 14, fontWeight: '700', color: P.ink, marginTop: 2 },
+    quickSub: { fontSize: 12, color: P.muted },
 
-  // De saison
-  seasonCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: P.sage,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: '#DCE7CF',
-    padding: spacing.lg,
-  },
-  seasonText: { flex: 1, gap: 3 },
-  seasonTitle: { fontSize: 17, fontWeight: '800', color: '#26401F' },
-  seasonSub: { fontSize: 13, lineHeight: 18, color: '#5A6B4E' },
-  seasonThumb: { width: 56, height: 56, borderRadius: radii.lg, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+    seasonCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: P.sage, borderRadius: radii.xl, borderWidth: 1, borderColor: P.border, padding: spacing.lg },
+    seasonText: { flex: 1, gap: 3 },
+    seasonTitle: { fontSize: 17, fontWeight: '800', color: P.ink },
+    seasonSub: { fontSize: 13, lineHeight: 18, color: P.muted },
+    seasonThumb: { width: 56, height: 56, borderRadius: radii.lg, backgroundColor: P.card, alignItems: 'center', justifyContent: 'center' },
 
-  // Sign out / in
-  signOut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: 54,
-    borderRadius: radii.lg,
-    backgroundColor: P.card,
-    borderWidth: 1,
-    borderColor: '#EAD9D6',
-    ...shadows.sm,
-  },
-  signOutText: { color: P.danger, fontSize: 16, fontWeight: '700' },
-  signIn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    height: 54,
-    borderRadius: radii.lg,
-    backgroundColor: P.green,
-    ...shadows.md,
-  },
-  signInText: { color: P.onDark, fontSize: 16, fontWeight: '700' },
+    signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: 54, borderRadius: radii.lg, backgroundColor: P.card, borderWidth: 1, borderColor: P.border, ...shadows.sm },
+    signOutText: { color: P.danger, fontSize: 16, fontWeight: '700' },
+    signIn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: 54, borderRadius: radii.lg, backgroundColor: P.green, ...shadows.md },
+    signInText: { color: P.onDark, fontSize: 16, fontWeight: '700' },
 
-  // Support
-  supportCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: P.card,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: P.border,
-    padding: spacing.md,
-    ...shadows.sm,
-  },
-  supportIcon: { width: 36, height: 36, borderRadius: radii.pill, backgroundColor: P.sage, alignItems: 'center', justifyContent: 'center' },
-  supportText: { flex: 1, gap: 1 },
-  supportTitle: { fontSize: 14, fontWeight: '700', color: P.ink },
-  supportSub: { fontSize: 12, color: P.muted },
-  supportEmail: { fontSize: 12, color: P.green, fontWeight: '600', maxWidth: 130 },
+    supportCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: P.card, borderRadius: radii.lg, borderWidth: 1, borderColor: P.border, padding: spacing.md, ...shadows.sm },
+    supportIcon: { width: 36, height: 36, borderRadius: radii.pill, backgroundColor: P.sage, alignItems: 'center', justifyContent: 'center' },
+    supportText: { flex: 1, gap: 1 },
+    supportTitle: { fontSize: 14, fontWeight: '700', color: P.ink },
+    supportSub: { fontSize: 12, color: P.muted },
+    supportEmail: { fontSize: 12, color: P.green, fontWeight: '600', maxWidth: 130 },
 
-  pressed: { opacity: 0.85 },
-});
+    pressed: { opacity: 0.85 },
+  });
+}

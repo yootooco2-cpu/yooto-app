@@ -1,5 +1,6 @@
 export { useSession } from './useSession';
 export { useProfileRow, type ProfileRow } from './useProfileRow';
+export { useLinkedProviders } from './useLinkedProviders';
 export { ensureIdentity } from './ensureIdentity';
 export {
   deriveSessionState,
