@@ -343,9 +343,9 @@ export default function MapScreen() {
               </View>
             ) : null}
 
-            {/* Bottom sheet PERSISTANT : bascule contenu preview (commerce sélectionné) ↔ liste.
-                Ne se démonte plus à la sélection → transition fluide, position conservée. */}
-            {!isFocus && (selectedMerchant || (!isLoading && count > 0)) ? (
+            {/* Feuille du bas RÉDUITE À L'APERÇU : n'apparaît QUE lorsqu'un marqueur est sélectionné
+                (mini-fiche du commerce). Plus de liste « X commerces dans cette zone » → carte seule. */}
+            {!isFocus && selectedMerchant ? (
               <BottomSheet
                 ref={sheetRef}
                 index={0}
