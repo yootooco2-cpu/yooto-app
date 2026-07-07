@@ -54,9 +54,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.md,
-    height: 50,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md + spacing.xs,
+    height: 54,
   },
   glass: {
     width: 16,

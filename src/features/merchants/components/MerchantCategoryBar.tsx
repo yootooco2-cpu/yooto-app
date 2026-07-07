@@ -47,10 +47,11 @@ export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={cat.label}
-            style={[
+            style={({ pressed }) => [
               styles.chip,
               { borderColor: colors.border, backgroundColor: colors.surface },
-              isActive && { borderColor: color, backgroundColor: `${color}18` },
+              isActive && { borderColor: color, backgroundColor: `${color}1F` },
+              pressed && styles.chipPressed,
             ]}>
             <Image source={cryptogramAsset(cat.icon)} style={styles.icon} contentFit="contain" />
             <YText variant="caption" style={[styles.label, isActive ? { color } : null]}>
@@ -76,14 +77,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
+    minHeight: 44,
+    paddingVertical: 10,
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     borderWidth: 1,
   },
-  icon: {
-    width: 26,
-    height: 26,
+  chipPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.97 }],
   },
-  label: {},
+  icon: {
+    width: 24,
+    height: 24,
+  },
+  label: {
+    fontWeight: '600',
+  },
 });

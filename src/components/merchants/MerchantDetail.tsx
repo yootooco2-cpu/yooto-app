@@ -4,9 +4,9 @@ import { type ComponentProps, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { FullscreenGallery } from '@/components/merchants/FullscreenGallery';
-import { IconAction } from '@/components/merchants/IconAction';
 import { FavoriteHeartButton } from '@/components/favorites/FavoriteHeartButton';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { ReviewsSummary } from '@/components/merchants/ReviewsSummary';
 import { YCard } from '@/components/ui/YCard';
 import { YText } from '@/components/ui/YText';
@@ -18,6 +18,7 @@ import { trackEvent } from '@/features/discovery';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, isRealPhotoUrl, type Merchant } from '@/features/merchants';
 import { buildDirectionsUrl } from '@/features/merchants/directions';
 import { formatRatingFr, starFill } from '@/features/merchants/reviews';
+import { shareMerchant } from '@/features/merchants/share';
 
 type FeatherName = ComponentProps<typeof Feather>['name'];
 
@@ -292,13 +293,12 @@ export function MerchantDetail({ merchant, onBack }: Props) {
           </View>
         </View>
 
-        {/* Actions rapides avec icônes — juste sous le header */}
-        <View style={styles.actionsRow}>
-          <IconAction icon="navigation" label="Itinéraire" primary onPress={onDirections} />
-          {phone ? <IconAction icon="phone" label="Appeler" onPress={() => openUrl(`tel:${phone}`)} /> : null}
-          {website ? (
-            <IconAction icon="globe" label="Site web" onPress={() => openUrl(ensureHttp(website))} />
-          ) : null}
+        {/* Actions — Itinéraire = action PRINCIPALE ; les autres discrètes (mêmes boutons partout). */}
+        <ActionButton icon="navigation" label="Itinéraire" variant="primary" fullWidth onPress={onDirections} />
+        <View style={styles.secondaryRow}>
+          <ActionButton icon="phone" label="Appeler" fullWidth disabled={!phone} onPress={() => openUrl(`tel:${phone}`)} />
+          <ActionButton icon="globe" label="Site web" fullWidth disabled={!website} onPress={() => website && openUrl(ensureHttp(website))} />
+          <ActionButton icon="share-2" label="Partager" fullWidth onPress={() => void shareMerchant(merchant)} />
         </View>
 
         {/* Badges attributs (le statut « Local » est déjà dans le header) */}
@@ -538,7 +538,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
   },
-  actionsRow: {
+  secondaryRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
