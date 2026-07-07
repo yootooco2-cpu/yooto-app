@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { AuthOptions } from '@/components/auth/AuthOptions';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
@@ -12,7 +13,7 @@ import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { useProfileRow, useSession } from '@/features/auth';
 import { PreferenceSection } from '@/features/profile/preferences';
-import { continueWithProvider, signOut, type AuthProvider } from '@/lib/supabase/authActions';
+import { signOut } from '@/lib/supabase/authActions';
 
 type Space = {
   title: string;
@@ -53,26 +54,13 @@ export default function ProfileScreen() {
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
   const profileRow = useProfileRow(isAuthenticated ? userId : null);
-  const [busy, setBusy] = useState<null | AuthProvider | 'signout'>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const onProvider = async (provider: AuthProvider) => {
-    if (busy) return;
-    setError(null);
-    setBusy(provider);
-    const res = await continueWithProvider(provider);
-    // Web : redirection en cours. Natif : succès → l'état bascule via onAuthStateChange.
-    if (!res.ok && res.error !== 'cancelled') {
-      setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Connexion impossible, réessayez.');
-    }
-    setBusy(null);
-  };
+  const [signingOut, setSigningOut] = useState(false);
 
   const onSignOut = async () => {
-    if (busy) return;
-    setBusy('signout');
+    if (signingOut) return;
+    setSigningOut(true);
     await signOut();
-    setBusy(null);
+    setSigningOut(false);
   };
 
   return (
@@ -128,7 +116,7 @@ export default function ProfileScreen() {
           label="Se déconnecter"
           variant="secondary"
           fullWidth
-          loading={busy === 'signout'}
+          loading={signingOut}
           onPress={() => void onSignOut()}
         />
       ) : (
@@ -136,26 +124,7 @@ export default function ProfileScreen() {
           <YText variant="body" color="muted" style={styles.authLead}>
             Connectez-vous pour retrouver vos favoris et vos avantages, partout. Sans mot de passe.
           </YText>
-          <YButton
-            label="Continuer avec Google"
-            fullWidth
-            loading={busy === 'google'}
-            onPress={() => void onProvider('google')}
-          />
-          {Platform.OS === 'ios' ? (
-            <YButton
-              label="Continuer avec Apple"
-              variant="secondary"
-              fullWidth
-              loading={busy === 'apple'}
-              onPress={() => void onProvider('apple')}
-            />
-          ) : null}
-          {error ? (
-            <YText variant="caption" style={styles.error}>
-              {error}
-            </YText>
-          ) : null}
+          <AuthOptions variant="screen" />
         </Animated.View>
       )}
 
@@ -232,11 +201,6 @@ const styles = StyleSheet.create({
   },
   authLead: {
     marginBottom: spacing.xs,
-  },
-  error: {
-    color: colors.warning,
-    textAlign: 'center',
-    marginTop: spacing.xs,
   },
   cardHeader: {
     flexDirection: 'row',

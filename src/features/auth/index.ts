@@ -1,5 +1,6 @@
 export { useSession } from './useSession';
 export { useProfileRow, type ProfileRow } from './useProfileRow';
+export { useAuthFlow, type AuthBusy } from './useAuthFlow';
 export { ensureIdentity } from './ensureIdentity';
 export {
   deriveSessionState,
