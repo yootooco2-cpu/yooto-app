@@ -3,6 +3,7 @@ import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
+import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
@@ -20,6 +21,8 @@ interface Props {
   onToggle: (id: MerchantCategoryId) => void;
   /** Web : survol d'une catégorie (ouvre le panneau de découverte sur l'Accueil). */
   onHover?: (id: MerchantCategoryId) => void;
+  /** `glass` = pastilles verre translucide flottant sur la carte (fusion immersive). */
+  variant?: 'default' | 'glass';
 }
 
 /**
@@ -28,8 +31,9 @@ interface Props {
  * survol web (optionnel) = ouverture immédiate. Purement présentationnel : ne remonte que
  * l'id (le filtrage/panneau vit dans l'écran consommateur). Source unique de la DA.
  */
-export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
+export function MerchantCategoryBar({ active, onToggle, onHover, variant = 'default' }: Props) {
   const { colors } = useTheme();
+  const isGlass = variant === 'glass';
   return (
     <ScrollView
       horizontal
@@ -39,6 +43,14 @@ export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
       {MERCHANT_CATEGORY_FILTERS.map((cat) => {
         const isActive = cat.id === active;
         const color = cryptogramColor(cat.icon);
+        // Sur la carte : inactif = verre translucide flottant ; actif = pastille verte pleine.
+        const inactiveStyle = isGlass
+          ? [glass.panel, styles.glassShadow]
+          : { borderColor: colors.border, backgroundColor: colors.surface };
+        const activeStyle = isGlass
+          ? { borderColor: colors.primary, backgroundColor: colors.primary }
+          : { borderColor: color, backgroundColor: `${color}1F` };
+        const labelColor = isActive ? (isGlass ? glass.onDark : color) : isGlass ? glass.onDark : undefined;
         return (
           <Pressable
             key={cat.id}
@@ -49,12 +61,12 @@ export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
             accessibilityLabel={cat.label}
             style={({ pressed }) => [
               styles.chip,
-              { borderColor: colors.border, backgroundColor: colors.surface },
-              isActive && { borderColor: color, backgroundColor: `${color}1F` },
+              inactiveStyle,
+              isActive && activeStyle,
               pressed && styles.chipPressed,
             ]}>
             <Image source={cryptogramAsset(cat.icon)} style={styles.icon} contentFit="contain" />
-            <YText variant="caption" style={[styles.label, isActive ? { color } : null]}>
+            <YText variant="caption" style={[styles.label, labelColor ? { color: labelColor } : null]}>
               {cat.label}
             </YText>
           </Pressable>
@@ -87,6 +99,11 @@ const styles = StyleSheet.create({
     opacity: 0.72,
     transform: [{ scale: 0.97 }],
   },
+  // Ombre extrêmement douce → la pastille « flotte » au-dessus de la carte, sans arête.
+  glassShadow: Platform.select({
+    web: { boxShadow: '0 6px 20px rgba(0,0,0,0.22)' },
+    default: { shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
+  }),
   icon: {
     width: 24,
     height: 24,

@@ -1,4 +1,4 @@
-import { StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { Platform, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { glass } from '@/design/tokens/glass';
@@ -28,7 +28,7 @@ export function YSearchBar({
     <View
       style={[
         styles.container,
-        isGlass ? glass.panel : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+        isGlass ? [glass.panel, styles.glassShadow] : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
       ]}>
       {/* Loupe minimaliste composée de Views (aucune librairie d'icônes) */}
       <View style={styles.glass}>
@@ -58,6 +58,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md + spacing.xs,
     height: 54,
   },
+  // Ombre extrêmement douce → la barre « flotte » au-dessus de la carte, transition imperceptible.
+  glassShadow: Platform.select({
+    web: { boxShadow: '0 8px 28px rgba(0,0,0,0.28)' },
+    default: { shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  }),
   glass: {
     width: 16,
     height: 16,

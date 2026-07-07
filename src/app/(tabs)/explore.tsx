@@ -3,9 +3,11 @@ import BottomSheet, {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   MapEngine,
@@ -19,7 +21,6 @@ import { YChip } from '@/components/ui/YChip';
 import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { PreferenceService } from '@/services/PreferenceService';
-import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
@@ -79,6 +80,10 @@ function sameViewport(a: MapViewport | null, b: MapViewport): boolean {
 
 /** Paliers du bottom sheet : peek (aperçu) / mid (liste, sélection) / full (immersif). */
 const SNAP_POINTS = ['15%', '55%', '90%'];
+
+// Voile dégradé du chrome : la carte disparaît PROGRESSIVEMENT sous la recherche/catégories
+// (sombre au ras du status bar → transparent au niveau des catégories). Transition imperceptible.
+const TOP_SCRIM = ['rgba(17,23,20,0.90)', 'rgba(17,23,20,0.45)', 'rgba(17,23,20,0)'] as const;
 
 export default function MapScreen() {
   // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
@@ -187,6 +192,13 @@ export default function MapScreen() {
     sheetRef.current?.snapToIndex(selectedId ? defaultSheetIndex : 0);
   }, [selectedId, defaultSheetIndex]);
 
+  // Immersion : la carte est plein écran, le chrome (recherche + catégories) FLOTTE au-dessus.
+  // On mesure sa hauteur pour poser les FAB juste en dessous du voile, jamais sous la recherche.
+  const insets = useSafeAreaInsets();
+  const [chromeHeight, setChromeHeight] = useState(0);
+  const onChromeLayout = useCallback((e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height), []);
+  const fabTop = chromeHeight > 0 ? chromeHeight + spacing.sm : insets.top + 132;
+
   // Liste virtualisée du bottom sheet (rendu de ligne stable).
   // Backdrop premium : n'assombrit qu'au palier plein écran (index 2) → carte interactive au peek/mid.
   const renderBackdrop = useCallback(
@@ -220,47 +232,19 @@ export default function MapScreen() {
     <SectionThemeProvider section="carte">
       <View style={styles.root}>
       <View style={styles.screenWrap}>
-        <YScreen gap="sm" padding="lg">
-      <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-
-      {/* Barre de catégories PARTAGÉE (identique à l'Accueil et à /commerçants), juste sous la
-          recherche. Tap = sélection/désélection ; pilote le store `activeCategory` commun. */}
-      <MerchantCategoryBar
-        active={activeCategory}
-        onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
-        contentContainerStyle={styles.filters}>
-        {QUICK_FILTERS.map((filter) => (
-          <YChip
-            key={filter.id}
-            label={filter.label}
-            icon={filterCryptogramAsset(filter.id)}
-            active={filters.includes(filter.id)}
-            onPress={() => toggleFilter(filter.id)}
-          />
-        ))}
-      </ScrollView>
-
-      {nearbyActive && location.status === 'denied' ? (
-        <YText variant="caption" color="muted">
-          Localisation indisponible — activez-la pour trier par distance.
-        </YText>
-      ) : null}
-
+      {/* Immersion : la carte est le FOND plein écran ; tout le chrome flotte au-dessus (voile
+          dégradé + verre) → plus aucune rupture « carte / barre / catégories ». */}
       <View style={styles.mapArea}>
         {isError ? (
-          <YCard variant="outline">
-            <YText variant="subtitle">Impossible de charger les commerces</YText>
-            <YText variant="body" color="muted">
-              Vérifiez votre connexion, puis réessayez.
-            </YText>
-            <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
-          </YCard>
+          <View style={[styles.errorWrap, { paddingTop: insets.top + spacing.xl }]}>
+            <YCard variant="outline">
+              <YText variant="subtitle">Impossible de charger les commerces</YText>
+              <YText variant="body" color="muted">
+                Vérifiez votre connexion, puis réessayez.
+              </YText>
+              <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
+            </YCard>
+          </View>
         ) : (
           <View style={styles.mapRow}>
             <View style={styles.mapCol}>
@@ -284,7 +268,7 @@ export default function MapScreen() {
               onPress={() => setQuickAccessOpen(true)}
               accessibilityRole="button"
               accessibilityLabel="Favoris"
-              style={[styles.favFab, glass.panel, shadows.md]}>
+              style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }]}>
               <Feather name="heart" size={18} color={glass.onDark} />
             </Pressable>
 
@@ -312,14 +296,14 @@ export default function MapScreen() {
                 onPress={smart.recenter}
                 accessibilityRole="button"
                 accessibilityLabel="Me recentrer"
-                style={[styles.recenterFab, glass.panel, shadows.md]}>
+                style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }]}>
                 <Feather name="navigation" size={18} color={glass.onDark} />
               </Pressable>
             ) : null}
 
             {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
             {isLoading ? (
-              <View style={[styles.counterChip, glass.panel, shadows.sm]}>
+              <View style={[styles.counterChip, glass.panel, shadows.sm, { top: fabTop }]}>
                 <YText variant="caption" style={styles.counterText}>
                   Chargement des commerces…
                 </YText>
@@ -365,11 +349,53 @@ export default function MapScreen() {
               </BottomSheet>
             ) : null}
 
+            {/* CHROME FLOTTANT immersif : voile dégradé (la carte se fond dessous) + recherche
+                verre + catégories/filtres flottants. box-none → la carte reste interactive autour. */}
+            <View
+              style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }]}
+              onLayout={onChromeLayout}
+              pointerEvents="box-none">
+              <LinearGradient
+                colors={TOP_SCRIM}
+                locations={[0, 0.62, 1]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              <View style={styles.topChromeInner} pointerEvents="box-none">
+                <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
+                <MerchantCategoryBar
+                  variant="glass"
+                  active={activeCategory}
+                  onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
+                />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.filtersScroll}
+                  contentContainerStyle={styles.filters}>
+                  {QUICK_FILTERS.map((filter) => (
+                    <YChip
+                      key={filter.id}
+                      label={filter.label}
+                      icon={filterCryptogramAsset(filter.id)}
+                      active={filters.includes(filter.id)}
+                      onPress={() => toggleFilter(filter.id)}
+                      variant="glass"
+                    />
+                  ))}
+                </ScrollView>
+                {nearbyActive && location.status === 'denied' ? (
+                  <YText variant="caption" style={styles.nearbyDenied}>
+                    Localisation indisponible — activez-la pour trier par distance.
+                  </YText>
+                ) : null}
+              </View>
+            </View>
+
             </View>
           </View>
         )}
       </View>
-        </YScreen>
       </View>
       </View>
     </SectionThemeProvider>
@@ -402,6 +428,31 @@ const styles = StyleSheet.create({
   },
   mapCol: {
     flex: 1,
+  },
+  // Chrome flottant : superposé en HAUT de la carte (jamais en flux) → aucune coupure.
+  topChrome: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: spacing.xl,
+    zIndex: 8,
+  },
+  topChromeInner: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  nearbyDenied: {
+    color: glass.onDarkMuted,
+    paddingHorizontal: spacing.xs,
+  },
+  // Erreur réseau : la carte n'est pas rendue → carte de secours centrée sur le fond de section.
+  errorWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.background,
   },
   recenterFab: {
     position: 'absolute',
