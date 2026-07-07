@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -84,6 +85,8 @@ const SNAP_POINTS = ['15%', '55%', '90%'];
 // Voile dégradé du chrome : la carte disparaît PROGRESSIVEMENT sous la recherche/catégories
 // (sombre au ras du status bar → transparent au niveau des catégories). Transition imperceptible.
 const TOP_SCRIM = ['rgba(17,23,20,0.90)', 'rgba(17,23,20,0.45)', 'rgba(17,23,20,0)'] as const;
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function MapScreen() {
   // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
@@ -262,15 +265,18 @@ export default function MapScreen() {
               onViewportChange={handleViewport}
             />
 
-            {/* Accès rapide « Favoris » — FAB glass discret en haut à GAUCHE (sous la barre de
-                recherche, côté opposé au recentrage). N'entre jamais en concurrence avec la recherche. */}
-            <Pressable
-              onPress={() => setQuickAccessOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Favoris"
-              style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }]}>
-              <Feather name="heart" size={18} color={glass.onDark} />
-            </Pressable>
+            {/* Accès rapide « Favoris » — FAB glass discret en haut à GAUCHE. Contrôle d'EXPLORATION :
+                retiré de l'arbre dès qu'une fiche est ouverte (aucun clic possible), réapparaît en fondu. */}
+            {!selectedMerchant ? (
+              <AnimatedPressable
+                entering={FadeIn.duration(260)}
+                onPress={() => setQuickAccessOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Favoris"
+                style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }]}>
+                <Feather name="heart" size={18} color={glass.onDark} />
+              </AnimatedPressable>
+            ) : null}
 
             {/* Bottom sheet « Favoris » (overlay Modal, aucun impact moteur carte). */}
             <MapQuickAccessSheet
@@ -290,15 +296,16 @@ export default function MapScreen() {
               favoritesCount={favoriteIds.length}
             />
 
-            {/* « Me recentrer » — visible uniquement si la position est connue et hors du viewport. */}
-            {showRecenter ? (
-              <Pressable
+            {/* « Me recentrer » — contrôle d'EXPLORATION : masqué pendant la consultation d'une fiche. */}
+            {showRecenter && !selectedMerchant ? (
+              <AnimatedPressable
+                entering={FadeIn.duration(260)}
                 onPress={smart.recenter}
                 accessibilityRole="button"
                 accessibilityLabel="Me recentrer"
                 style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }]}>
                 <Feather name="navigation" size={18} color={glass.onDark} />
-              </Pressable>
+              </AnimatedPressable>
             ) : null}
 
             {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
@@ -349,48 +356,52 @@ export default function MapScreen() {
               </BottomSheet>
             ) : null}
 
-            {/* CHROME FLOTTANT immersif : voile dégradé (la carte se fond dessous) + recherche
-                verre + catégories/filtres flottants. box-none → la carte reste interactive autour. */}
-            <View
-              style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }]}
-              onLayout={onChromeLayout}
-              pointerEvents="box-none">
-              <LinearGradient
-                colors={TOP_SCRIM}
-                locations={[0, 0.62, 1]}
-                style={StyleSheet.absoluteFill}
-                pointerEvents="none"
-              />
-              <View style={styles.topChromeInner} pointerEvents="box-none">
-                <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-                <MerchantCategoryBar
-                  variant="glass"
-                  active={activeCategory}
-                  onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
+            {/* CHROME FLOTTANT immersif (recherche + catégories + filtres). Contrôles d'EXPLORATION :
+                entièrement retirés de l'arbre pendant la consultation d'une fiche (aucun clic possible),
+                réapparition en fondu + translation depuis le haut à la fermeture. box-none → carte libre. */}
+            {!selectedMerchant ? (
+              <Animated.View
+                entering={FadeInDown.duration(300)}
+                style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }]}
+                onLayout={onChromeLayout}
+                pointerEvents="box-none">
+                <LinearGradient
+                  colors={TOP_SCRIM}
+                  locations={[0, 0.62, 1]}
+                  style={StyleSheet.absoluteFill}
+                  pointerEvents="none"
                 />
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.filtersScroll}
-                  contentContainerStyle={styles.filters}>
-                  {QUICK_FILTERS.map((filter) => (
-                    <YChip
-                      key={filter.id}
-                      label={filter.label}
-                      icon={filterCryptogramAsset(filter.id)}
-                      active={filters.includes(filter.id)}
-                      onPress={() => toggleFilter(filter.id)}
-                      variant="glass"
-                    />
-                  ))}
-                </ScrollView>
-                {nearbyActive && location.status === 'denied' ? (
-                  <YText variant="caption" style={styles.nearbyDenied}>
-                    Localisation indisponible — activez-la pour trier par distance.
-                  </YText>
-                ) : null}
-              </View>
-            </View>
+                <View style={styles.topChromeInner} pointerEvents="box-none">
+                  <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
+                  <MerchantCategoryBar
+                    variant="glass"
+                    active={activeCategory}
+                    onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
+                  />
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.filtersScroll}
+                    contentContainerStyle={styles.filters}>
+                    {QUICK_FILTERS.map((filter) => (
+                      <YChip
+                        key={filter.id}
+                        label={filter.label}
+                        icon={filterCryptogramAsset(filter.id)}
+                        active={filters.includes(filter.id)}
+                        onPress={() => toggleFilter(filter.id)}
+                        variant="glass"
+                      />
+                    ))}
+                  </ScrollView>
+                  {nearbyActive && location.status === 'denied' ? (
+                    <YText variant="caption" style={styles.nearbyDenied}>
+                      Localisation indisponible — activez-la pour trier par distance.
+                    </YText>
+                  ) : null}
+                </View>
+              </Animated.View>
+            ) : null}
 
             </View>
           </View>
