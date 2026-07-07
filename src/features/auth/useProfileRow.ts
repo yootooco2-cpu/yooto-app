@@ -19,7 +19,7 @@ export interface ProfileRow {
 
 const EMPTY: ProfileRow = { exists: false, displayName: null, avatarUrl: null, email: null, createdAt: null };
 
-export function useProfileRow(userId: string | null): ProfileRow {
+export function useProfileRow(userId: string | null, refreshKey = 0): ProfileRow {
   // On garde l'identifiant auquel appartient la ligne : on ne renvoie la donnée que si elle
   // correspond au `userId` courant (évite d'afficher un profil obsolète pendant un changement).
   // `setState` n'est appelé QUE dans le callback asynchrone (jamais dans le corps de l'effet).
@@ -42,7 +42,7 @@ export function useProfileRow(userId: string | null): ProfileRow {
     return () => {
       active = false;
     };
-  }, [userId]);
+  }, [userId, refreshKey]);
 
   return userId && state?.id === userId ? state.row : EMPTY;
 }
