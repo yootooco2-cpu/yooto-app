@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Image, Platform, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YScreen } from '@/components/ui/YScreen';
@@ -179,6 +180,7 @@ export default function ProfileScreen() {
           </YCard>
         </Animated.View>
       ))}
+      <SupportContactFooter />
     </YScreen>
   );
 }

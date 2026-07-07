@@ -4,6 +4,7 @@ import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimate
 
 import { HomeHero } from '@/components/home/HomeHero';
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
+import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
 import { CategoryMegaMenu } from '@/features/discovery/components/CategoryMegaMenu';
@@ -86,6 +87,7 @@ export default function HomeScreen() {
         merchants={sections.toDiscover}
         delay={180}
       />
+      <SupportContactFooter />
     </YScreen>
   );
 }

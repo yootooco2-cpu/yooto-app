@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
+import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { radii } from '@/design/tokens/radii';
@@ -136,6 +137,8 @@ export function SaisonScreen({ locale }: Props) {
         <Grain variant="paper" opacity={0.35} />
         <YText style={styles.noteText}>{t('note', locale)} ♡</YText>
       </View>
+
+      <SupportContactFooter />
 
       <ProduitSheet
         produit={active}
