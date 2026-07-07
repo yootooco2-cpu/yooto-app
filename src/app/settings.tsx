@@ -68,11 +68,11 @@ export default function SettingsScreen() {
         {/* ---------- COMPTE ---------- */}
         <SettingsSection title="Compte">
           {isAuthenticated ? (
-            <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label={name} subtitle={email ?? undefined} onPress={todo} />
+            <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label={name} subtitle={email ?? undefined} onPress={() => router.push('/edit-profile')} />
           ) : (
             <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label="Mode invité" subtitle="Connectez-vous pour synchroniser votre compte" onPress={() => setAuthOpen(true)} />
           )}
-          {isAuthenticated ? <SettingsNavigationRow icon={{ set: 'feather', name: 'edit-3' }} label="Modifier le profil" onPress={todo} /> : null}
+          {isAuthenticated ? <SettingsNavigationRow icon={{ set: 'feather', name: 'edit-3' }} label="Modifier le profil" onPress={() => router.push('/edit-profile')} /> : null}
           {isAuthenticated && hasEmailLogin ? (
             <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Changer le mot de passe" onPress={todo} />
           ) : null}

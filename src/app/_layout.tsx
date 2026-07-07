@@ -30,6 +30,7 @@ export default function RootLayout() {
                 <Stack.Screen name="merchant/[id]" />
                 <Stack.Screen name="auth" />
                 <Stack.Screen name="settings" />
+                <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
               </Stack>
             </ToastProvider>
           </QueryClientProvider>
