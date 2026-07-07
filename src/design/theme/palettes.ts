@@ -10,10 +10,14 @@ export interface ThemeColors {
   background: string;
   surface: string;
   surfaceAlt: string;
+  /** Surface bouton secondaire au survol (hover web / état actif). */
+  surfaceAltHover: string;
   tint: string;
   text: string;
   mutedText: string;
   primary: string;
+  /** Bouton principal au survol (hover web). */
+  primaryHover: string;
   primaryDark: string;
   onPrimary: string;
   accent: string;
@@ -28,10 +32,12 @@ export const lightColors: ThemeColors = {
   background: '#F7F4EC',
   surface: '#FFFFFF',
   surfaceAlt: '#FBF8F1',
+  surfaceAltHover: '#F1ECDF',
   tint: '#EAF1E1',
   text: '#17201A',
   mutedText: '#6F7A72',
   primary: '#1F7A4D',
+  primaryHover: '#25925D',
   primaryDark: '#145A37',
   onPrimary: '#FFFFFF',
   accent: '#D6A85A',
@@ -42,21 +48,28 @@ export const lightColors: ThemeColors = {
   danger: '#C0392B',
 };
 
+/**
+ * DA sombre premium YOOTOO (anthracite / vert profond). Palette validée : fond #0E1712,
+ * surface fiche #121F18, surface bouton #1D2C22 (hover #26382C), primaire #7BC49A / texte #07110B,
+ * texte #F4F1E8 / secondaire #AEB8AA, accent or #E2B85E, bordure subtile blanche 10 %.
+ */
 export const darkColors: ThemeColors = {
-  background: '#0E1512',
-  surface: '#18211C',
-  surfaceAlt: '#202B25',
+  background: '#0E1712',
+  surface: '#121F18',
+  surfaceAlt: '#1D2C22',
+  surfaceAltHover: '#26382C',
   tint: '#172A20',
-  text: '#F1ECE0',
-  mutedText: '#9AA69E',
-  primary: '#5FBF97',
+  text: '#F4F1E8',
+  mutedText: '#AEB8AA',
+  primary: '#7BC49A',
+  primaryHover: '#8FD0AA',
   primaryDark: '#123524',
-  onPrimary: '#07120D',
-  accent: '#E0B368',
-  border: '#2B352E',
-  separator: '#232E28',
-  success: '#3CB371',
-  warning: '#E0A34A',
+  onPrimary: '#07110B',
+  accent: '#E2B85E',
+  border: 'rgba(255,255,255,0.10)',
+  separator: 'rgba(255,255,255,0.07)',
+  success: '#7BC49A',
+  warning: '#E2B85E',
   danger: '#E5695B',
 };
 

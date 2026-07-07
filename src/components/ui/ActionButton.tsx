@@ -37,14 +37,15 @@ export function ActionButton({ icon, label, variant = 'secondary', onPress, disa
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: 1 - press.value * 0.03 }],
   }));
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: press.value * 0.1 + hover.value * (isPrimary ? 0.14 : 0.09),
-  }));
+  // Le calque hover porte la couleur EXACTE de la palette et n'apparaît qu'au survol (opacité).
+  const hoverStyle = useAnimatedStyle(() => ({ opacity: hover.value * 1 }));
+  // Pressed : léger assombrissement (voile noir discret) — jamais de flash blanc.
+  const pressStyle = useAnimatedStyle(() => ({ opacity: press.value * 0.14 }));
 
-  const fg = disabled ? colors.mutedText : isPrimary ? colors.onPrimary : colors.primary;
-  const container: ViewStyle = isPrimary
-    ? { backgroundColor: colors.primary }
-    : { backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border };
+  const fg = disabled ? colors.mutedText : isPrimary ? colors.onPrimary : colors.text;
+  const baseBg = isPrimary ? colors.primary : colors.surfaceAlt;
+  const hoverBg = isPrimary ? colors.primaryHover : colors.surfaceAltHover;
+  const border: ViewStyle = isPrimary ? {} : { borderWidth: 1, borderColor: colors.border };
 
   return (
     <Animated.View style={[fullWidth && styles.grow, animatedStyle, style]}>
@@ -58,11 +59,10 @@ export function ActionButton({ icon, label, variant = 'secondary', onPress, disa
         accessibilityRole="button"
         accessibilityState={{ disabled: !!disabled }}
         accessibilityLabel={label}
-        style={[styles.btn, container, disabled && styles.disabled]}>
-        <Animated.View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: isPrimary ? '#FFFFFF' : colors.primary }, overlayStyle]}
-        />
+        style={[styles.btn, border, { backgroundColor: baseBg }, disabled && styles.disabled]}>
+        {/* Calques (couleur exacte au survol, voile pressed) derrière le contenu. Zéro blanc. */}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: hoverBg }, hoverStyle]} />
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.overlay, styles.pressVeil, pressStyle]} />
         <View style={styles.content}>
           <Feather name={icon} size={18} color={fg} />
           <YText variant="label" numberOfLines={1} style={[styles.label, { color: fg }]}>
@@ -84,6 +84,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   overlay: { borderRadius: radii.lg },
+  pressVeil: { backgroundColor: '#000000' },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingHorizontal: spacing.md },
   label: { fontWeight: '700' },
   disabled: { opacity: 0.45 },

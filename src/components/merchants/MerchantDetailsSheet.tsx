@@ -5,6 +5,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { MapMerchantPreview } from '@/components/map/MapMerchantPreview';
 import { MerchantOpeningHours } from '@/components/merchants/MerchantOpeningHours';
+import { ActionButton } from '@/components/ui/ActionButton';
 import { YText } from '@/components/ui/YText';
 import { DarkThemeScope, useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
@@ -50,6 +51,7 @@ function DetailsInner({ merchant, onOpenFull, onClose }: Props) {
   const tags = merchant.tags?.filter(Boolean) ?? [];
   const gallery = merchant.galleryPhotos?.filter(Boolean) ?? [];
   const hasContact = Boolean(fullAddress || merchant.phone || merchant.website || merchant.email);
+  const hasReviews = Boolean(merchant.googleMapsUrl) && (typeof merchant.rating === 'number' || typeof merchant.reviewCount === 'number');
 
   return (
     <BottomSheetScrollView
@@ -58,6 +60,10 @@ function DetailsInner({ merchant, onOpenFull, onClose }: Props) {
       keyboardShouldPersistTaps="handled">
       {/* En-tête = mini-fiche réutilisée (photo, nom, badge, statut, actions principales). */}
       <MapMerchantPreview merchant={merchant} onPress={onOpenFull} onClose={onClose} flat />
+
+      {hasReviews ? (
+        <ActionButton icon="star" label="Voir les avis Google" variant="secondary" fullWidth onPress={() => openUrl(merchant.googleMapsUrl)} />
+      ) : null}
 
       <MerchantOpeningHours merchant={merchant} />
 

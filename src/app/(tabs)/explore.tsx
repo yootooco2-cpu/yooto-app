@@ -3,17 +3,15 @@ import BottomSheet, {
   BottomSheetBackdrop,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useIsFocused, useRouter } from 'expo-router';
+import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   MapEngine,
   MapQuickAccessSheet,
-  MerchantFocusPanel,
   type QuickAccessSection,
 } from '@/components/map';
-import { MerchantDetail } from '@/components/merchants/MerchantDetail';
 import { MerchantDetailsSheet } from '@/components/merchants/MerchantDetailsSheet';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
@@ -83,7 +81,6 @@ function sameViewport(a: MapViewport | null, b: MapViewport): boolean {
 const SNAP_POINTS = ['15%', '55%', '90%'];
 
 export default function MapScreen() {
-  const router = useRouter();
   // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
   useFavoritesSync();
   const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
@@ -165,7 +162,6 @@ export default function MapScreen() {
   // L'écran carte reste MONTÉ quand on change d'onglet (tabs) : sans cette garde, le Focus
   // (qui masque la tab bar) resterait actif sur Accueil tant qu'un commerce est sélectionné.
   const isScreenFocused = useIsFocused();
-  const isFocus = useFocusStore((s) => s.isFocus);
   const setFocus = useFocusStore((s) => s.setFocus);
   useEffect(() => {
     // Focus Commerce UNIQUEMENT si l'écran carte est au premier plan → dès qu'on navigue
@@ -264,7 +260,7 @@ export default function MapScreen() {
           </YCard>
         ) : (
           <View style={styles.mapRow}>
-            <View style={[styles.mapCol, isFocus && styles.mapColFocused]}>
+            <View style={styles.mapCol}>
             {/* La carte est rendue IMMÉDIATEMENT (jamais bloquée par le chargement des données)
                 → visible en < 3 s ; les marqueurs apparaissent dès que les données arrivent. */}
             <MapEngine
@@ -340,7 +336,10 @@ export default function MapScreen() {
 
             {/* Feuille du bas RÉDUITE À L'APERÇU : n'apparaît QUE lorsqu'un marqueur est sélectionné
                 (mini-fiche du commerce). Plus de liste « X commerces dans cette zone » → carte seule. */}
-            {!isFocus && selectedMerchant ? (
+            {/* Bottom sheet UNIQUE (mobile ET desktop) : jamais de panneau latéral. Sur desktop,
+                la feuille est simplement plus large et centrée. 3 paliers (peek/default/expanded),
+                contenu scrollable (horaires, contact, à propos, tags, photos). */}
+            {selectedMerchant ? (
               <BottomSheet
                 ref={sheetRef}
                 index={1}
@@ -350,25 +349,16 @@ export default function MapScreen() {
                 backdropComponent={renderBackdrop}
                 handleIndicatorStyle={styles.sheetHandle}
                 backgroundStyle={[styles.sheetBackground, glass.panel]}
-                style={styles.sheetShadow}>
-                {/* Bottom sheet interactive à 3 paliers (peek / default / expanded) :
-                    contenu scrollable (horaires, contact, à propos, tags, photos). */}
+                style={[styles.sheetShadow, isDesktopWeb && styles.sheetDesktop]}>
                 <MerchantDetailsSheet
                   merchant={selectedMerchant}
                   onClose={() => setSelectedId(null)}
-                  onOpenFull={() =>
-                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
-                  }
+                  onOpenFull={() => sheetRef.current?.snapToIndex(2)}
                 />
               </BottomSheet>
             ) : null}
 
             </View>
-            {isFocus && selectedMerchant ? (
-              <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel}>
-                <MerchantDetail merchant={selectedMerchant} onBack={() => setSelectedId(null)} />
-              </MerchantFocusPanel>
-            ) : null}
           </View>
         )}
       </View>
@@ -405,13 +395,6 @@ const styles = StyleSheet.create({
   },
   mapCol: {
     flex: 1,
-  },
-  // Focus desktop : la carte occupe 60 % (flex 3) et le panneau 40 % (flex 2) — tout en flex.
-  mapColFocused: {
-    flex: 3,
-  },
-  focusPanel: {
-    flex: 2,
   },
   recenterFab: {
     position: 'absolute',
@@ -488,5 +471,13 @@ const styles = StyleSheet.create({
   },
   sheetShadow: {
     ...shadows.lg,
+  },
+  // Desktop / large : la feuille reste une BOTTOM sheet (jamais latérale), simplement plus
+  // étroite et centrée horizontalement pour une lecture premium sur grand écran.
+  sheetDesktop: {
+    maxWidth: 720,
+    marginHorizontal: 'auto',
+    left: 0,
+    right: 0,
   },
 });
