@@ -466,6 +466,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    zIndex: 20,
   },
   // Accès rapide « Favoris » — miroir du recentrage, côté GAUCHE (le verre dépoli vient du token).
   favFab: {
@@ -477,7 +478,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 5,
+    zIndex: 20,
   },
   counterChip: {
     position: 'absolute',
@@ -489,6 +490,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
+    zIndex: 20,
   },
   counterText: {
     color: glass.onDark,

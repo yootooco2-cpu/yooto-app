@@ -68,12 +68,15 @@ export function FloatingMapNavigation() {
 
 const styles = StyleSheet.create({
   // Occupe le bord droit sur toute la hauteur, contenu centré verticalement.
+  // zIndex au-dessus des marqueurs Mapbox (z 1-6) → la nav flotte toujours, jamais recouverte
+  // par un commerce (carte plein écran = le dock est désormais au niveau du cluster central).
   dock: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     right: spacing.md,
     justifyContent: 'center',
+    zIndex: 20,
   },
   barShadow: { borderRadius: radii.xl + 8 },
   bar: { borderRadius: radii.xl + 8, overflow: 'hidden' },
