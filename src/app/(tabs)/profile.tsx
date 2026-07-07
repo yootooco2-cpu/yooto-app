@@ -1,47 +1,48 @@
-import { useState } from 'react';
-import { Image, Platform, StyleSheet, View } from 'react-native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { type ComponentProps, useState } from 'react';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
-import { YButton } from '@/components/ui/YButton';
-import { YCard } from '@/components/ui/YCard';
-import { YScreen } from '@/components/ui/YScreen';
+import { AuthSheet } from '@/components/auth/AuthSheet';
 import { YText } from '@/components/ui/YText';
+import { SUPPORT_EMAIL, supportMailtoUrl } from '@/constants/support';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
+import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { useProfileRow, useSession } from '@/features/auth';
+import { useFavoriteIds } from '@/features/favorites/favoritesStore';
 import { PreferenceSection } from '@/features/profile/preferences';
-import { continueWithProvider, signOut, type AuthProvider } from '@/lib/supabase/authActions';
+import { signOut } from '@/lib/supabase/authActions';
 
-type Space = {
-  title: string;
-  description: string;
+// Palette premium locale (dérivée des tokens YOOTOO + touches végétales pour cette page).
+const P = {
+  cream: colors.background,
+  card: colors.surface,
+  ink: colors.text,
+  muted: colors.mutedText,
+  green: colors.primary,
+  greenDeep: '#0F3D28', // carte « impact » vert profond (identique en clair/sombre)
+  lime: '#A7DE79', // chiffres de statistiques sur fond sombre
+  sage: '#EAF1E1', // fonds d'icônes / carte « De saison »
+  gold: colors.accent,
+  border: colors.border,
+  heart: '#D9645A',
+  onDark: '#F3EEE2',
+  onDarkMuted: 'rgba(243,238,226,0.72)',
+  danger: '#C0392B',
 };
 
-/** Espaces personnels — états vides inspirants (jamais techniques). */
-const SPACES: Space[] = [
-  {
-    title: 'Mes favoris',
-    description: 'Commencez à explorer les commerces autour de vous pour construire votre collection.',
-  },
-  {
-    title: 'Mes récompenses',
-    description: 'Soutenez le local et débloquez peu à peu des avantages chez vos commerçants.',
-  },
-  {
-    title: 'Mon impact',
-    description: 'Suivez votre empreinte locale et écologique au fil de vos découvertes.',
-  },
-  {
-    title: 'Préférences',
-    description: 'Personnalisez votre expérience YOOTOO selon vos envies.',
-  },
-  {
-    title: 'Historique',
-    description: 'Retrouvez ici les commerces que vous aurez visités.',
-  },
-];
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+
+/** « Membre depuis juin 2024 » à partir d'une date ISO (formatage FR sans dépendance Intl). */
+function memberSince(iso: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return `Membre depuis ${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 /** Initiale d'affichage pour l'avatar de repli. */
 function initialOf(name: string | null, email: string | null): string {
@@ -49,210 +50,379 @@ function initialOf(name: string | null, email: string | null): string {
   return src.trim().charAt(0).toUpperCase() || 'Y';
 }
 
+/** Statistique de l'encart « impact ». */
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.stat}>
+      <YText style={styles.statValue}>{value}</YText>
+      <YText style={styles.statLabel}>{label}</YText>
+    </View>
+  );
+}
+
+type QuickIcon =
+  | { set: 'feather'; name: ComponentProps<typeof Feather>['name'] }
+  | { set: 'mci'; name: ComponentProps<typeof MaterialCommunityIcons>['name'] };
+
+/** Carte d'accès rapide (grille). */
+function QuickCard({
+  icon,
+  tint,
+  title,
+  subtitle,
+  onPress,
+}: {
+  icon: QuickIcon;
+  tint: string;
+  title: string;
+  subtitle: string;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
+      <View style={[styles.quickIcon, { backgroundColor: `${tint}1A` }]}>
+        {icon.set === 'feather' ? (
+          <Feather name={icon.name} size={18} color={tint} />
+        ) : (
+          <MaterialCommunityIcons name={icon.name} size={18} color={tint} />
+        )}
+      </View>
+      <YText style={styles.quickTitle} numberOfLines={1}>
+        {title}
+      </YText>
+      <YText style={styles.quickSub} numberOfLines={1}>
+        {subtitle}
+      </YText>
+    </Pressable>
+  );
+}
+
 export default function ProfileScreen() {
+  const router = useRouter();
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
   const profileRow = useProfileRow(isAuthenticated ? userId : null);
-  const [busy, setBusy] = useState<null | AuthProvider | 'signout'>(null);
-  const [error, setError] = useState<string | null>(null);
+  const favoriteIds = useFavoriteIds();
 
-  const onProvider = async (provider: AuthProvider) => {
-    if (busy) return;
-    setError(null);
-    setBusy(provider);
-    const res = await continueWithProvider(provider);
-    // Web : redirection en cours. Natif : succès → l'état bascule via onAuthStateChange.
-    if (!res.ok && res.error !== 'cancelled') {
-      setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Connexion impossible, réessayez.');
-    }
-    setBusy(null);
-  };
+  const [signingOut, setSigningOut] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  // Données réelles disponibles + fallbacks honnêtes (0 quand aucune source).
+  const favoritesCount = favoriteIds.length;
+  const reviewsCount = 0;
+  const visitedCount = 0;
+
+  const name = isAuthenticated ? identity?.displayName ?? 'Membre YOOTOO' : 'Invité';
+  const email = isAuthenticated ? identity?.email ?? profileRow.email : null;
+  const avatarUrl = isAuthenticated ? identity?.avatarUrl : null;
+  const since = isAuthenticated ? memberSince(profileRow.createdAt) : null;
 
   const onSignOut = async () => {
-    if (busy) return;
-    setBusy('signout');
+    if (signingOut) return;
+    setSigningOut(true);
     await signOut();
-    setBusy(null);
+    setSigningOut(false);
   };
 
+  const mailSupport = () => void Linking.openURL(supportMailtoUrl());
+
+  const quickItems: {
+    key: string;
+    icon: QuickIcon;
+    tint: string;
+    title: string;
+    subtitle: string;
+    onPress?: () => void;
+  }[] = [
+    { key: 'fav', icon: { set: 'feather', name: 'heart' }, tint: P.heart, title: 'Mes favoris', subtitle: `${favoritesCount} favori${favoritesCount > 1 ? 's' : ''}`, onPress: () => router.push('/explore') },
+    { key: 'reviews', icon: { set: 'feather', name: 'star' }, tint: P.gold, title: 'Mes avis', subtitle: `${reviewsCount} avis laissé${reviewsCount > 1 ? 's' : ''}` },
+    { key: 'visited', icon: { set: 'feather', name: 'map-pin' }, tint: P.green, title: 'Lieux visités', subtitle: `${visitedCount} découverte${visitedCount > 1 ? 's' : ''}` },
+    { key: 'prefs', icon: { set: 'feather', name: 'sliders' }, tint: P.green, title: 'Mes préférences', subtitle: 'Vos goûts' },
+    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: '#1F5891', title: 'Notifications', subtitle: 'Bientôt' },
+    { key: 'help', icon: { set: 'feather', name: 'help-circle' }, tint: P.green, title: 'Aide & Contact', subtitle: SUPPORT_EMAIL, onPress: mailSupport },
+  ];
+
   return (
-    <YScreen scroll gap="lg" padding="lg">
-      {/* Hero utilisateur */}
-      <View style={styles.hero}>
-        {isAuthenticated && identity?.avatarUrl ? (
-          <Image source={{ uri: identity.avatarUrl }} style={styles.avatarImg} accessibilityLabel="Photo de profil" />
-        ) : (
-          <View style={styles.avatar}>
-            <YText variant="title" color="inverse">
-              {isAuthenticated ? initialOf(identity?.displayName ?? null, identity?.email ?? null) : 'Y'}
+    <View style={styles.root}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* ---------- HEADER ---------- */}
+        <View style={styles.header}>
+          <MaterialCommunityIcons name="leaf" size={72} color={P.green} style={styles.leafAccent} />
+          <Pressable
+            onPress={() => {}}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Paramètres"
+            style={styles.gear}>
+            <Feather name="settings" size={20} color={P.muted} />
+          </Pressable>
+
+          <View style={styles.avatarWrap}>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatarImg} accessibilityLabel="Photo de profil" />
+            ) : (
+              <View style={[styles.avatarImg, styles.avatarFallback]}>
+                <YText style={styles.avatarInitial}>{initialOf(identity?.displayName ?? null, email)}</YText>
+              </View>
+            )}
+            {isAuthenticated ? <View style={styles.onlineDot} /> : null}
+          </View>
+
+          <YText style={styles.name}>{name}</YText>
+          {email ? <YText style={styles.email}>{email}</YText> : null}
+
+          <View style={[styles.statusBadge, isAuthenticated ? styles.statusOn : styles.statusGuest]}>
+            {isAuthenticated ? <Feather name="check" size={13} color={P.green} /> : null}
+            <YText style={[styles.statusText, { color: isAuthenticated ? P.green : P.muted }]}>
+              {isAuthenticated ? 'Compte connecté' : 'Mode invité'}
             </YText>
           </View>
-        )}
-        <View style={styles.heroInfo}>
-          {isAuthenticated ? (
-            <>
-              <YText variant="subtitle">{identity?.displayName ?? 'Membre YOOTOO'}</YText>
-              {identity?.email ? (
-                <YText variant="caption" color="muted">
-                  {identity.email}
-                </YText>
-              ) : null}
-              <View style={styles.badges}>
-                <View style={[styles.badge, styles.badgeOn]}>
-                  <YText variant="caption" color="inverse">
-                    Connecté
-                  </YText>
-                </View>
-                {profileRow.exists ? (
-                  <View style={styles.badge}>
-                    <YText variant="caption" color="primary">
-                      Profil enregistré ✓
-                    </YText>
-                  </View>
-                ) : null}
-              </View>
-            </>
-          ) : (
-            <>
-              <YText variant="subtitle">Invité</YText>
-              <YText variant="caption" color="muted">
-                Explorateur YOOTOO
-              </YText>
-            </>
-          )}
+          {since ? <YText style={styles.since}>{since}</YText> : null}
         </View>
-      </View>
 
-      {isAuthenticated ? (
-        <YButton
-          label="Se déconnecter"
-          variant="secondary"
-          fullWidth
-          loading={busy === 'signout'}
-          onPress={() => void onSignOut()}
-        />
-      ) : (
-        <Animated.View entering={FadeInDown.duration(220)} style={styles.authBlock}>
-          <YText variant="body" color="muted" style={styles.authLead}>
-            Connectez-vous pour retrouver vos favoris et vos avantages, partout. Sans mot de passe.
-          </YText>
-          <YButton
-            label="Continuer avec Google"
-            fullWidth
-            loading={busy === 'google'}
-            onPress={() => void onProvider('google')}
-          />
-          {Platform.OS === 'ios' ? (
-            <YButton
-              label="Continuer avec Apple"
-              variant="secondary"
-              fullWidth
-              loading={busy === 'apple'}
-              onPress={() => void onProvider('apple')}
-            />
-          ) : null}
-          {error ? (
-            <YText variant="caption" style={styles.error}>
-              {error}
-            </YText>
-          ) : null}
-        </Animated.View>
-      )}
-
-      <PreferenceSection />
-
-      {SPACES.map((space, index) => (
-        <Animated.View key={space.title} entering={FadeInDown.delay(60 + index * 50).duration(200)}>
-          <YCard>
-            <View style={styles.cardHeader}>
-              <YText variant="subtitle" style={styles.cardTitle}>
-                {space.title}
-              </YText>
-              <View style={styles.soonPill}>
-                <YText variant="caption" color="muted">
-                  Bientôt
-                </YText>
-              </View>
+        {/* ---------- IMPACT ---------- */}
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.impactCard}>
+          <View style={styles.impactHead}>
+            <View style={styles.impactIcon}>
+              <MaterialCommunityIcons name="leaf" size={20} color={P.lime} />
             </View>
-            <YText variant="body" color="muted">
-              {space.description}
-            </YText>
-          </YCard>
+            <View style={styles.impactHeadText}>
+              <YText style={styles.impactTitle}>Votre impact local</YText>
+              <YText style={styles.impactSub}>Chaque visite soutient les commerçants et producteurs locaux.</YText>
+            </View>
+            <Feather name="chevron-right" size={20} color={P.onDarkMuted} />
+          </View>
+          <View style={styles.statsRow}>
+            <Stat value={favoritesCount} label="Favoris" />
+            <View style={styles.statDivider} />
+            <Stat value={reviewsCount} label="Avis laissés" />
+            <View style={styles.statDivider} />
+            <Stat value={visitedCount} label="Lieux visités" />
+          </View>
         </Animated.View>
-      ))}
-      <SupportContactFooter />
-    </YScreen>
+
+        {/* ---------- ACCÈS RAPIDES ---------- */}
+        <YText style={styles.sectionTitle}>Accès rapides</YText>
+        <View style={styles.grid}>
+          {quickItems.map((item) => (
+            <QuickCard key={item.key} icon={item.icon} tint={item.tint} title={item.title} subtitle={item.subtitle} onPress={item.onPress} />
+          ))}
+        </View>
+
+        {/* ---------- PRÉFÉRENCES (fonctionnalité conservée) ---------- */}
+        <PreferenceSection />
+
+        {/* ---------- DE SAISON ---------- */}
+        <Pressable
+          onPress={() => router.push('/de-saison')}
+          accessibilityRole="button"
+          accessibilityLabel="De saison — découvrez les produits près de chez vous"
+          style={({ pressed }) => [styles.seasonCard, pressed && styles.pressed]}>
+          <View style={styles.seasonText}>
+            <YText style={styles.seasonTitle}>De saison</YText>
+            <YText style={styles.seasonSub}>Découvrez les meilleurs produits près de chez vous.</YText>
+          </View>
+          <View style={styles.seasonThumb}>
+            <MaterialCommunityIcons name="basket" size={30} color={P.green} />
+          </View>
+          <Feather name="chevron-right" size={20} color={P.muted} />
+        </Pressable>
+
+        {/* ---------- ACTION SESSION ---------- */}
+        {isAuthenticated ? (
+          <Pressable
+            onPress={() => void onSignOut()}
+            disabled={signingOut}
+            accessibilityRole="button"
+            accessibilityLabel="Se déconnecter"
+            style={({ pressed }) => [styles.signOut, pressed && styles.pressed]}>
+            <Feather name="log-out" size={18} color={P.danger} />
+            <YText style={styles.signOutText}>{signingOut ? 'Déconnexion…' : 'Se déconnecter'}</YText>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => setAuthOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Se connecter ou créer un compte"
+            style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}>
+            <Feather name="log-in" size={18} color={P.onDark} />
+            <YText style={styles.signInText}>Se connecter · créer un compte</YText>
+          </Pressable>
+        )}
+
+        {/* ---------- SUPPORT ---------- */}
+        <Pressable
+          onPress={mailSupport}
+          accessibilityRole="button"
+          accessibilityLabel={`Besoin d'aide ? Écrire à ${SUPPORT_EMAIL}`}
+          style={({ pressed }) => [styles.supportCard, pressed && styles.pressed]}>
+          <View style={styles.supportIcon}>
+            <MaterialCommunityIcons name="leaf" size={18} color={P.green} />
+          </View>
+          <View style={styles.supportText}>
+            <YText style={styles.supportTitle}>Besoin d’aide ?</YText>
+            <YText style={styles.supportSub}>Notre équipe est là pour vous.</YText>
+          </View>
+          <YText style={styles.supportEmail} numberOfLines={1}>
+            {SUPPORT_EMAIL}
+          </YText>
+          <Feather name="chevron-right" size={18} color={P.muted} />
+        </Pressable>
+      </ScrollView>
+
+      <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} favoritesCount={favoritesCount} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: {
+  root: { flex: 1, backgroundColor: P.cream },
+  content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
+
+  // Header
+  header: { alignItems: 'center', paddingTop: spacing.sm },
+  leafAccent: { position: 'absolute', top: -6, left: -10, opacity: 0.1, transform: [{ rotate: '-18deg' }] },
+  gear: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderRadius: radii.pill,
+    backgroundColor: P.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  avatarWrap: { marginTop: spacing.sm },
+  avatarImg: { width: 96, height: 96, borderRadius: 48, backgroundColor: P.card, borderWidth: 3, borderColor: P.card, ...shadows.md },
+  avatarFallback: { alignItems: 'center', justifyContent: 'center', backgroundColor: P.green },
+  avatarInitial: { color: '#FFFFFF', fontSize: 34, fontWeight: '800' },
+  onlineDot: {
+    position: 'absolute',
+    right: 4,
+    bottom: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#3CB371',
+    borderWidth: 3,
+    borderColor: P.cream,
+  },
+  name: { marginTop: spacing.md, fontSize: 24, lineHeight: 30, fontWeight: '800', color: P.ink, letterSpacing: -0.4 },
+  email: { marginTop: 2, fontSize: 14, color: P.muted },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: spacing.sm,
+    paddingVertical: 5,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+  },
+  statusOn: { backgroundColor: '#E9F3EC', borderColor: '#CBE4D3' },
+  statusGuest: { backgroundColor: P.card, borderColor: P.border },
+  statusText: { fontSize: 13, fontWeight: '700' },
+  since: { marginTop: spacing.sm, fontSize: 12, color: P.muted },
+
+  // Impact
+  impactCard: { backgroundColor: P.greenDeep, borderRadius: radii.xl, padding: spacing.lg, gap: spacing.md, ...shadows.md },
+  impactHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  impactIcon: { width: 44, height: 44, borderRadius: radii.pill, backgroundColor: 'rgba(167,222,121,0.16)', alignItems: 'center', justifyContent: 'center' },
+  impactHeadText: { flex: 1, gap: 2 },
+  impactTitle: { color: P.onDark, fontSize: 17, fontWeight: '700' },
+  impactSub: { color: P.onDarkMuted, fontSize: 13, lineHeight: 18 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  statValue: { color: P.lime, fontSize: 24, fontWeight: '800' },
+  statLabel: { color: P.onDarkMuted, fontSize: 12 },
+  statDivider: { width: 1, height: 34, backgroundColor: 'rgba(255,255,255,0.12)' },
+
+  // Sections
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: P.ink, letterSpacing: -0.3 },
+
+  // Grille accès rapides
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  quickCard: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    minWidth: 96,
+    backgroundColor: P.card,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: P.border,
+    padding: spacing.md,
+    gap: 6,
+    ...shadows.sm,
+  },
+  quickIcon: { width: 34, height: 34, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+  quickTitle: { fontSize: 14, fontWeight: '700', color: P.ink, marginTop: 2 },
+  quickSub: { fontSize: 12, color: P.muted },
+
+  // De saison
+  seasonCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingTop: spacing.sm,
+    backgroundColor: P.sage,
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: '#DCE7CF',
+    padding: spacing.lg,
   },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primary,
+  seasonText: { flex: 1, gap: 3 },
+  seasonTitle: { fontSize: 17, fontWeight: '800', color: '#26401F' },
+  seasonSub: { fontSize: 13, lineHeight: 18, color: '#5A6B4E' },
+  seasonThumb: { width: 56, height: 56, borderRadius: radii.lg, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+
+  // Sign out / in
+  signOut: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  avatarImg: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.surface,
-  },
-  heroInfo: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  badges: {
-    flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  badge: {
-    paddingVertical: 2,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.pill,
+    height: 54,
+    borderRadius: radii.lg,
+    backgroundColor: P.card,
     borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
+    borderColor: '#EAD9D6',
+    ...shadows.sm,
   },
-  badgeOn: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  authBlock: {
-    gap: spacing.sm,
-  },
-  authLead: {
-    marginBottom: spacing.xs,
-  },
-  error: {
-    color: colors.warning,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-  cardHeader: {
+  signOutText: { color: P.danger, fontSize: 16, fontWeight: '700' },
+  signIn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     gap: spacing.sm,
+    height: 54,
+    borderRadius: radii.lg,
+    backgroundColor: P.green,
+    ...shadows.md,
   },
-  cardTitle: {
-    flexShrink: 1,
-  },
-  soonPill: {
-    paddingVertical: 2,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radii.pill,
-    backgroundColor: colors.background,
+  signInText: { color: P.onDark, fontSize: 16, fontWeight: '700' },
+
+  // Support
+  supportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: P.card,
+    borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: P.border,
+    padding: spacing.md,
+    ...shadows.sm,
   },
+  supportIcon: { width: 36, height: 36, borderRadius: radii.pill, backgroundColor: P.sage, alignItems: 'center', justifyContent: 'center' },
+  supportText: { flex: 1, gap: 1 },
+  supportTitle: { fontSize: 14, fontWeight: '700', color: P.ink },
+  supportSub: { fontSize: 12, color: P.muted },
+  supportEmail: { fontSize: 12, color: P.green, fontWeight: '600', maxWidth: 130 },
+
+  pressed: { opacity: 0.85 },
 });
