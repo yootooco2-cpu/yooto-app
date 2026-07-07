@@ -351,7 +351,11 @@ export default function MapScreen() {
                 enablePanDownToClose={false}
                 backdropComponent={renderBackdrop}
                 handleIndicatorStyle={styles.sheetHandle}
-                backgroundStyle={[styles.sheetBackground, glass.panel]}
+                backgroundStyle={[styles.sheetBackground, glass.panel, styles.sheetOpaque]}
+                /* Le CONTENEUR racine (pas seulement la feuille) doit dominer les marqueurs
+                   Mapbox : un marqueur positionné à z-index ≥ 1 passe sinon devant un conteneur
+                   à z-index auto. On isole donc la couche fiche au-dessus de la carte. */
+                containerStyle={styles.sheetContainer}
                 style={[styles.sheetShadow, isDesktopWeb && styles.sheetDesktop]}>
                 <MerchantDetailsSheet
                   merchant={selectedMerchant}
@@ -472,12 +476,20 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
   },
+  // Fond fiche quasi opaque (couleur DA #0E1712) : garde le dépoli mais MASQUE totalement les
+  // commerces situés derrière → lecture des boutons/horaires jamais gênée.
+  sheetOpaque: {
+    backgroundColor: 'rgba(14,23,18,0.94)',
+  },
+  // CONTENEUR racine de la bottom sheet : couche visuelle prioritaire, au-dessus de TOUTE la
+  // carte (marqueurs z 1-6, clusters, callouts, overlays Mapbox). La partie transparente laisse
+  // passer les interactions carte (box-none) ; seule la fiche opaque masque les commerces derrière.
+  sheetContainer: {
+    zIndex: 100,
+    elevation: 32,
+  },
   sheetShadow: {
     ...shadows.lg,
-    // La feuille doit couvrir les marqueurs de la carte (z-index jusqu'à ~6/10) : on la place
-    // franchement au-dessus pour qu'aucun commerce ne vienne « percer » la fiche ouverte.
-    zIndex: 50,
-    elevation: 24,
   },
   // Desktop / large : la feuille reste une BOTTOM sheet (jamais latérale), simplement plus
   // étroite et centrée horizontalement pour une lecture premium sur grand écran.
