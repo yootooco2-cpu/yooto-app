@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider, useTheme } from '@/design/theme/ThemeProvider';
 import { SettingsProvider } from '@/features/settings/SettingsProvider';
 import { queryClient } from '@/lib/queryClient';
@@ -22,13 +23,15 @@ export default function RootLayout() {
       <ThemeProvider>
         <SettingsProvider>
           <QueryClientProvider client={queryClient}>
-            <ThemedStatusBar />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="merchant/[id]" />
-              <Stack.Screen name="auth" />
-              <Stack.Screen name="settings" />
-            </Stack>
+            <ToastProvider>
+              <ThemedStatusBar />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="merchant/[id]" />
+                <Stack.Screen name="auth" />
+                <Stack.Screen name="settings" />
+              </Stack>
+            </ToastProvider>
           </QueryClientProvider>
         </SettingsProvider>
       </ThemeProvider>

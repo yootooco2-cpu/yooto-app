@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Appearance } from 'react-native';
 
+import { AppearanceService } from '@/services/AppearanceService';
+
 import { brand, colorsFor, type ThemeColors, type ThemeScheme } from './palettes';
-import { loadThemeMode, saveThemeMode, type ThemeMode } from './themeStorage';
+import { type ThemeMode } from './themeStorage';
 
 interface ThemeContextValue {
   /** Choix utilisateur : clair / sombre / auto. */
@@ -33,7 +35,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Hydrate le mode persisté (une fois).
   useEffect(() => {
     let active = true;
-    void loadThemeMode().then((stored) => {
+    void AppearanceService.getMode().then((stored) => {
       if (active && stored) setModeState(stored);
     });
     return () => {
@@ -51,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
   const setMode = (next: ThemeMode) => {
     setModeState(next);
-    void saveThemeMode(next);
+    void AppearanceService.setMode(next);
   };
 
   const scheme: ThemeScheme = mode === 'auto' ? systemScheme : mode;

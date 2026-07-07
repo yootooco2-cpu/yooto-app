@@ -24,6 +24,7 @@ import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
 import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
+import { PreferenceService } from '@/services/PreferenceService';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
@@ -50,6 +51,7 @@ import {
 import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
 import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
+import { useSettings } from '@/features/settings/SettingsProvider';
 import { useSession } from '@/features/auth';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 
@@ -97,6 +99,8 @@ export default function MapScreen() {
   // Déclencheur JIT : quand l'utilisateur crée quelque chose à garder (favori) et n'est pas
   // encore authentifié, la feuille d'inscription surgit UNE fois (jamais bloquante).
   const favoriteIds = useFavoriteIds();
+  const { settings } = useSettings();
+  const mapPrefs = settings.map;
   const { status: sessionStatus } = useSession();
   const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const authPromptedRef = useRef(false);
@@ -142,11 +146,15 @@ export default function MapScreen() {
   const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
   const categoryFilter = useMemo(() => merchantCategoryById(activeCategory), [activeCategory]);
 
-  // Marqueurs affichés = filtrés par catégorie (sinon tous). `data` = commerce d'origine.
-  const shownMarkers = useMemo(
-    () => (categoryFilter ? markers.filter((mk) => !!mk.data && categoryFilter.match(mk.data)) : markers),
-    [markers, categoryFilter],
-  );
+  // Marqueurs affichés = filtrés par catégorie (sinon tous), PUIS par préférences carte
+  // (producteurs / favoris) via PreferenceService — sans toucher au style Mapbox. `data` = commerce.
+  const shownMarkers = useMemo(() => {
+    const favSet = new Set(favoriteIds);
+    const byCategory = categoryFilter ? markers.filter((mk) => !!mk.data && categoryFilter.match(mk.data)) : markers;
+    return byCategory.filter(
+      (mk) => !mk.data || PreferenceService.isMarkerVisible(mapPrefs, { isProducer: mk.data.isProducer, isFavorite: favSet.has(mk.data.id) }),
+    );
+  }, [markers, categoryFilter, mapPrefs, favoriteIds]);
 
   const merchantsInArea = useMemo(() => {
     const base = categoryFilter ? results.filter(categoryFilter.match) : results;

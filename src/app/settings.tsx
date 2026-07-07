@@ -8,6 +8,7 @@ import { SettingsNavigationRow } from '@/components/settings/SettingsNavigationR
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { SettingsSwitch } from '@/components/settings/SettingsSwitch';
 import { SettingsThemeSelector } from '@/components/settings/SettingsThemeSelector';
+import { useToast } from '@/components/ui/Toast';
 import { YText } from '@/components/ui/YText';
 import { APP_BUILD, APP_NAME, APP_TAGLINE, APP_VERSION } from '@/constants/app';
 import { SUPPORT_EMAIL, supportMailtoUrl } from '@/constants/support';
@@ -17,11 +18,9 @@ import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { useLinkedProviders, useProfileRow, useSession } from '@/features/auth';
 import { useSettings } from '@/features/settings/SettingsProvider';
-import type { MapQuality } from '@/features/settings/types';
+import { haptics } from '@/lib/haptics';
 import { signOut } from '@/lib/supabase/authActions';
-
-const QUALITY_LABEL: Record<MapQuality, string> = { standard: 'Standard', high: 'Élevée', max: 'Maximum' };
-const QUALITY_NEXT: Record<MapQuality, MapQuality> = { standard: 'high', high: 'max', max: 'standard' };
+import { PreferenceService } from '@/services/PreferenceService';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -31,6 +30,7 @@ export default function SettingsScreen() {
   const profileRow = useProfileRow(isAuthenticated ? userId : null);
   const linked = useLinkedProviders(isAuthenticated ? userId : null);
   const { settings, setNotification, setMapSetting } = useSettings();
+  const toast = useToast();
 
   const [signingOut, setSigningOut] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -105,7 +105,17 @@ export default function SettingsScreen() {
 
         {/* ---------- CARTE ---------- */}
         <SettingsSection title="Carte">
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'layers' }} label="Qualité de la carte" value={QUALITY_LABEL[m.quality]} onPress={() => setMapSetting('quality', QUALITY_NEXT[m.quality])} />
+          <SettingsNavigationRow
+            icon={{ set: 'feather', name: 'layers' }}
+            label="Qualité de la carte"
+            value={PreferenceService.qualityLabel(m.quality)}
+            onPress={() => {
+              const next = PreferenceService.nextQuality(m.quality);
+              haptics.selection();
+              setMapSetting('quality', next);
+              toast.show(`Qualité de la carte : ${PreferenceService.qualityLabel(next)}`);
+            }}
+          />
           <SettingsSwitch icon={{ set: 'mci', name: 'office-building-outline' }} label="Bâtiments 3D" value={m.buildings3D} onValueChange={(v) => setMapSetting('buildings3D', v)} />
           <SettingsSwitch icon={{ set: 'feather', name: 'zap' }} label="Animations" value={m.animations} onValueChange={(v) => setMapSetting('animations', v)} />
           <SettingsSwitch icon={{ set: 'mci', name: 'sprout-outline' }} label="Afficher les producteurs" value={m.showProducers} onValueChange={(v) => setMapSetting('showProducers', v)} />

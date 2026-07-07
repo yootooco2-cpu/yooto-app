@@ -1,9 +1,11 @@
 import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { useToast } from '@/components/ui/Toast';
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { type ThemeMode } from '@/design/theme/themeStorage';
+import { haptics } from '@/lib/haptics';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
@@ -19,6 +21,7 @@ const OPTIONS: { mode: ThemeMode; label: string; icon: keyof typeof Feather.glyp
  */
 export function SettingsThemeSelector() {
   const { mode, colors, setMode } = useTheme();
+  const toast = useToast();
 
   return (
     <View style={[styles.segment, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
@@ -27,7 +30,11 @@ export function SettingsThemeSelector() {
         return (
           <Pressable
             key={opt.mode}
-            onPress={() => setMode(opt.mode)}
+            onPress={() => {
+              haptics.selection();
+              setMode(opt.mode);
+              toast.show(`Thème : ${opt.label}`);
+            }}
             accessibilityRole="button"
             accessibilityLabel={`Thème ${opt.label}`}
             accessibilityState={{ selected: active }}

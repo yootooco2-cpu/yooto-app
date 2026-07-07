@@ -1,6 +1,7 @@
 import { Switch } from 'react-native';
 
 import { useTheme } from '@/design/theme/ThemeProvider';
+import { haptics } from '@/lib/haptics';
 
 import { SettingsRow, type IconSpec } from './SettingsRow';
 
@@ -25,7 +26,10 @@ export function SettingsSwitch({ icon, iconTint, label, subtitle, value, onValue
       right={
         <Switch
           value={value}
-          onValueChange={onValueChange}
+          onValueChange={(v) => {
+            haptics.selection();
+            onValueChange(v);
+          }}
           trackColor={{ false: colors.border, true: colors.primary }}
           thumbColor="#FFFFFF"
           ios_backgroundColor={colors.border}
