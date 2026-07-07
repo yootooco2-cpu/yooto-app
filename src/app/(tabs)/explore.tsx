@@ -309,8 +309,9 @@ export default function MapScreen() {
               sections={quickAccessSections}
             />
 
-            {/* Navigation VERTICALE flottante (remplace la Bottom Tab Bar sur l'écran Carte). */}
-            <FloatingMapNavigation />
+            {/* Navigation VERTICALE flottante (remplace la Bottom Tab Bar sur l'écran Carte).
+                Masquée quand une fiche commerce est ouverte → le commerce devient le héros. */}
+            {!selectedMerchant ? <FloatingMapNavigation /> : null}
 
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet
