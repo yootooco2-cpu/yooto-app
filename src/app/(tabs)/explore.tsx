@@ -1,8 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetFlatList,
-  BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 import { useIsFocused, useRouter } from 'expo-router';
@@ -11,13 +9,12 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import {
   MapEngine,
-  MapMerchantPreview,
   MapQuickAccessSheet,
   MerchantFocusPanel,
   type QuickAccessSection,
 } from '@/components/map';
 import { MerchantDetail } from '@/components/merchants/MerchantDetail';
-import { MerchantListRow } from '@/components/merchants/MerchantListRow';
+import { MerchantDetailsSheet } from '@/components/merchants/MerchantDetailsSheet';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
@@ -192,14 +189,6 @@ export default function MapScreen() {
   }, [selectedId]);
 
   // Liste virtualisée du bottom sheet (rendu de ligne stable).
-  const keyExtractor = useCallback((m: Merchant) => m.id, []);
-  const renderRow = useCallback(
-    ({ item }: { item: Merchant }) => (
-      <MerchantListRow merchant={item} onDark onPress={() => setSelectedId(item.id)} />
-    ),
-    [],
-  );
-
   // Backdrop premium : n'assombrit qu'au palier plein écran (index 2) → carte interactive au peek/mid.
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
@@ -354,7 +343,7 @@ export default function MapScreen() {
             {!isFocus && selectedMerchant ? (
               <BottomSheet
                 ref={sheetRef}
-                index={0}
+                index={1}
                 snapPoints={SNAP_POINTS}
                 enableDynamicSizing={false}
                 enablePanDownToClose={false}
@@ -362,35 +351,15 @@ export default function MapScreen() {
                 handleIndicatorStyle={styles.sheetHandle}
                 backgroundStyle={[styles.sheetBackground, glass.panel]}
                 style={styles.sheetShadow}>
-                {selectedMerchant ? (
-                  // Mode « commerce » : mini-fiche réutilisée, dans le sheet.
-                  <BottomSheetView style={styles.sheetPreview}>
-                    {/* R6b : fiche en CARTE CLAIRE (non-flat) posée sur le sheet en verre sombre,
-                        fidèle à la DA (carte commerce claire sur chrome sombre). */}
-                    <MapMerchantPreview
-                      merchant={selectedMerchant}
-                      onClose={() => setSelectedId(null)}
-                      onPress={() =>
-                        router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
-                      }
-                    />
-                  </BottomSheetView>
-                ) : (
-                  // Mode « liste » : compteur en en-tête + liste virtualisée.
-                  <>
-                    <View style={styles.sheetHeader}>
-                      <YText variant="label" style={{ color: glass.onDark }}>
-                        {count} commerce{count > 1 ? 's' : ''} dans cette zone
-                      </YText>
-                    </View>
-                    <BottomSheetFlatList
-                      data={merchantsInArea}
-                      keyExtractor={keyExtractor}
-                      renderItem={renderRow}
-                      contentContainerStyle={styles.sheetListContent}
-                    />
-                  </>
-                )}
+                {/* Bottom sheet interactive à 3 paliers (peek / default / expanded) :
+                    contenu scrollable (horaires, contact, à propos, tags, photos). */}
+                <MerchantDetailsSheet
+                  merchant={selectedMerchant}
+                  onClose={() => setSelectedId(null)}
+                  onOpenFull={() =>
+                    router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
+                  }
+                />
               </BottomSheet>
             ) : null}
 
@@ -505,21 +474,6 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: 'center',
     color: glass.onDark,
-  },
-  sheetPreview: {
-    padding: spacing.md,
-  },
-  sheetHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
-  },
-  sheetListContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.xs,
   },
   sheetHandle: {
     width: 40,
