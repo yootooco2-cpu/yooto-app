@@ -94,7 +94,9 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   const section = sectionForRoute(activeRoute, scheme);
 
   return (
-    <View style={[styles.dock, { paddingBottom: insets.bottom ? insets.bottom : spacing.sm }]} pointerEvents="box-none">
+    <View
+      style={[styles.dock, { backgroundColor: colors.background, paddingBottom: insets.bottom ? insets.bottom : spacing.sm }]}
+      pointerEvents="box-none">
       <View style={[styles.barShadow, shadows.lg]}>
         <BlurView intensity={Platform.OS === 'web' ? 40 : 30} tint={scheme === 'dark' ? 'dark' : 'light'} style={styles.bar}>
           {/* Voile teinté de l'univers + contour lumineux (glass). */}
