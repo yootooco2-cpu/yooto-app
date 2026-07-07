@@ -16,7 +16,6 @@ import {
   MerchantFocusPanel,
   type QuickAccessSection,
 } from '@/components/map';
-import { DesktopNavRail } from '@/components/layout/DesktopNavRail';
 import { MerchantDetail } from '@/components/merchants/MerchantDetail';
 import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
@@ -232,7 +231,6 @@ export default function MapScreen() {
   return (
     <SectionThemeProvider section="carte">
       <View style={styles.root}>
-      {isFocus ? <DesktopNavRail /> : null}
       <View style={styles.screenWrap}>
         <YScreen gap="sm" padding="lg">
       <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
