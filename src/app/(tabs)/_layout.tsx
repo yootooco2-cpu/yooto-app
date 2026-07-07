@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
 import { type ColorValue, Image, type ImageSourcePropType, View } from 'react-native';
 
-import { colors, tabActiveColors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
+import { tabActiveColors } from '@/design/tokens/colors';
 import { useFocusStore } from '@/features/layout';
 
 const homeIcon = require('@/assets/images/tabIcons/home.png') as ImageSourcePropType;
@@ -78,18 +79,22 @@ function DeSaisonIcon({ color, size }: { color: ColorValue; size: number }) {
 export default function TabsLayout() {
   // Source unique : en mode Focus Commerce (desktop), la tab bar est masquée — ICI et nulle part ailleurs.
   const isFocus = useFocusStore((s) => s.isFocus);
+  const { colors: c, scheme } = useTheme();
+  // En sombre, la teinte active bascule sur le texte du thème (les couleurs d'identité par onglet
+  // sont calibrées pour un fond blanc et deviendraient illisibles sur fond sombre).
+  const activeTint = (key: keyof typeof tabActiveColors) => (scheme === 'dark' ? c.text : tabActiveColors[key]);
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         // Couleur active définie PAR onglet (identité catégorie) via `tabBarActiveTintColor`
         // dans chaque <Tabs.Screen>. Inactif = gris neutre partagé, identique partout.
-        tabBarInactiveTintColor: colors.mutedText,
+        tabBarInactiveTintColor: c.mutedText,
         tabBarStyle: isFocus
           ? { display: 'none' }
           : {
-              backgroundColor: colors.surface,
-              borderTopColor: colors.border,
+              backgroundColor: c.surface,
+              borderTopColor: c.border,
             },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -100,7 +105,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Accueil',
-          tabBarActiveTintColor: tabActiveColors.index,
+          tabBarActiveTintColor: activeTint('index'),
           tabBarIcon: ({ color, size }) => (
             <Image
               source={homeIcon}
@@ -114,7 +119,7 @@ export default function TabsLayout() {
         name="explore"
         options={{
           title: 'Carte',
-          tabBarActiveTintColor: tabActiveColors.explore,
+          tabBarActiveTintColor: activeTint('explore'),
           tabBarIcon: ({ color, size }) => (
             <Image
               source={exploreIcon}
@@ -128,7 +133,7 @@ export default function TabsLayout() {
         name="merchants"
         options={{
           title: 'Commerçants',
-          tabBarActiveTintColor: tabActiveColors.merchants,
+          tabBarActiveTintColor: activeTint('merchants'),
           tabBarIcon: ({ color, size }) => <MerchantsIcon color={color} size={size} />,
         }}
       />
@@ -136,7 +141,7 @@ export default function TabsLayout() {
         name="de-saison"
         options={{
           title: 'De saison',
-          tabBarActiveTintColor: tabActiveColors['de-saison'],
+          tabBarActiveTintColor: activeTint('de-saison'),
           tabBarIcon: ({ color, size }) => <DeSaisonIcon color={color} size={size} />,
         }}
       />
@@ -144,7 +149,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: 'Profil',
-          tabBarActiveTintColor: tabActiveColors.profile,
+          tabBarActiveTintColor: activeTint('profile'),
           tabBarIcon: ({ color, size }) => <ProfileIcon color={color} size={size} />,
         }}
       />
