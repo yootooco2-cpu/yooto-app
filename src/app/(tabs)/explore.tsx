@@ -43,8 +43,8 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
-import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
-import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
+import { CategoryNavigation } from '@/features/merchants/components/CategoryNavigation';
+import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
 import { useSettings } from '@/features/settings/SettingsProvider';
 import { useSession } from '@/features/auth';
@@ -140,27 +140,25 @@ export default function MapScreen() {
     [setLastViewport],
   );
 
-  // Catégorie principale sélectionnée : MÊME source partagée (store) que l'Accueil et
-  // /commerçants. La barre de catégories vit sous la recherche (identique aux autres écrans) ;
-  // ici elle post-filtre les marqueurs de la carte ET la liste, sans toucher useMerchantSearch.
-  const activeCategory = useMerchantSearchStore((s) => s.activeCategory);
-  const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
-  const categoryFilter = useMemo(() => merchantCategoryById(activeCategory), [activeCategory]);
+  // Navigation catégories à DEUX niveaux (familles → sous-catégories), propre à la carte.
+  // Elle ne remonte qu'un PRÉDICAT de filtrage (`mapMatch`) : on POST-filtre les marqueurs et la
+  // liste, sans toucher useMerchantSearch ni le Discovery Engine, et sans bouger la caméra.
+  const [mapMatch, setMapMatch] = useState<MerchantPredicate | null>(null);
 
   // Marqueurs affichés = filtrés par catégorie (sinon tous), PUIS par préférences carte
   // (producteurs / favoris) via PreferenceService — sans toucher au style Mapbox. `data` = commerce.
   const shownMarkers = useMemo(() => {
     const favSet = new Set(favoriteIds);
-    const byCategory = categoryFilter ? markers.filter((mk) => !!mk.data && categoryFilter.match(mk.data)) : markers;
+    const byCategory = mapMatch ? markers.filter((mk) => !!mk.data && mapMatch(mk.data)) : markers;
     return byCategory.filter(
       (mk) => !mk.data || PreferenceService.isMarkerVisible(mapPrefs, { isProducer: mk.data.isProducer, isFavorite: favSet.has(mk.data.id) }),
     );
-  }, [markers, categoryFilter, mapPrefs, favoriteIds]);
+  }, [markers, mapMatch, mapPrefs, favoriteIds]);
 
   const merchantsInArea = useMemo(() => {
-    const base = categoryFilter ? results.filter(categoryFilter.match) : results;
+    const base = mapMatch ? results.filter(mapMatch) : results;
     return searchArea ? base.filter((m) => inBounds(m, searchArea)) : base;
-  }, [results, searchArea, categoryFilter]);
+  }, [results, searchArea, mapMatch]);
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
@@ -382,11 +380,8 @@ export default function MapScreen() {
               />
               <View style={styles.topChromeInner} pointerEvents="box-none">
                 <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-                <MerchantCategoryBar
-                  variant="glass"
-                  active={activeCategory}
-                  onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
-                />
+                {/* Navigation catégories à 2 niveaux (grandes familles → sous-catégories). */}
+                <CategoryNavigation onChange={setMapMatch} />
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
