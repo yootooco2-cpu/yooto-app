@@ -1,23 +1,15 @@
 import { Feather } from '@expo/vector-icons';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { FavoriteHeartButton } from '@/components/favorites/FavoriteHeartButton';
+import { MerchantActionBar } from '@/components/merchants/MerchantActionBar';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
-import { ActionButton } from '@/components/ui/ActionButton';
 import { YText } from '@/components/ui/YText';
 import { DarkThemeScope, useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
-import { buildDirectionsUrl } from '@/features/merchants/directions';
-import { shareMerchant } from '@/features/merchants/share';
-
-const STAR = '#E7B84B';
-
-const openUrl = (url?: string) => {
-  if (url) void Linking.openURL(url).catch(() => {});
-};
 
 type Props = {
   merchant: Merchant;
@@ -48,15 +40,15 @@ function PreviewInner({ merchant, onPress, onClose, flat = false }: Props) {
           </YText>
 
           {merchant.isProducer ? (
-            <View style={[styles.badge, { backgroundColor: `${colors.primary}22`, borderColor: `${colors.primary}55` }]}>
-              <YText style={[styles.badgeText, { color: colors.primary }]}>PRODUCTEUR</YText>
+            <View style={[styles.badge, { backgroundColor: colors.primaryDark }]}>
+              <YText style={[styles.badgeText, { color: colors.primaryHover }]}>PRODUCTEUR</YText>
             </View>
           ) : null}
 
           <View style={styles.metaRow}>
             {typeof merchant.rating === 'number' ? (
               <View style={styles.metaItem}>
-                <Feather name="star" size={13} color={STAR} />
+                <Feather name="star" size={13} color={colors.accent} />
                 <YText style={[styles.metaText, { color: colors.text }]}>
                   {merchant.rating.toFixed(1)}
                   {typeof merchant.reviewCount === 'number' ? ` (${merchant.reviewCount})` : ''}
@@ -94,13 +86,8 @@ function PreviewInner({ merchant, onPress, onClose, flat = false }: Props) {
         </Pressable>
       </View>
 
-      {/* Hiérarchie premium : Itinéraire = action PRINCIPALE ; les autres restent discrètes. */}
-      <ActionButton icon="navigation" label="Itinéraire" variant="primary" fullWidth onPress={() => openUrl(buildDirectionsUrl(merchant))} />
-      <View style={styles.secondaryRow}>
-        <ActionButton icon="phone" label="Appeler" fullWidth disabled={!merchant.phone} onPress={() => openUrl(`tel:${merchant.phone}`)} />
-        <ActionButton icon="globe" label="Site web" fullWidth disabled={!merchant.website} onPress={() => openUrl(merchant.website)} />
-        <ActionButton icon="share-2" label="Partager" fullWidth onPress={() => void shareMerchant(merchant)} />
-      </View>
+      {/* Barre d'actions groupée, fidèle à la maquette (ghost icône/label, dégradé + ombre discrète). */}
+      <MerchantActionBar merchant={merchant} />
     </Animated.View>
   );
 }
@@ -144,5 +131,4 @@ const styles = StyleSheet.create({
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusText: { fontSize: 12.5, fontWeight: '700' },
   close: { position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  secondaryRow: { flexDirection: 'row', gap: spacing.sm },
 });

@@ -37,7 +37,7 @@ export function MerchantOpeningHours({ merchant }: Props) {
       {!hours.available ? (
         <YText style={[styles.unavailable, { color: colors.mutedText }]}>Horaires non disponibles</YText>
       ) : (
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View style={[styles.card, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
           {/* Jour courant mis en avant (ou repli sur la semaine si non identifié). */}
           {hours.today ? (
             <View style={styles.todayRow}>

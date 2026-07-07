@@ -49,27 +49,29 @@ export const lightColors: ThemeColors = {
 };
 
 /**
- * DA sombre premium YOOTOO (anthracite / vert profond). Palette validée : fond #0E1712,
- * surface fiche #121F18, surface bouton #1D2C22 (hover #26382C), primaire #7BC49A / texte #07110B,
- * texte #F4F1E8 / secondaire #AEB8AA, accent or #E2B85E, bordure subtile blanche 10 %.
+ * DA sombre premium YOOTOO — reproduction FIDÈLE de la maquette de référence (7 juil. 2026).
+ * Vert naturel désaturé (jamais flashy), fiche vert-noir, cartes un ton au-dessus, étoile or.
+ * Fond fiche #111714 · surfaces #18211B · cartes internes #1E2A22 · boutons sec. #1D241F ·
+ * hover #263128 · texte #F3F0E8 / secondaire #B7B9B2 · accent vert #6A9B63 / clair #8EB67B ·
+ * Ouvert #69B96C · étoile #E7B654 · bordure blanche 8 %.
  */
 export const darkColors: ThemeColors = {
-  background: '#0E1712',
-  surface: '#121F18',
-  surfaceAlt: '#1D2C22',
-  surfaceAltHover: '#26382C',
-  tint: '#172A20',
-  text: '#F4F1E8',
-  mutedText: '#AEB8AA',
-  primary: '#7BC49A',
-  primaryHover: '#8FD0AA',
-  primaryDark: '#123524',
-  onPrimary: '#07110B',
-  accent: '#E2B85E',
-  border: 'rgba(255,255,255,0.10)',
-  separator: 'rgba(255,255,255,0.07)',
-  success: '#7BC49A',
-  warning: '#E2B85E',
+  background: '#111714',
+  surface: '#18211B',
+  surfaceAlt: '#1E2A22',
+  surfaceAltHover: '#263128',
+  tint: '#18211B',
+  text: '#F3F0E8',
+  mutedText: '#B7B9B2',
+  primary: '#6A9B63',
+  primaryHover: '#8EB67B',
+  primaryDark: '#365B3B',
+  onPrimary: '#0C120E',
+  accent: '#E7B654',
+  border: 'rgba(255,255,255,0.08)',
+  separator: 'rgba(255,255,255,0.06)',
+  success: '#69B96C',
+  warning: '#E7B654',
   danger: '#E5695B',
 };
 

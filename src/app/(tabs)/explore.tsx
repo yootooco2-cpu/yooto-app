@@ -476,10 +476,10 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
   },
-  // Fond fiche quasi opaque (couleur DA #0E1712) : garde le dépoli mais MASQUE totalement les
-  // commerces situés derrière → lecture des boutons/horaires jamais gênée.
+  // Fond fiche quasi opaque (couleur DA de référence #111714) : garde le dépoli mais MASQUE
+  // totalement les commerces situés derrière → lecture des boutons/horaires jamais gênée.
   sheetOpaque: {
-    backgroundColor: 'rgba(14,23,18,0.94)',
+    backgroundColor: 'rgba(17,23,20,0.95)',
   },
   // CONTENEUR racine de la bottom sheet : couche visuelle prioritaire, au-dessus de TOUTE la
   // carte (marqueurs z 1-6, clusters, callouts, overlays Mapbox). La partie transparente laisse

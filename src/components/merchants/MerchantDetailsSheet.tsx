@@ -31,8 +31,8 @@ function InfoRow({ icon, value, onPress }: { icon: keyof typeof Feather.glyphMap
       disabled={!interactive}
       accessibilityRole={interactive ? 'button' : 'text'}
       style={({ pressed }) => [styles.infoRow, pressed && interactive && styles.infoRowPressed]}>
-      <View style={[styles.infoIcon, { backgroundColor: colors.surfaceAlt }]}>
-        <Feather name={icon} size={15} color={colors.primary} />
+      <View style={[styles.infoIcon, { backgroundColor: colors.background }]}>
+        <Feather name={icon} size={15} color={colors.primaryHover} />
       </View>
       <YText style={[styles.infoValue, { color: colors.text }]} numberOfLines={2}>
         {value}
@@ -64,7 +64,7 @@ function DetailsInner({ merchant, onOpenFull, onClose }: Props) {
       {hasContact ? (
         <View style={styles.section}>
           <YText style={[styles.sectionTitle, { color: colors.text }]}>Informations pratiques</YText>
-          <View style={[styles.infoCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.infoCard, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
             {fullAddress ? (
               <InfoRow icon="map-pin" value={fullAddress} onPress={merchant.googleMapsUrl ? () => openUrl(merchant.googleMapsUrl) : undefined} />
             ) : null}
