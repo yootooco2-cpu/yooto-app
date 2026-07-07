@@ -1,7 +1,7 @@
 import { type PropsWithChildren } from 'react';
 import { StyleSheet, View, type ViewProps, type ViewStyle } from 'react-native';
 
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows, type ShadowLevel } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
@@ -17,11 +17,6 @@ type Props = PropsWithChildren<
   }
 >;
 
-const variantStyles: Record<YCardVariant, ViewStyle> = {
-  surface: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border },
-};
-
 export function YCard({
   children,
   variant = 'surface',
@@ -30,15 +25,15 @@ export function YCard({
   style,
   ...props
 }: Props) {
+  const { colors } = useTheme();
+  const variantStyle: ViewStyle =
+    variant === 'surface'
+      ? { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }
+      : { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border };
+
   return (
     <View
-      style={[
-        styles.base,
-        variantStyles[variant],
-        { padding: spacing[padding] },
-        shadows[elevation],
-        style,
-      ]}
+      style={[styles.base, variantStyle, { padding: spacing[padding] }, shadows[elevation], style]}
       {...props}>
       {children}
     </View>

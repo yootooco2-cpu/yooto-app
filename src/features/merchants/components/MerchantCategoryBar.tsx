@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
@@ -29,6 +29,7 @@ interface Props {
  * l'id (le filtrage/panneau vit dans l'écran consommateur). Source unique de la DA.
  */
 export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
+  const { colors } = useTheme();
   return (
     <ScrollView
       horizontal
@@ -46,7 +47,11 @@ export function MerchantCategoryBar({ active, onToggle, onHover }: Props) {
             accessibilityRole="button"
             accessibilityState={{ selected: isActive }}
             accessibilityLabel={cat.label}
-            style={[styles.chip, isActive && { borderColor: color, backgroundColor: `${color}18` }]}>
+            style={[
+              styles.chip,
+              { borderColor: colors.border, backgroundColor: colors.surface },
+              isActive && { borderColor: color, backgroundColor: `${color}18` },
+            ]}>
             <Image source={cryptogramAsset(cat.icon)} style={styles.icon} contentFit="contain" />
             <YText variant="caption" style={[styles.label, isActive ? { color } : null]}>
               {cat.label}
@@ -75,14 +80,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
   icon: {
     width: 26,
     height: 26,
   },
-  label: {
-    color: colors.text,
-  },
+  label: {},
 });

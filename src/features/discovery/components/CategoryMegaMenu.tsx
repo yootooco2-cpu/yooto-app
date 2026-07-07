@@ -5,7 +5,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Cryptogram } from '@/components/merchants/Cryptogram';
 import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
@@ -44,6 +44,7 @@ export function CategoryMegaMenu({
   onSelectCategory,
   onViewMap,
 }: CategoryMegaMenuProps) {
+  const { colors } = useTheme();
   const [openId, setOpenId] = useState<MerchantCategoryId | null>(null);
   const active = categories.find((c) => c.id === openId) ?? null;
   const accent = active ? cryptogramColor(active.icon) : colors.primary;
@@ -64,7 +65,7 @@ export function CategoryMegaMenu({
       />
 
       {active ? (
-        <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, shadows.md]}>
+        <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }, shadows.md]}>
           <View style={styles.panelHeader}>
             <Cryptogram id={active.icon} size={30} />
             <YText variant="subtitle" style={{ color: accent }}>
@@ -83,7 +84,7 @@ export function CategoryMegaMenu({
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={subcategory.label}
-                  style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}>
+                  style={({ pressed }) => [styles.tile, { backgroundColor: colors.background, borderColor: colors.border }, pressed && styles.tilePressed]}>
                   <View style={[styles.dot, { backgroundColor: accent }]} />
                   <YText variant="body" numberOfLines={1} style={styles.tileLabel}>
                     {subcategory.label}
@@ -136,8 +137,6 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     borderRadius: radii.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
     gap: spacing.md,
   },
   panelHeader: {
@@ -161,8 +160,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
   },
   tilePressed: {
     opacity: 0.7,

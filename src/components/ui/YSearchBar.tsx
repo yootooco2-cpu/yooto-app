@@ -1,6 +1,6 @@
 import { StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
@@ -20,21 +20,27 @@ export function YSearchBar({
   variant = 'default',
   ...props
 }: Props) {
+  const { colors } = useTheme();
   const isGlass = variant === 'glass';
   const iconColor = isGlass ? glass.onDarkMuted : colors.mutedText;
+  const placeholderColor = isGlass ? glass.onDarkMuted : colors.mutedText;
   return (
-    <View style={[styles.container, isGlass && glass.panel]}>
+    <View
+      style={[
+        styles.container,
+        isGlass ? glass.panel : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+      ]}>
       {/* Loupe minimaliste composée de Views (aucune librairie d'icônes) */}
       <View style={styles.glass}>
         <View style={[styles.glassRing, { borderColor: iconColor }]} />
         <View style={[styles.glassHandle, { backgroundColor: iconColor }]} />
       </View>
       <TextInput
-        style={[styles.input, isGlass && { color: glass.onDark }]}
+        style={[styles.input, { color: isGlass ? glass.onDark : colors.text }]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={isGlass ? glass.onDarkMuted : colors.mutedText}
+        placeholderTextColor={placeholderColor}
         returnKeyType="search"
         clearButtonMode="while-editing"
         {...props}
@@ -48,9 +54,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
     borderRadius: radii.lg,
     paddingHorizontal: spacing.md,
     height: 50,
@@ -65,7 +68,6 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: colors.mutedText,
   },
   glassHandle: {
     position: 'absolute',
@@ -73,12 +75,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 6,
     height: 2,
-    backgroundColor: colors.mutedText,
     transform: [{ rotate: '45deg' }],
   },
   input: {
     flex: 1,
-    color: colors.text,
     fontSize: typography.body.fontSize,
     paddingVertical: 0,
   },

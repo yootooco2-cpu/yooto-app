@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Cryptogram } from '@/components/merchants/Cryptogram';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
@@ -20,6 +20,7 @@ const IMAGE_HEIGHT = 168;
 
 /** Carte commerce style Airbnb : image valorisée, badge catégorie, hiérarchie aérée. */
 export function MerchantCard({ merchant, selected = false, onPress }: Props) {
+  const { colors } = useTheme();
   const hasDistance = merchant.distanceLabel !== '—' && merchant.distanceLabel.length > 0;
   const place = hasDistance ? merchant.distanceLabel : merchant.city;
   const cryptoId = cryptogramForMerchant(merchant);
@@ -29,17 +30,14 @@ export function MerchantCard({ merchant, selected = false, onPress }: Props) {
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.card, selected && styles.selected, pressed && styles.pressed]}>
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: colors.surface, borderColor: selected ? colors.primary : colors.border },
+        pressed && styles.pressed,
+      ]}>
       <View style={styles.imageWrap}>
-        <MerchantPhoto
-          uri={getMerchantCoverPhoto(merchant)}
-          height={IMAGE_HEIGHT}
-          rounded={0}
-          recyclingKey={merchant.id}
-        />
-        {/* Contour catégorie (overlay, ne change pas la taille de la photo). */}
+        <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={IMAGE_HEIGHT} rounded={0} recyclingKey={merchant.id} />
         <View style={[styles.ring, { borderColor: ringColor }]} pointerEvents="none" />
-        {/* Cryptogramme officiel en haut à droite. */}
         <View style={styles.cryptogram} pointerEvents="none">
           <Cryptogram id={cryptoId} size={34} />
         </View>
@@ -50,11 +48,7 @@ export function MerchantCard({ merchant, selected = false, onPress }: Props) {
           <YText variant="subtitle" numberOfLines={1} style={styles.title}>
             {merchant.name}
           </YText>
-          {typeof merchant.rating === 'number' ? (
-            <YText variant="caption" color="default">
-              ★ {merchant.rating.toFixed(1)}
-            </YText>
-          ) : null}
+          {typeof merchant.rating === 'number' ? <YText variant="caption" color="default">★ {merchant.rating.toFixed(1)}</YText> : null}
         </View>
 
         {place || merchant.isOpenNow ? (
@@ -84,15 +78,10 @@ export function MerchantCard({ merchant, selected = false, onPress }: Props) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
     borderRadius: radii.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.border,
     ...shadows.sm,
-  },
-  selected: {
-    borderColor: colors.primary,
   },
   pressed: {
     opacity: 0.96,
