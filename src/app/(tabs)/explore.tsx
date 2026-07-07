@@ -180,9 +180,12 @@ export default function MapScreen() {
   );
 
   // Snap à la sélection : on étend le sheet pour révéler la mini-fiche, on revient au peek à la fermeture.
+  // Palier d'ouverture : desktop/web → expanded direct (le scroll molette exige le palier haut) ;
+  // mobile → default (le drag tactile déploie ensuite naturellement vers expanded).
+  const defaultSheetIndex = isDesktopWeb ? 2 : 1;
   useEffect(() => {
-    sheetRef.current?.snapToIndex(selectedId ? 1 : 0);
-  }, [selectedId]);
+    sheetRef.current?.snapToIndex(selectedId ? defaultSheetIndex : 0);
+  }, [selectedId, defaultSheetIndex]);
 
   // Liste virtualisée du bottom sheet (rendu de ligne stable).
   // Backdrop premium : n'assombrit qu'au palier plein écran (index 2) → carte interactive au peek/mid.
@@ -342,7 +345,7 @@ export default function MapScreen() {
             {selectedMerchant ? (
               <BottomSheet
                 ref={sheetRef}
-                index={1}
+                index={defaultSheetIndex}
                 snapPoints={SNAP_POINTS}
                 enableDynamicSizing={false}
                 enablePanDownToClose={false}
