@@ -2,7 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors } from '@/design/tokens/colors';
+import { DarkThemeScope, useTheme } from '@/design/theme/ThemeProvider';
 import { spacing } from '@/design/tokens/spacing';
 
 type Props = {
@@ -18,22 +18,19 @@ type Props = {
   style?: StyleProp<ViewStyle>;
 };
 
-/**
- * Conteneur DÉFINITIF du panneau Focus (desktop) : Header + Body scrollable + Footer optionnel.
- * Totalement agnostique de son contenu (le Body rend `children`) → PR4 y injectera MerchantDetail
- * sans modifier cette structure. Largeur pilotée en flex par le parent (jamais en pixels).
- */
-export function MerchantFocusPanel({ onClose, header, children, footer, style }: Props) {
+/** Contenu du panneau — rendu SOUS le scope sombre (useTheme renvoie donc les couleurs sombres). */
+function PanelInner({ onClose, header, children, footer, style }: Props) {
+  const { colors } = useTheme();
   return (
-    <View style={[styles.panel, style]}>
-      <View style={styles.header}>
+    <View style={[styles.panel, { backgroundColor: colors.background, borderLeftColor: colors.border }, style]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerContent}>{header}</View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Fermer"
           onPress={onClose}
           hitSlop={8}
-          style={styles.close}>
+          style={[styles.close, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Feather name="x" size={20} color={colors.text} />
         </Pressable>
       </View>
@@ -42,18 +39,26 @@ export function MerchantFocusPanel({ onClose, header, children, footer, style }:
         {children}
       </ScrollView>
 
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { borderTopColor: colors.border }]}>{footer}</View> : null}
     </View>
   );
 }
 
+/**
+ * Panneau Focus commerce (desktop) : Header + Body scrollable + Footer. Forcé en DA SOMBRE
+ * premium via `DarkThemeScope` → cohérent avec la mini-fiche mobile (mêmes tokens/thème), quel
+ * que soit le mode global. Agnostique de son contenu.
+ */
+export function MerchantFocusPanel(props: Props) {
+  return (
+    <DarkThemeScope>
+      <PanelInner {...props} />
+    </DarkThemeScope>
+  );
+}
+
 const styles = StyleSheet.create({
-  panel: {
-    flex: 1,
-    backgroundColor: colors.background,
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
-  },
+  panel: { flex: 1, borderLeftWidth: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -62,32 +67,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
   },
-  headerContent: {
-    flex: 1,
-  },
+  headerContent: { flex: 1 },
   close: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  body: {
-    flex: 1,
-  },
-  bodyContent: {
-    padding: spacing.lg,
-    gap: spacing.lg,
-  },
-  footer: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
+  body: { flex: 1 },
+  bodyContent: { padding: spacing.lg, gap: spacing.lg },
+  footer: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderTopWidth: 1 },
 });

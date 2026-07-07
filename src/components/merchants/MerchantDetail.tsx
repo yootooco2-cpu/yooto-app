@@ -10,7 +10,7 @@ import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { ReviewsSummary } from '@/components/merchants/ReviewsSummary';
 import { YCard } from '@/components/ui/YCard';
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
@@ -52,10 +52,11 @@ function IconRow({
   value: string;
   onPress?: () => void;
 }) {
+  const { colors: c } = useTheme();
   const body = (
     <View style={styles.iconRow}>
       <View style={styles.iconBadge}>
-        <Feather name={icon} size={15} color={colors.primary} />
+        <Feather name={icon} size={15} color={c.primary} />
       </View>
       <View style={styles.iconRowText}>
         <YText variant="caption" color="muted">
@@ -78,9 +79,10 @@ function IconRow({
 
 /** Ligne « Pourquoi YOOTOO recommande » avec coche verte. */
 function WhyLine({ text }: { text: string }) {
+  const { colors: c } = useTheme();
   return (
     <View style={styles.whyRow}>
-      <Feather name="check" size={16} color={colors.primary} style={styles.whyCheck} />
+      <Feather name="check" size={16} color={c.primary} style={styles.whyCheck} />
       <YText variant="body" style={styles.whyText}>
         {text}
       </YText>
@@ -90,6 +92,7 @@ function WhyLine({ text }: { text: string }) {
 
 /** Statistique de score YOOTOO (grand nombre + barre de progression). */
 function ScoreStat({ label, value }: { label: string; value: number }) {
+  const { colors: c } = useTheme();
   return (
     <View style={styles.scoreStat}>
       <YText variant="caption" color="muted">
@@ -101,8 +104,8 @@ function ScoreStat({ label, value }: { label: string; value: number }) {
           /100
         </YText>
       </View>
-      <View style={styles.scoreTrack}>
-        <View style={[styles.scoreFill, { width: `${clampPct(value)}%` }]} />
+      <View style={[styles.scoreTrack, { backgroundColor: c.border }]}>
+        <View style={[styles.scoreFill, { width: `${clampPct(value)}%`, backgroundColor: c.primary }]} />
       </View>
     </View>
   );
@@ -122,6 +125,7 @@ type Props = {
  */
 export function MerchantDetail({ merchant, onBack }: Props) {
   const router = useRouter();
+  const { colors: c } = useTheme();
   const back = onBack ?? (() => router.back());
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
 
@@ -222,7 +226,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
             accessibilityLabel="Retour"
             hitSlop={8}
             style={styles.backFab}>
-            <Feather name="chevron-left" size={20} color={colors.text} />
+            <Feather name="chevron-left" size={20} color="#17201A" />
           </Pressable>
           {allImages.length > 1 ? (
             <View style={styles.countBadge}>
@@ -321,7 +325,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
         {tags && tags.length > 0 ? (
           <View style={styles.chipsRow}>
             {tags.map((tag) => (
-              <View key={tag} style={styles.tag}>
+              <View key={tag} style={[styles.tag, { backgroundColor: c.surface, borderColor: c.border }]}>
                 <YText variant="caption" color="default">
                   {tag}
                 </YText>
@@ -334,7 +338,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
       {/* Pourquoi YOOTOO recommande ce commerce */}
       <YCard padding="md">
         <View style={styles.cardHeader}>
-          <Feather name="heart" size={16} color={colors.primary} />
+          <Feather name="heart" size={16} color={c.primary} />
           <YText variant="subtitle" style={styles.cardHeaderText}>
             Pourquoi YOOTOO recommande ce commerce
           </YText>
@@ -348,7 +352,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
       {hasContact || hasHours ? (
         <YCard padding="md">
           <View style={styles.cardHeader}>
-            <Feather name="info" size={16} color={colors.primary} />
+            <Feather name="info" size={16} color={c.primary} />
             <YText variant="subtitle" style={styles.cardHeaderText}>
               Informations pratiques
             </YText>
@@ -359,7 +363,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
           {hasHours ? (
             <View style={styles.hoursRow}>
               <View style={styles.iconBadge}>
-                <Feather name="clock" size={15} color={colors.primary} />
+                <Feather name="clock" size={15} color={c.primary} />
               </View>
               <View style={styles.iconRowText}>
                 <YText variant="caption" color="muted">
@@ -397,7 +401,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
       {/* Avis clients — ÉVOLUTIF */}
       <YCard padding="md">
         <View style={styles.cardHeader}>
-          <Feather name="message-square" size={16} color={colors.primary} />
+          <Feather name="message-square" size={16} color={c.primary} />
           <YText variant="subtitle" style={styles.cardHeaderText}>
             Avis clients
           </YText>
@@ -414,7 +418,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
       {scoreStats.length > 0 ? (
         <YCard padding="md" style={styles.scoreCard}>
           <View style={styles.cardHeader}>
-            <Feather name="award" size={16} color={colors.primary} />
+            <Feather name="award" size={16} color={c.primary} />
             <YText variant="subtitle">Score YOOTOO</YText>
           </View>
           <View style={styles.scoreGrid}>
@@ -492,7 +496,6 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   ratingScore: {
-    color: colors.text,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
@@ -533,9 +536,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -609,13 +610,11 @@ const styles = StyleSheet.create({
   scoreTrack: {
     height: 8,
     borderRadius: radii.pill,
-    backgroundColor: colors.border,
     overflow: 'hidden',
   },
   scoreFill: {
     height: '100%',
     borderRadius: radii.pill,
-    backgroundColor: colors.primary,
   },
   footerSpacer: {
     height: 72,

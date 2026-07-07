@@ -72,3 +72,17 @@ export function useTheme(): ThemeContextValue {
   if (!ctx) throw new Error('useTheme doit être utilisé dans <ThemeProvider>.');
   return ctx;
 }
+
+/**
+ * Force le schéma SOMBRE pour un sous-arbre (ex. panneau Focus commerce en desktop), quel que
+ * soit le mode global. Tous les composants `useTheme()` en dessous rendent en sombre — même DA,
+ * mêmes tokens, sans dupliquer les styles. Conserve `mode`/`setMode` du parent.
+ */
+export function DarkThemeScope({ children }: { children: ReactNode }) {
+  const parent = useTheme();
+  const value = useMemo<ThemeContextValue>(
+    () => ({ ...parent, scheme: 'dark', colors: colorsFor('dark') }),
+    [parent],
+  );
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+}
