@@ -52,6 +52,8 @@ function Field({ label, value, onChangeText, placeholder, keyboardType = 'defaul
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  // Retour SÛR (évite « GO_BACK not handled » si l'écran est ouvert sans historique).
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/settings'));
   const { colors } = useTheme();
   const toast = useToast();
   const { status, userId } = useSession();
@@ -155,7 +157,7 @@ export default function EditProfileScreen() {
     if (res.ok) {
       haptics.success();
       toast.show('Profil enregistré', 'success');
-      router.back();
+      goBack();
     } else {
       haptics.error();
       toast.show(res.error === 'not-configured' ? 'Connexion requise' : 'Enregistrement impossible', 'error');
@@ -168,7 +170,7 @@ export default function EditProfileScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { borderBottomColor: colors.separator }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.headerBtn}>
+        <Pressable onPress={goBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.headerBtn}>
           <Feather name="chevron-left" size={24} color={colors.text} />
         </Pressable>
         <YText style={[styles.headerTitle, { color: colors.text }]}>Modifier le profil</YText>

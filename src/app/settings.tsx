@@ -25,6 +25,9 @@ import { PreferenceService } from '@/services/PreferenceService';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  // Retour SÛR : revient si possible, sinon rejoint directement le Profil (évite l'erreur
+  // « GO_BACK not handled » quand l'écran est ouvert sans historique, ex. lien direct sur web).
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/profile'));
   const { colors } = useTheme();
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -48,7 +51,7 @@ export default function SettingsScreen() {
     setSigningOut(true);
     await signOut();
     setSigningOut(false);
-    router.back();
+    goBack();
   };
 
   const n = settings.notifications;
@@ -58,7 +61,7 @@ export default function SettingsScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.separator }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.back}>
+        <Pressable onPress={goBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.back}>
           <Feather name="chevron-left" size={24} color={colors.text} />
         </Pressable>
         <YText style={[styles.headerTitle, { color: colors.text }]}>Paramètres</YText>
