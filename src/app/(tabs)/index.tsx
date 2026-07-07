@@ -50,7 +50,7 @@ export default function HomeScreen() {
   );
 
   return (
-    <SectionScreen section="accueil">
+    <SectionScreen section="accueil" scrollY={scrollY} height={440}>
       <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
       <HomeHero greeting={greetingForNow()} scrollY={scrollY} />
 

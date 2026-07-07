@@ -39,7 +39,7 @@ export function HomeHero({ greeting, scrollY }: Props) {
   }));
 
   return (
-    <View style={[styles.hero, { backgroundColor: colors.tint }]}>
+    <View style={styles.hero}>
       <Animated.View style={[styles.haloLayer, haloStyle]} pointerEvents="none">
         <View style={[styles.halo, styles.haloGreen]} />
         <View style={[styles.halo, styles.haloAccent]} />

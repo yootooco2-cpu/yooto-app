@@ -1,38 +1,39 @@
 import { type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { type SharedValue } from 'react-native-reanimated';
 
-import { SectionAmbient } from '@/components/theme/SectionAmbient';
+import { SectionBackground } from '@/components/theme/SectionBackground';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { type SectionKey } from '@/design/theme/sections';
 
 interface Props {
   section: SectionKey;
-  /** Hauteur de la bande d'ambiance en tête (px). */
-  ambientHeight?: number;
-  /** Intensité de l'ambiance (0..1). */
-  intensity?: number;
+  /** Hauteur de la bande de fond d'ambiance en tête (px). */
+  height?: number;
+  /** Scroll partagé → parallax très discret du fond. */
+  scrollY?: SharedValue<number>;
   children: ReactNode;
 }
 
-/** Enveloppe d'écran d'ONGLET : pose l'identité de l'univers + une bande d'ambiance en tête,
- *  derrière un contenu transparent. Fond émotionnel discret, jamais gênant pour la lecture. */
-function Backdrop({ ambientHeight, intensity, children }: Omit<Props, 'section'>) {
+/** Enveloppe d'écran d'ONGLET : pose l'identité de l'univers + son FOND d'ambiance (image ou
+ *  dégradé de secours) en tête, derrière un contenu transparent. Discret, jamais gênant. */
+function Backdrop({ height, scrollY, children }: Omit<Props, 'section'>) {
   const { colors } = useTheme();
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.ambient, { height: ambientHeight ?? 300 }]} pointerEvents="none">
-        <SectionAmbient intensity={intensity ?? 0.5} />
+      <View style={[styles.ambient, { height: height ?? 360 }]} pointerEvents="none">
+        <SectionBackground scrollY={scrollY} />
       </View>
       {children}
     </View>
   );
 }
 
-export function SectionScreen({ section, ambientHeight, intensity, children }: Props) {
+export function SectionScreen({ section, height, scrollY, children }: Props) {
   return (
     <SectionThemeProvider section={section}>
-      <Backdrop ambientHeight={ambientHeight} intensity={intensity}>
+      <Backdrop height={height} scrollY={scrollY}>
         {children}
       </Backdrop>
     </SectionThemeProvider>
