@@ -474,6 +474,10 @@ const styles = StyleSheet.create({
   },
   sheetShadow: {
     ...shadows.lg,
+    // La feuille doit couvrir les marqueurs de la carte (z-index jusqu'à ~6/10) : on la place
+    // franchement au-dessus pour qu'aucun commerce ne vienne « percer » la fiche ouverte.
+    zIndex: 50,
+    elevation: 24,
   },
   // Desktop / large : la feuille reste une BOTTOM sheet (jamais latérale), simplement plus
   // étroite et centrée horizontalement pour une lecture premium sur grand écran.
