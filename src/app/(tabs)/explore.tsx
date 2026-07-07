@@ -22,6 +22,7 @@ import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
+import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
@@ -390,6 +391,7 @@ export default function MapScreen() {
           </View>
         )}
       </View>
+        <SupportContactFooter />
         </YScreen>
       </View>
     </View>
