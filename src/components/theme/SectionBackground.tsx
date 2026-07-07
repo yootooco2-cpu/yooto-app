@@ -56,8 +56,8 @@ export function SectionBackground({ scrollY, parallax = 22 }: Props) {
           accessible={false}
         />
       </Animated.View>
-      {/* léger flou runtime (en plus du flou léger cuit dans l'asset) — discret. */}
-      <BlurView intensity={scheme === 'dark' ? 16 : 8} tint={scheme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} pointerEvents="none" />
+      {/* Flou runtime TRÈS léger (profondeur premium) — l'asset est net, on ne le regomme pas. */}
+      <BlurView intensity={scheme === 'dark' ? 8 : 4} tint={scheme === 'dark' ? 'dark' : 'light'} style={StyleSheet.absoluteFill} pointerEvents="none" />
       <BackgroundOverlay veil={bg.veil} veilOpacity={bg.veilOpacity} />
     </Animated.View>
   );
