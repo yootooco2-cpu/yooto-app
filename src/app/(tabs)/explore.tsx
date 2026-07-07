@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -164,6 +164,30 @@ export default function MapScreen() {
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
+  // DEUX ÉTATS D'INTERFACE pilotés par une SEULE source de vérité (selectedMerchant) :
+  //  • Exploration (aucun commerce sélectionné) → chrome de carte visible ;
+  //  • Consultation (une fiche ouverte)         → chrome masqué, priorité au commerce.
+  // Les contrôles restent MONTÉS (jamais recréés) : on anime leur restauration/masquage via
+  // `chromeProgress` (fade + translation) et on coupe `pointerEvents` quand masqués (aucun clic).
+  const exploring = selectedMerchant === null;
+  const chromeProgress = useDerivedValue(() => withTiming(exploring ? 1 : 0, { duration: 280 }), [exploring]);
+  // Conteneur (chrome haut) : `box-none` laisse la carte cliquable dans les vides. FAB cliquables :
+  // `auto`. Dans les DEUX cas, `none` en consultation → strictement aucun clic sur le chrome masqué.
+  const chromeHint = exploring ? ('box-none' as const) : ('none' as const);
+  const fabHint = exploring ? ('auto' as const) : ('none' as const);
+  const topChromeStyle = useAnimatedStyle(() => ({
+    opacity: chromeProgress.value,
+    transform: [{ translateY: (1 - chromeProgress.value) * -14 }],
+  }));
+  const leftFabStyle = useAnimatedStyle(() => ({
+    opacity: chromeProgress.value,
+    transform: [{ translateX: (1 - chromeProgress.value) * -20 }],
+  }));
+  const rightFabStyle = useAnimatedStyle(() => ({
+    opacity: chromeProgress.value,
+    transform: [{ translateX: (1 - chromeProgress.value) * 20 }],
+  }));
+
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
   const isDesktopWeb = useIsDesktopWeb();
@@ -265,18 +289,16 @@ export default function MapScreen() {
               onViewportChange={handleViewport}
             />
 
-            {/* Accès rapide « Favoris » — FAB glass discret en haut à GAUCHE. Contrôle d'EXPLORATION :
-                retiré de l'arbre dès qu'une fiche est ouverte (aucun clic possible), réapparaît en fondu. */}
-            {!selectedMerchant ? (
-              <AnimatedPressable
-                entering={FadeIn.duration(260)}
-                onPress={() => setQuickAccessOpen(true)}
-                accessibilityRole="button"
-                accessibilityLabel="Favoris"
-                style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }]}>
-                <Feather name="heart" size={18} color={glass.onDark} />
-              </AnimatedPressable>
-            ) : null}
+            {/* Accès rapide « Favoris » — contrôle d'EXPLORATION. Toujours monté (jamais recréé) :
+                masqué + non-cliquable en consultation, restauré en fondu/translation à la fermeture. */}
+            <AnimatedPressable
+              onPress={() => setQuickAccessOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Favoris"
+              pointerEvents={fabHint}
+              style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }, leftFabStyle]}>
+              <Feather name="heart" size={18} color={glass.onDark} />
+            </AnimatedPressable>
 
             {/* Bottom sheet « Favoris » (overlay Modal, aucun impact moteur carte). */}
             <MapQuickAccessSheet
@@ -285,9 +307,9 @@ export default function MapScreen() {
               sections={quickAccessSections}
             />
 
-            {/* Navigation VERTICALE flottante (remplace la Bottom Tab Bar sur l'écran Carte).
-                Masquée quand une fiche commerce est ouverte → le commerce devient le héros. */}
-            {!selectedMerchant ? <FloatingMapNavigation /> : null}
+            {/* Navigation VERTICALE flottante — TOUJOURS montée (jamais recréée). Masquée +
+                non-cliquable en consultation, restaurée en fondu/translation en exploration. */}
+            <FloatingMapNavigation visible={exploring} />
 
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet
@@ -296,14 +318,14 @@ export default function MapScreen() {
               favoritesCount={favoriteIds.length}
             />
 
-            {/* « Me recentrer » — contrôle d'EXPLORATION : masqué pendant la consultation d'une fiche. */}
-            {showRecenter && !selectedMerchant ? (
+            {/* « Me recentrer » — contrôle d'EXPLORATION : masqué + non-cliquable en consultation. */}
+            {showRecenter ? (
               <AnimatedPressable
-                entering={FadeIn.duration(260)}
                 onPress={smart.recenter}
                 accessibilityRole="button"
                 accessibilityLabel="Me recentrer"
-                style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }]}>
+                pointerEvents={fabHint}
+                style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }, rightFabStyle]}>
                 <Feather name="navigation" size={18} color={glass.onDark} />
               </AnimatedPressable>
             ) : null}
@@ -356,52 +378,49 @@ export default function MapScreen() {
               </BottomSheet>
             ) : null}
 
-            {/* CHROME FLOTTANT immersif (recherche + catégories + filtres). Contrôles d'EXPLORATION :
-                entièrement retirés de l'arbre pendant la consultation d'une fiche (aucun clic possible),
-                réapparition en fondu + translation depuis le haut à la fermeture. box-none → carte libre. */}
-            {!selectedMerchant ? (
-              <Animated.View
-                entering={FadeInDown.duration(300)}
-                style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }]}
-                onLayout={onChromeLayout}
-                pointerEvents="box-none">
-                <LinearGradient
-                  colors={TOP_SCRIM}
-                  locations={[0, 0.62, 1]}
-                  style={StyleSheet.absoluteFill}
-                  pointerEvents="none"
+            {/* CHROME FLOTTANT immersif (recherche + catégories + filtres). Contrôle d'EXPLORATION :
+                TOUJOURS monté (jamais recréé). Masqué + non-cliquable en consultation (pointerEvents
+                none), restauré en fondu + translation depuis le haut à la fermeture. */}
+            <Animated.View
+              style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }, topChromeStyle]}
+              onLayout={onChromeLayout}
+              pointerEvents={chromeHint}>
+              <LinearGradient
+                colors={TOP_SCRIM}
+                locations={[0, 0.62, 1]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              <View style={styles.topChromeInner} pointerEvents="box-none">
+                <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
+                <MerchantCategoryBar
+                  variant="glass"
+                  active={activeCategory}
+                  onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
                 />
-                <View style={styles.topChromeInner} pointerEvents="box-none">
-                  <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-                  <MerchantCategoryBar
-                    variant="glass"
-                    active={activeCategory}
-                    onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
-                  />
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.filtersScroll}
-                    contentContainerStyle={styles.filters}>
-                    {QUICK_FILTERS.map((filter) => (
-                      <YChip
-                        key={filter.id}
-                        label={filter.label}
-                        icon={filterCryptogramAsset(filter.id)}
-                        active={filters.includes(filter.id)}
-                        onPress={() => toggleFilter(filter.id)}
-                        variant="glass"
-                      />
-                    ))}
-                  </ScrollView>
-                  {nearbyActive && location.status === 'denied' ? (
-                    <YText variant="caption" style={styles.nearbyDenied}>
-                      Localisation indisponible — activez-la pour trier par distance.
-                    </YText>
-                  ) : null}
-                </View>
-              </Animated.View>
-            ) : null}
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.filtersScroll}
+                  contentContainerStyle={styles.filters}>
+                  {QUICK_FILTERS.map((filter) => (
+                    <YChip
+                      key={filter.id}
+                      label={filter.label}
+                      icon={filterCryptogramAsset(filter.id)}
+                      active={filters.includes(filter.id)}
+                      onPress={() => toggleFilter(filter.id)}
+                      variant="glass"
+                    />
+                  ))}
+                </ScrollView>
+                {nearbyActive && location.status === 'denied' ? (
+                  <YText variant="caption" style={styles.nearbyDenied}>
+                    Localisation indisponible — activez-la pour trier par distance.
+                  </YText>
+                ) : null}
+              </View>
+            </Animated.View>
 
             </View>
           </View>
