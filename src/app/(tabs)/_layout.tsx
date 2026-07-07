@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 
 import { GlassTabBar } from '@/components/navigation/GlassTabBar';
 import { useFocusStore } from '@/features/layout';
+import { useLocationSimulationSync } from '@/features/location';
 
 /**
  * Onglets YOOTOO. La barre native est remplacée par une bottom nav GLASSMORPHISM (`GlassTabBar`)
@@ -10,6 +11,8 @@ import { useFocusStore } from '@/features/layout';
  */
 export default function TabsLayout() {
   const isFocus = useFocusStore((s) => s.isFocus);
+  // Simulation GPS (DEV) : injecte la position simulée dans l'état app-wide, tous onglets confondus.
+  useLocationSimulationSync();
   return (
     <Tabs
       screenOptions={{ headerShown: false }}

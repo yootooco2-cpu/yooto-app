@@ -1,47 +1,30 @@
 import { useCallback, useState } from 'react';
 
+import { LocationSimulationService } from '@/services/LocationSimulationService';
+
 import type { LocationPermissionStatus, UserCoordinates } from './types';
 
 /**
- * Permission de localisation YOOTOO — ponctuelle et à la demande.
+ * Permission / lecture de localisation YOOTOO — ponctuelle et à la demande.
  *
- * - `expo-location` est importé dynamiquement (web-safe : aucun accès à `navigator`
- *   au chargement du module, donc pas de casse au rendu statique web).
- * - On utilise uniquement `getCurrentPositionAsync` : AUCUN tracking permanent
- *   (pas de `watchPositionAsync`). La position n'est lue qu'au moment où
- *   l'utilisateur le demande explicitement.
+ * TOUTE demande passe par `LocationSimulationService.getCurrentLocation()`, qui décide de la
+ * source de vérité : position SIMULÉE (mode dev) ou vraie géolocalisation GPS. Le hook n'a plus
+ * à connaître la source — il ne fait qu'exposer un statut simple à l'UI (soft-ask, halo…).
  */
 export function useLocationPermission() {
   const [status, setStatus] = useState<LocationPermissionStatus>('idle');
   const [coordinates, setCoordinates] = useState<UserCoordinates | null>(null);
 
   const request = useCallback(async (): Promise<UserCoordinates | null> => {
-    try {
-      setStatus('requesting');
-      const Location = await import('expo-location');
-
-      const { status: permission } = await Location.requestForegroundPermissionsAsync();
-      if (permission !== 'granted') {
-        setStatus('denied');
-        return null;
-      }
-
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const next: UserCoordinates = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        accuracy:
-          typeof position.coords.accuracy === 'number' ? position.coords.accuracy : undefined,
-      };
-      setCoordinates(next);
-      setStatus('granted');
-      return next;
-    } catch {
+    setStatus('requesting');
+    const coords = await LocationSimulationService.getCurrentLocation();
+    if (!coords) {
       setStatus('denied');
       return null;
     }
+    setCoordinates(coords);
+    setStatus('granted');
+    return coords;
   }, []);
 
   return { status, coordinates, request };

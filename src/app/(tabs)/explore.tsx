@@ -29,7 +29,7 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { useFocusStore, useIsDesktopWeb } from '@/features/layout';
-import { useSmartLocation } from '@/features/location';
+import { useLocationSimulationStore, useSmartLocation } from '@/features/location';
 import {
   isPlausibleViewport,
   useMapViewportStore,
@@ -188,6 +188,17 @@ export default function MapScreen() {
   // Localisation intelligente (PR1) : soft-ask après délai + recentrage. Jamais au lancement.
   const setUserLocation = useMerchantSearchStore((s) => s.setUserLocation);
   const smart = useSmartLocation({ userLocation, onLocate: setUserLocation });
+
+  // Simulation GPS (DEV) : dès qu'on active/change un point simulé, on recentre la carte dessus
+  // pour que la vue montre bien les commerces « autour de » cette position (la synchro app-wide
+  // met déjà à jour `userLocation` pour distances/recommandations).
+  const simEnabled = useLocationSimulationStore((s) => s.enabled);
+  const simPlace = useLocationSimulationStore((s) => s.place);
+  const recenterMap = smart.recenter;
+  useEffect(() => {
+    if (__DEV__ && simEnabled && simPlace) recenterMap();
+  }, [simEnabled, simPlace, recenterMap]);
+
   // « Me recentrer » : visible seulement si la position est connue ET hors du viewport courant.
   const showRecenter = Boolean(
     userLocation && liveViewport && !coordInViewport(userLocation, liveViewport),

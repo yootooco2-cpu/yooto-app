@@ -6,6 +6,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BrandIcon } from '@/components/settings/BrandIcon';
 import { SettingsNavigationRow } from '@/components/settings/SettingsNavigationRow';
+import { LocationSimulationSettings } from '@/components/settings/LocationSimulationSettings';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { SettingsSwitch } from '@/components/settings/SettingsSwitch';
 import { SettingsThemeSelector } from '@/components/settings/SettingsThemeSelector';
@@ -154,6 +155,9 @@ export default function SettingsScreen() {
           <SettingsNavigationRow icon={{ set: 'feather', name: 'file' }} label="Mentions légales" onPress={todo} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'code' }} label="Licences Open Source" onPress={todo} />
         </SettingsSection>
+
+        {/* ---------- SIMULATION GPS (DEV UNIQUEMENT) ---------- */}
+        {__DEV__ ? <LocationSimulationSettings /> : null}
 
         {/* ---------- DÉCONNEXION ---------- */}
         {isAuthenticated ? (
