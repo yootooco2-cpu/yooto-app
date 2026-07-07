@@ -1,28 +1,21 @@
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { type ComponentProps, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, ZoomIn } from 'react-native-reanimated';
+import { Feather } from '@expo/vector-icons';
+import { type ComponentProps } from 'react';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { AuthSheet } from '@/components/auth/AuthSheet';
+import { FavoriteHeartButton } from '@/components/favorites/FavoriteHeartButton';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
-import { useToast } from '@/components/ui/Toast';
 import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
-import { useSession } from '@/features/auth';
-import { useFavoritesStore, useIsFavorite } from '@/features/favorites';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
 import { buildDirectionsUrl } from '@/features/merchants/directions';
 import { formatRatingFr, starFill } from '@/features/merchants/reviews';
-import { haptics } from '@/lib/haptics';
-import { FavoritesService } from '@/services/FavoritesService';
 
 type FeatherName = ComponentProps<typeof Feather>['name'];
-
-const FAV_COLOR = '#D9645A';
 
 const openUrl = (url?: string) => {
   if (url) void Linking.openURL(url).catch(() => {});
@@ -36,7 +29,7 @@ type Props = {
   flat?: boolean;
 };
 
-/** Action compacte icône + label (Itinéraire / Appeler). */
+/** Action compacte icône + label (Itinéraire / Appeler / Site web). */
 function CompactAction({ icon, label, onPress }: { icon: FeatherName; label: string; onPress: () => void }) {
   return (
     <Pressable
@@ -54,41 +47,10 @@ function CompactAction({ icon, label, onPress }: { icon: FeatherName; label: str
 
 /**
  * Mini-fiche du commerce sélectionné, affichée dans le bottom sheet de la carte.
- * Bouton FAVORI en overlay sur la photo (haut-droite) : ajoute/retire des favoris, immédiat et
- * persisté (Supabase via FavoritesService), avec haptique + toast + rollback si échec. Non connecté
- * → invite à se connecter. Le compteur profil et « Mes favoris » (store partagé) se mettent à jour.
+ * Bouton FAVORI en overlay sur la photo (haut-droite) via `FavoriteHeartButton`. Le commerce
+ * reste le héros ; le favori ne concurrence pas les CTA (Itinéraire / Appeler / Site web).
  */
 export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }: Props) {
-  const saved = useIsFavorite(merchant.id);
-  const setFavoriteLocal = useFavoritesStore((s) => s.setFavoriteLocal);
-  const { status } = useSession();
-  const toast = useToast();
-  const [authOpen, setAuthOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-
-  const onToggleFavorite = async () => {
-    if (busy) return;
-    if (status !== 'authenticated') {
-      haptics.light();
-      setAuthOpen(true);
-      return;
-    }
-    const willBeFav = !saved;
-    setBusy(true);
-    haptics.light();
-    setFavoriteLocal(merchant.id, willBeFav); // optimiste (UI + compteur + liste)
-
-    const ok = await FavoritesService.setFavorite(merchant.id, willBeFav);
-    if (!ok) {
-      setFavoriteLocal(merchant.id, !willBeFav); // rollback
-      haptics.error();
-      toast.show('Action impossible, réessayez', 'error');
-    } else {
-      toast.show(willBeFav ? 'Ajouté aux favoris' : 'Retiré des favoris', 'success');
-    }
-    setBusy(false);
-  };
-
   const categoryLine = [CATEGORY_LABELS[merchant.category], merchant.city].filter(Boolean).join(' • ');
   const stars = ((): string => {
     if (typeof merchant.rating !== 'number') return '';
@@ -105,22 +67,7 @@ export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }:
           <Feather name="x" size={16} color={colors.text} />
         </Pressable>
 
-        {/* Favori — overlay haut-droite sur la photo. */}
-        <Pressable
-          onPress={() => void onToggleFavorite()}
-          accessibilityRole="button"
-          accessibilityState={{ selected: saved, busy }}
-          accessibilityLabel={saved ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-          hitSlop={8}
-          style={({ pressed }) => [styles.fav, pressed && styles.pressed]}>
-          {busy ? (
-            <ActivityIndicator size="small" color={FAV_COLOR} />
-          ) : (
-            <Animated.View key={saved ? 'on' : 'off'} entering={saved ? ZoomIn.duration(200) : undefined}>
-              <MaterialCommunityIcons name={saved ? 'heart' : 'heart-outline'} size={22} color={saved ? FAV_COLOR : colors.text} />
-            </Animated.View>
-          )}
-        </Pressable>
+        <FavoriteHeartButton merchantId={merchant.id} />
       </View>
 
       <YText variant="subtitle" numberOfLines={1}>
@@ -178,8 +125,6 @@ export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }:
       </View>
 
       <YButton label="Voir la fiche" onPress={onPress} fullWidth />
-
-      <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} />
     </Animated.View>
   );
 }
@@ -206,18 +151,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.92)',
-    ...shadows.sm,
-  },
-  fav: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.86)',
     ...shadows.sm,
   },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },

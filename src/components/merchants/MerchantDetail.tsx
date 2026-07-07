@@ -5,6 +5,7 @@ import { Linking, Pressable, StyleSheet, View } from 'react-native';
 
 import { FullscreenGallery } from '@/components/merchants/FullscreenGallery';
 import { IconAction } from '@/components/merchants/IconAction';
+import { FavoriteHeartButton } from '@/components/favorites/FavoriteHeartButton';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
 import { ReviewsSummary } from '@/components/merchants/ReviewsSummary';
 import { YCard } from '@/components/ui/YCard';
@@ -231,6 +232,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
               </YText>
             </View>
           ) : null}
+          <FavoriteHeartButton merchantId={merchant.id} />
         </Pressable>
 
         {galleryThumbs.length > 0 ? (
