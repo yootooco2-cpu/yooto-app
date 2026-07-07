@@ -5,6 +5,7 @@ import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-n
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AuthSheet } from '@/components/auth/AuthSheet';
+import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YText } from '@/components/ui/YText';
 import { SUPPORT_EMAIL, supportMailtoUrl } from '@/constants/support';
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -155,7 +156,8 @@ export default function ProfileScreen() {
   ];
 
   return (
-    <View style={styles.root}>
+    <SectionScreen section="profil">
+      <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* ---------- HEADER ---------- */}
         <View style={styles.header}>
@@ -265,13 +267,14 @@ export default function ProfileScreen() {
       </ScrollView>
 
       <AuthSheet open={authOpen} onClose={() => setAuthOpen(false)} favoritesCount={favoritesCount} />
-    </View>
+      </View>
+    </SectionScreen>
   );
 }
 
 function makeStyles(P: Palette) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: P.cream },
+    root: { flex: 1, backgroundColor: 'transparent' },
     content: { padding: spacing.lg, paddingBottom: spacing.xxl, gap: spacing.lg },
 
     header: { alignItems: 'center', paddingTop: spacing.sm },

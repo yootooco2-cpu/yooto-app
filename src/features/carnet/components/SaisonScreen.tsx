@@ -80,7 +80,7 @@ export function SaisonScreen({ locale }: Props) {
   };
 
   return (
-    <YScreen scroll gap="lg" padding="lg">
+    <YScreen transparent scroll gap="lg" padding="lg">
       {/* Hero — visuel de référence peint (ardoise + étal). Bandeau haut de l'image. */}
       <Animated.View entering={FadeIn.duration(400)} style={styles.heroWrap}>
         <Image

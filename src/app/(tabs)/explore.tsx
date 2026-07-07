@@ -22,6 +22,7 @@ import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
+import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
@@ -221,7 +222,8 @@ export default function MapScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    <SectionThemeProvider section="carte">
+      <View style={styles.root}>
       {isFocus ? <DesktopNavRail /> : null}
       <View style={styles.screenWrap}>
         <YScreen gap="sm" padding="lg">
@@ -394,7 +396,8 @@ export default function MapScreen() {
         <SupportContactFooter />
         </YScreen>
       </View>
-    </View>
+      </View>
+    </SectionThemeProvider>
   );
 }
 

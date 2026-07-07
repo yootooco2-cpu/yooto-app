@@ -9,6 +9,8 @@ import { spacing } from '@/design/tokens/spacing';
 type AnimatedScrollProps = ComponentProps<typeof Animated.ScrollView>;
 
 type Props = PropsWithChildren<{
+  /** Fond transparent (laisse voir une ambiance d'univers derrière). */
+  transparent?: boolean;
   /** Active le défilement vertical du contenu. */
   scroll?: boolean;
   /** Padding intérieur (clé de l'échelle d'espacement). */
@@ -26,6 +28,7 @@ type Props = PropsWithChildren<{
 
 export function YScreen({
   children,
+  transparent = false,
   scroll = false,
   padding = 'lg',
   gap = 'lg',
@@ -41,7 +44,7 @@ export function YScreen({
   };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: transparent ? 'transparent' : colors.background }]}>
       {scroll ? (
         onScroll ? (
           <Animated.ScrollView
