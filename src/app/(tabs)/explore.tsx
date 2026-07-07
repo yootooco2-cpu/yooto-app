@@ -22,7 +22,8 @@ import { MerchantListRow } from '@/components/merchants/MerchantListRow';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
 import { YChip } from '@/components/ui/YChip';
-import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
+import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
+import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
@@ -221,7 +222,8 @@ export default function MapScreen() {
   );
 
   return (
-    <View style={styles.root}>
+    <SectionThemeProvider section="carte">
+      <View style={styles.root}>
       {isFocus ? <DesktopNavRail /> : null}
       <View style={styles.screenWrap}>
         <YScreen gap="sm" padding="lg">
@@ -299,6 +301,9 @@ export default function MapScreen() {
               sections={quickAccessSections}
             />
 
+            {/* Navigation VERTICALE flottante (remplace la Bottom Tab Bar sur l'écran Carte). */}
+            <FloatingMapNavigation />
+
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet
               open={authSheetOpen}
@@ -337,9 +342,9 @@ export default function MapScreen() {
               </View>
             ) : null}
 
-            {/* Bottom sheet PERSISTANT : bascule contenu preview (commerce sélectionné) ↔ liste.
-                Ne se démonte plus à la sélection → transition fluide, position conservée. */}
-            {!isFocus && (selectedMerchant || (!isLoading && count > 0)) ? (
+            {/* Feuille du bas RÉDUITE À L'APERÇU : n'apparaît QUE lorsqu'un marqueur est sélectionné
+                (mini-fiche du commerce). Plus de liste « X commerces dans cette zone » → carte seule. */}
+            {!isFocus && selectedMerchant ? (
               <BottomSheet
                 ref={sheetRef}
                 index={0}
@@ -391,10 +396,10 @@ export default function MapScreen() {
           </View>
         )}
       </View>
-        <SupportContactFooter />
         </YScreen>
       </View>
-    </View>
+      </View>
+    </SectionThemeProvider>
   );
 }
 

@@ -2,7 +2,7 @@ import { Image } from 'expo-image';
 import { Pressable, StyleSheet, type ImageSourcePropType } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
@@ -15,6 +15,7 @@ type Props = {
 };
 
 export function YChip({ label, active = false, onPress, icon }: Props) {
+  const { colors } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
@@ -22,7 +23,9 @@ export function YChip({ label, active = false, onPress, icon }: Props) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,
-        active ? styles.active : styles.inactive,
+        active
+          ? { backgroundColor: colors.primary, borderColor: colors.primary }
+          : { backgroundColor: colors.surface, borderColor: colors.border },
         pressed && styles.pressed,
       ]}>
       {icon ? <Image source={icon} style={styles.icon} contentFit="contain" /> : null}
@@ -35,8 +38,6 @@ export function YChip({ label, active = false, onPress, icon }: Props) {
 
 const styles = StyleSheet.create({
   chip: {
-    // Reste compact dans un scroll horizontal : pas d'étirement vertical (cross-axis),
-    // pas de rétrécissement, label sur une seule ligne.
     alignSelf: 'center',
     flexShrink: 0,
     flexDirection: 'row',
@@ -45,14 +46,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     borderWidth: 1,
-  },
-  active: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  inactive: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
   },
   pressed: {
     opacity: 0.7,

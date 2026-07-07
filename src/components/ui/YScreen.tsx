@@ -2,13 +2,15 @@ import { type ComponentProps, type PropsWithChildren, type ReactNode } from 'rea
 import { SafeAreaView, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
 type AnimatedScrollProps = ComponentProps<typeof Animated.ScrollView>;
 
 type Props = PropsWithChildren<{
+  /** Fond transparent (laisse voir une ambiance d'univers derrière). */
+  transparent?: boolean;
   /** Active le défilement vertical du contenu. */
   scroll?: boolean;
   /** Padding intérieur (clé de l'échelle d'espacement). */
@@ -26,6 +28,7 @@ type Props = PropsWithChildren<{
 
 export function YScreen({
   children,
+  transparent = false,
   scroll = false,
   padding = 'lg',
   gap = 'lg',
@@ -34,13 +37,14 @@ export function YScreen({
   onScroll,
   style,
 }: Props) {
+  const { colors } = useTheme();
   const contentStyle: ViewStyle = {
     padding: spacing[padding],
     gap: spacing[gap],
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: transparent ? 'transparent' : colors.background }]}>
       {scroll ? (
         onScroll ? (
           <Animated.ScrollView
@@ -63,7 +67,9 @@ export function YScreen({
         </View>
       )}
 
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? (
+        <View style={[styles.footer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>{footer}</View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -71,7 +77,6 @@ export function YScreen({
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   container: {
     flex: 1,
@@ -90,9 +95,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xl,
-    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: colors.border,
     ...shadows.lg,
   },
 });

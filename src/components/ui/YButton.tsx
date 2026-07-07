@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
@@ -31,12 +31,6 @@ const sizeStyles: Record<YButtonSize, ViewStyle> = {
   lg: { paddingVertical: spacing.md + spacing.xs, paddingHorizontal: spacing.xl },
 };
 
-const variantStyles: Record<YButtonVariant, ViewStyle> = {
-  primary: { backgroundColor: colors.primary },
-  secondary: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  ghost: { backgroundColor: 'transparent' },
-};
-
 const labelColors: Record<YButtonVariant, 'inverse' | 'default' | 'primary'> = {
   primary: 'inverse',
   secondary: 'default',
@@ -53,7 +47,15 @@ export function YButton({
   style,
   ...props
 }: Props) {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
+
+  const variantStyle: ViewStyle =
+    variant === 'primary'
+      ? { backgroundColor: colors.primary }
+      : variant === 'secondary'
+        ? { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }
+        : { backgroundColor: 'transparent' };
 
   return (
     <Pressable
@@ -63,7 +65,7 @@ export function YButton({
       style={({ pressed }) => [
         styles.base,
         sizeStyles[size],
-        variantStyles[variant],
+        variantStyle,
         fullWidth && styles.fullWidth,
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
@@ -72,10 +74,7 @@ export function YButton({
       {...props}>
       <View style={styles.content}>
         {loading ? (
-          <ActivityIndicator
-            size="small"
-            color={variant === 'primary' ? '#FFFFFF' : colors.primary}
-          />
+          <ActivityIndicator size="small" color={variant === 'primary' ? '#FFFFFF' : colors.primary} />
         ) : (
           <YText variant="label" color={labelColors[variant]} style={labelTextStyle}>
             {label}

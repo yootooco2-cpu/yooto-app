@@ -4,6 +4,7 @@ import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimate
 
 import { HomeHero } from '@/components/home/HomeHero';
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
+import { SectionScreen } from '@/components/theme/SectionScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
@@ -49,7 +50,8 @@ export default function HomeScreen() {
   );
 
   return (
-    <YScreen scroll gap="lg" padding="lg" onScroll={scrollHandler}>
+    <SectionScreen section="accueil" scrollY={scrollY} height={440}>
+      <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
       <HomeHero greeting={greetingForNow()} scrollY={scrollY} />
 
       {/* Méga-menu de découverte : MÊME système que /merchants (barre de cryptogrammes +
@@ -88,6 +90,7 @@ export default function HomeScreen() {
         delay={180}
       />
       <SupportContactFooter />
-    </YScreen>
+      </YScreen>
+    </SectionScreen>
   );
 }

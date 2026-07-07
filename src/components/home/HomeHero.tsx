@@ -8,7 +8,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
@@ -27,19 +27,15 @@ const RANGE = 200;
  * (interpolate), aucune allocation pendant le scroll.
  */
 export function HomeHero({ greeting, scrollY }: Props) {
-  // Plan 1 — halos (les plus « lointains » : décalent le plus, s'estompent un peu).
+  const { colors } = useTheme();
+
   const haloStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(scrollY.value, [0, RANGE], [0, 18], Extrapolation.CLAMP) },
-    ],
+    transform: [{ translateY: interpolate(scrollY.value, [0, RANGE], [0, 18], Extrapolation.CLAMP) }],
     opacity: interpolate(scrollY.value, [0, RANGE], [1, 0.85], Extrapolation.CLAMP),
   }));
 
-  // Plan 2 — contenu texte (un peu plus lent que le scroll).
   const contentStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: interpolate(scrollY.value, [0, RANGE], [0, 10], Extrapolation.CLAMP) },
-    ],
+    transform: [{ translateY: interpolate(scrollY.value, [0, RANGE], [0, 10], Extrapolation.CLAMP) }],
   }));
 
   return (
@@ -55,7 +51,7 @@ export function HomeHero({ greeting, scrollY }: Props) {
         </YText>
 
         <View style={styles.locationRow}>
-          <View style={styles.locationDot} />
+          <View style={[styles.locationDot, { backgroundColor: colors.primary }]} />
           <YText variant="caption" color="primary">
             Autour de vous
           </YText>
@@ -80,7 +76,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.xxl,
     paddingBottom: spacing.lg,
-    backgroundColor: '#EFF4EF',
     borderBottomLeftRadius: radii.xl,
     borderBottomRightRadius: radii.xl,
     overflow: 'hidden',
@@ -122,7 +117,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.primary,
   },
   title: {
     letterSpacing: -1,
