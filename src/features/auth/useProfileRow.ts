@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { ProfileService } from '@/services/ProfileService';
 
 /**
  * Lecture (défensive) de la LIGNE profil en base pour l'utilisateur courant — preuve que le
@@ -27,31 +27,17 @@ export function useProfileRow(userId: string | null): ProfileRow {
 
   useEffect(() => {
     if (!userId) return;
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
     let active = true;
 
-    void supabase
-      .from('profiles')
-      .select('display_name, avatar_url, primary_email, created_at')
-      .eq('id', userId)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        setState({
-          id: userId,
-          row:
-            error || !data
-              ? EMPTY
-              : {
-                  exists: true,
-                  displayName: data.display_name ?? null,
-                  avatarUrl: data.avatar_url ?? null,
-                  email: data.primary_email ?? null,
-                  createdAt: data.created_at ?? null,
-                },
-        });
+    void ProfileService.get(userId).then((data) => {
+      if (!active) return;
+      setState({
+        id: userId,
+        row: data
+          ? { exists: true, displayName: data.displayName, avatarUrl: data.avatarUrl, email: data.email, createdAt: data.createdAt }
+          : EMPTY,
       });
+    });
 
     return () => {
       active = false;

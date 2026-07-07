@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { loadSettings, saveSettings } from './settingsStorage';
+import { SettingsService } from '@/services/SettingsService';
+
 import { DEFAULT_SETTINGS, type AppSettings, type MapSettings, type NotificationSettings } from './types';
 
 interface SettingsContextValue {
@@ -23,7 +24,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void loadSettings().then((loaded) => {
+    void SettingsService.load().then((loaded) => {
       if (!active) return;
       hydrated.current = true;
       setSettings(loaded);
@@ -34,7 +35,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated.current) void saveSettings(settings);
+    if (hydrated.current) void SettingsService.save(settings);
   }, [settings]);
 
   const value = useMemo<SettingsContextValue>(
