@@ -1,7 +1,7 @@
 import { BlurView } from 'expo-blur';
 import { useRouter, type Href } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeInRight } from 'react-native-reanimated';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
@@ -42,8 +42,9 @@ export function FloatingMapNavigation() {
 
   return (
     <View style={styles.dock} pointerEvents="box-none">
-      {/* Réapparition (fermeture d'une fiche) : fondu + légère translation depuis le bord droit. */}
-      <Animated.View entering={FadeInRight.duration(mapNavAnimations.appear)} style={[styles.barShadow, shadows.md]}>
+      {/* Réapparition (fermeture d'une fiche) : fondu doux. FadeIn rejoue de façon FIABLE au
+          remontage (les entrées directionnelles type FadeInRight restaient invisibles sur web). */}
+      <Animated.View entering={FadeIn.duration(mapNavAnimations.appear)} style={[styles.barShadow, shadows.md]}>
         <BlurView intensity={scheme === 'dark' ? 34 : 26} tint={scheme === 'dark' ? 'dark' : 'light'} style={styles.bar}>
           <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.glass.tint }]} />
           <View style={[StyleSheet.absoluteFill, styles.border, { borderColor: theme.glass.border }]} pointerEvents="none" />
