@@ -380,8 +380,10 @@ export default function MapScreen() {
               />
               <View style={styles.topChromeInner} pointerEvents="box-none">
                 <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-                {/* Navigation catégories à 2 niveaux (grandes familles → sous-catégories). */}
-                <CategoryNavigation onChange={setMapMatch} />
+                {/* Navigation catégories à 2 niveaux (grandes familles → sous-catégories).
+                    On enveloppe le prédicat dans `() => match` : sinon React interprète la fonction
+                    passée au setter comme un updater et l'exécute (bug). */}
+                <CategoryNavigation onChange={(match) => setMapMatch(() => match)} />
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
