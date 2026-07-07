@@ -44,4 +44,19 @@ describe('categoryFamilies', () => {
   it('chaque famille a au moins une sous-catégorie', () => {
     expect(CATEGORY_FAMILIES.every((f) => f.items.length > 0)).toBe(true);
   });
+
+  it('Artisanat = métiers d’art (ébénistes, luthiers…) reconnus par le métier, pas les boutiques', () => {
+    const art = categoryFamilyById('artisanat');
+    const labels = art?.items.map((i) => i.label) ?? [];
+    expect(labels).toContain('Ébénistes');
+    expect(labels).toContain('Luthiers');
+    expect(labels).toContain('Souffleurs de verre');
+    expect(labels.length).toBeGreaterThanOrEqual(40);
+
+    const ebenistes = art?.items.find((i) => i.id === 'ebenistes');
+    expect(ebenistes?.match(merchant({ name: 'Atelier d’ébénisterie du Peyrou' }))).toBe(true);
+    expect(art?.match(merchant({ name: 'Luthier — guitares & violons' }))).toBe(true);
+    // Un commerce classique n'est PAS un métier d'art.
+    expect(art?.match(merchant({ name: 'Supermarché Casino', rawCategory: 'supermarket' }))).toBe(false);
+  });
 });
