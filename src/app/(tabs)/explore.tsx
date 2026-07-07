@@ -7,7 +7,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -80,13 +79,14 @@ function sameViewport(a: MapViewport | null, b: MapViewport): boolean {
 }
 
 /** Paliers du bottom sheet : peek (aperçu) / mid (liste, sélection) / full (immersif). */
-const SNAP_POINTS = ['15%', '55%', '90%'];
+// Palier haut à 82 % (et non 90 %) : même fiche déployée, un bandeau reste libre en haut pour que
+// la recherche et les catégories demeurent VISIBLES au-dessus de la carte en mode Consultation.
+const SNAP_POINTS = ['15%', '55%', '82%'];
 
 // Voile dégradé du chrome : la carte disparaît PROGRESSIVEMENT sous la recherche/catégories
 // (sombre au ras du status bar → transparent au niveau des catégories). Transition imperceptible.
 const TOP_SCRIM = ['rgba(17,23,20,0.90)', 'rgba(17,23,20,0.45)', 'rgba(17,23,20,0)'] as const;
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function MapScreen() {
   // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
@@ -164,29 +164,11 @@ export default function MapScreen() {
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
-  // DEUX ÉTATS D'INTERFACE pilotés par une SEULE source de vérité (selectedMerchant) :
-  //  • Exploration (aucun commerce sélectionné) → chrome de carte visible ;
-  //  • Consultation (une fiche ouverte)         → chrome masqué, priorité au commerce.
-  // Les contrôles restent MONTÉS (jamais recréés) : on anime leur restauration/masquage via
-  // `chromeProgress` (fade + translation) et on coupe `pointerEvents` quand masqués (aucun clic).
+  // DEUX ÉTATS D'INTERFACE, une SEULE source de vérité (selectedMerchant) :
+  //  • ExploreMode (selectedMerchant === null) → recherche + catégories + carte + MENU LATÉRAL ;
+  //  • MerchantFocusMode (selectedMerchant !== null) → recherche + catégories + carte + FICHE,
+  //    et SEUL le menu latéral est masqué. On ne cache jamais la recherche ni les catégories.
   const exploring = selectedMerchant === null;
-  const chromeProgress = useDerivedValue(() => withTiming(exploring ? 1 : 0, { duration: 280 }), [exploring]);
-  // Conteneur (chrome haut) : `box-none` laisse la carte cliquable dans les vides. FAB cliquables :
-  // `auto`. Dans les DEUX cas, `none` en consultation → strictement aucun clic sur le chrome masqué.
-  const chromeHint = exploring ? ('box-none' as const) : ('none' as const);
-  const fabHint = exploring ? ('auto' as const) : ('none' as const);
-  const topChromeStyle = useAnimatedStyle(() => ({
-    opacity: chromeProgress.value,
-    transform: [{ translateY: (1 - chromeProgress.value) * -14 }],
-  }));
-  const leftFabStyle = useAnimatedStyle(() => ({
-    opacity: chromeProgress.value,
-    transform: [{ translateX: (1 - chromeProgress.value) * -20 }],
-  }));
-  const rightFabStyle = useAnimatedStyle(() => ({
-    opacity: chromeProgress.value,
-    transform: [{ translateX: (1 - chromeProgress.value) * 20 }],
-  }));
 
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
@@ -230,7 +212,7 @@ export default function MapScreen() {
   // Backdrop premium : n'assombrit qu'au palier plein écran (index 2) → carte interactive au peek/mid.
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop {...props} appearsOnIndex={2} disappearsOnIndex={1} opacity={0.35} />
+      <BottomSheetBackdrop {...props} appearsOnIndex={2} disappearsOnIndex={1} opacity={0.18} />
     ),
     [],
   );
@@ -289,16 +271,14 @@ export default function MapScreen() {
               onViewportChange={handleViewport}
             />
 
-            {/* Accès rapide « Favoris » — contrôle d'EXPLORATION. Toujours monté (jamais recréé) :
-                masqué + non-cliquable en consultation, restauré en fondu/translation à la fermeture. */}
-            <AnimatedPressable
+            {/* Accès rapide « Favoris » — reste visible dans les deux modes (contrôle carte). */}
+            <Pressable
               onPress={() => setQuickAccessOpen(true)}
               accessibilityRole="button"
               accessibilityLabel="Favoris"
-              pointerEvents={fabHint}
-              style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }, leftFabStyle]}>
+              style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }]}>
               <Feather name="heart" size={18} color={glass.onDark} />
-            </AnimatedPressable>
+            </Pressable>
 
             {/* Bottom sheet « Favoris » (overlay Modal, aucun impact moteur carte). */}
             <MapQuickAccessSheet
@@ -318,16 +298,15 @@ export default function MapScreen() {
               favoritesCount={favoriteIds.length}
             />
 
-            {/* « Me recentrer » — contrôle d'EXPLORATION : masqué + non-cliquable en consultation. */}
+            {/* « Me recentrer » — reste visible dans les deux modes (contrôle carte). */}
             {showRecenter ? (
-              <AnimatedPressable
+              <Pressable
                 onPress={smart.recenter}
                 accessibilityRole="button"
                 accessibilityLabel="Me recentrer"
-                pointerEvents={fabHint}
-                style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }, rightFabStyle]}>
+                style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }]}>
                 <Feather name="navigation" size={18} color={glass.onDark} />
-              </AnimatedPressable>
+              </Pressable>
             ) : null}
 
             {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
@@ -378,13 +357,12 @@ export default function MapScreen() {
               </BottomSheet>
             ) : null}
 
-            {/* CHROME FLOTTANT immersif (recherche + catégories + filtres). Contrôle d'EXPLORATION :
-                TOUJOURS monté (jamais recréé). Masqué + non-cliquable en consultation (pointerEvents
-                none), restauré en fondu + translation depuis le haut à la fermeture. */}
-            <Animated.View
-              style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }, topChromeStyle]}
+            {/* CHROME FLOTTANT immersif (recherche + catégories + filtres). TOUJOURS visible, dans
+                les DEUX modes — jamais masqué. box-none → la carte reste interactive dans les vides. */}
+            <View
+              style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }]}
               onLayout={onChromeLayout}
-              pointerEvents={chromeHint}>
+              pointerEvents="box-none">
               <LinearGradient
                 colors={TOP_SCRIM}
                 locations={[0, 0.62, 1]}
@@ -420,7 +398,7 @@ export default function MapScreen() {
                   </YText>
                 ) : null}
               </View>
-            </Animated.View>
+            </View>
 
             </View>
           </View>
