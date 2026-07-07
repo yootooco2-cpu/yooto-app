@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AuthSheet } from '@/components/auth/AuthSheet';
+import { BrandIcon } from '@/components/settings/BrandIcon';
 import { SettingsNavigationRow } from '@/components/settings/SettingsNavigationRow';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { SettingsSwitch } from '@/components/settings/SettingsSwitch';
@@ -80,8 +81,8 @@ export default function SettingsScreen() {
 
         {/* ---------- COMPTES CONNECTÉS ---------- */}
         <SettingsSection title="Comptes connectés" footer="Sur Android, la connexion s’effectue via Google.">
-          <SettingsNavigationRow icon={{ set: 'mci', name: 'google' }} iconTint="#4285F4" label="Google" status={linked.has('google') ? 'on' : 'off'} />
-          <SettingsNavigationRow icon={{ set: 'mci', name: 'apple' }} iconTint={colors.text} label="Apple" status={linked.has('apple') ? 'on' : 'off'} />
+          <SettingsNavigationRow leading={<BrandIcon brand="google" />} label="Google" status={linked.has('google') ? 'on' : 'off'} />
+          <SettingsNavigationRow leading={<BrandIcon brand="apple" />} label="Apple" status={linked.has('apple') ? 'on' : 'off'} />
         </SettingsSection>
 
         {/* ---------- APPARENCE ---------- */}
