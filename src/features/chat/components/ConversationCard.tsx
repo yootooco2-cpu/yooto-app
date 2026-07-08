@@ -34,7 +34,7 @@ export function ConversationCard({ view, now, onPress }: { view: ChatConversatio
         { backgroundColor: colors.surface, borderColor: colors.border },
         pressed && styles.pressed,
       ]}>
-      <ChatAvatar name={author.name} avatarUrl={avatarUri(author)} size={52} />
+      <ChatAvatar name={author.name} avatarUrl={avatarUri(author)} size={52} online={author.online === true} />
 
       <View style={styles.mid}>
         <View style={styles.nameRow}>

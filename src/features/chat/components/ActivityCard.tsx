@@ -8,7 +8,7 @@ import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
 import { chatCategoryById } from '../categories';
-import { actorKindLabel, avatarUri, isFresh, isLiveNow, isTerritoryActor, presence, proximityHint } from '../logic';
+import { avatarUri, isFresh, isLiveNow, isTerritoryActor, proximityHint } from '../logic';
 import { formatChatTime } from '../time';
 import type { ActivityItem, ChatParticipant } from '../types';
 import { ActivityActions } from './ActivityActions';
@@ -24,37 +24,28 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
   const { colors } = useTheme();
   const category = chatCategoryById(item.categoryId);
   const accent = category?.accent ?? colors.primary;
-  const kindLabel = author ? actorKindLabel(author.kind) : null;
   const isBiz = Boolean(author && isTerritoryActor(author.kind));
   const prox = proximityHint(item.geo?.distanceKm);
   const live = isLiveNow(item.startsAt, item.endsAt, now);
   const fresh = isFresh(item.createdAt, now);
   const showFollow = isBiz;
+  // Présence désormais portée par la PASTILLE verte sur l'avatar (comme le profil utilisateur).
+  const online = author?.online === true;
 
-  // Statut d'activité pour les commerces (crédibilité) ; sinon le type d'acteur. Puis lieu + trajet.
-  const pres = author ? presence(author, now) : null;
-  const lead = isBiz && pres ? pres.label : kindLabel;
-  const leadOnline = Boolean(isBiz && pres?.online);
-  const rest = [item.place, prox ? `${prox.icon} ${prox.minutes} min` : null].filter(Boolean).join(' · ');
+  // Sous le nom : uniquement l'utile → 📍 distance · 🚶/🚴 trajet (plus de texte « En ligne »).
+  const distLabel = item.geo?.distanceLabel ?? (item.place ? item.place.replace(/^à\s*/, '') : null);
+  const meta = [distLabel ? `📍 ${distLabel}` : null, prox ? `${prox.icon} ${prox.minutes} min` : null].filter(Boolean).join('   ·   ');
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.top}>
-        <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={40} />
+        <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={40} online={online} />
         <View style={styles.who}>
           <View style={styles.nameRow}>
             <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>{author?.name ?? '—'}</YText>
             {author?.verified ? <Feather name="check-circle" size={13} color={accent} /> : null}
           </View>
-          {lead || rest ? (
-            <View style={styles.metaRow}>
-              {leadOnline ? <View style={styles.presDot} /> : null}
-              <YText variant="caption" numberOfLines={1} style={[styles.metaText, { color: colors.mutedText }]}>
-                {lead ? <YText style={{ color: leadOnline ? '#69B96C' : colors.mutedText, fontWeight: leadOnline ? '700' : '400' }}>{lead}</YText> : null}
-                {rest ? `${lead ? ' · ' : ''}${rest}` : ''}
-              </YText>
-            </View>
-          ) : null}
+          {meta ? <YText variant="caption" color="muted" numberOfLines={1}>{meta}</YText> : null}
         </View>
         <View style={styles.right}>
           {live || fresh ? (
@@ -99,9 +90,6 @@ const styles = StyleSheet.create({
   who: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   name: { flexShrink: 1, fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  metaText: { flexShrink: 1 },
-  presDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#69B96C' },
   right: { alignItems: 'flex-end', gap: 6 },
   live: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#69B96C' },
