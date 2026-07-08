@@ -112,6 +112,6 @@ const styles = StyleSheet.create({
   batteryBody: { width: 29, height: 15, borderRadius: 4, borderWidth: 1.5, padding: 1.5, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
   batteryFill: { height: '100%', borderRadius: 2 },
   // Éclair de charge PARFAITEMENT centré sur la batterie (calque centré, comme iOS).
-  boltWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  boltWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   batteryCap: { width: 3, height: 6, borderRadius: 1.5, marginLeft: 1.5 },
 });
