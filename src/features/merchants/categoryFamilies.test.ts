@@ -30,10 +30,16 @@ describe('categoryFamilies', () => {
     ]);
   });
 
-  it('Nature est une FEUILLE au 1er niveau (pas de sous-catégories) qui filtre directement', () => {
+  it('Nature = 10 sous-catégories (picto + accent), reconnaissance transversale', () => {
     const nature = categoryFamilyById('nature');
-    expect(nature?.children).toBeUndefined();
-    expect(nature?.match?.(merchant({ category: 'shop', rawMerchantType: 'nature' }))).toBeDefined();
+    expect(nature?.children?.length).toBe(10);
+    expect(nature?.children?.map((i) => i.id)).toEqual([
+      'parcs-jardins', 'randonnees', 'voies-vertes', 'lacs-rivieres', 'reserves-naturelles',
+      'jardineries', 'animaleries', 'peche', 'equitation', 'plein-air',
+    ]);
+    expect(nature?.children?.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
+    const equitation = nature?.children?.find((i) => i.id === 'equitation');
+    expect(equitation?.match?.(merchant({ name: 'Centre équestre du Lez' }))).toBe(true);
   });
 
   it('regroupe les catégories existantes (union de match) — un producteur ∈ Alimentation', () => {

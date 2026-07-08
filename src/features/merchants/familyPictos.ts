@@ -4,6 +4,7 @@ import { artisanatPicto } from './artisanatPictos';
 import { bienetrePicto } from './bienetrePictos';
 import { culturePicto } from './culturePictos';
 import { mobilitePicto } from './mobilitePictos';
+import { naturePicto } from './naturePictos';
 import { restaurantPicto } from './restaurantPictos';
 
 /**
@@ -24,6 +25,8 @@ export function familyPicto(familyId: string, itemId: string): ImageSourcePropTy
       return culturePicto(itemId);
     case 'mobilite':
       return mobilitePicto(itemId);
+    case 'nature':
+      return naturePicto(itemId);
     default:
       return undefined;
   }

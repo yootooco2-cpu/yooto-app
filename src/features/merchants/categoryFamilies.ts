@@ -283,6 +283,26 @@ const MOBILITE_KEYWORDS: string[] = MOBILITE_METIERS.flatMap((m) => m.keywords);
 const mobiliteMatch: MerchantPredicate = either(MOBILITE, textMatch(...MOBILITE_KEYWORDS));
 
 /**
+ * NATURE — 10 sous-catégories (grand air, jardins, eau, animaux…) avec pictogramme dédié +
+ * couleur d'accent (référence validée). Structure plate extensible ; reconnaissance TEXTE
+ * transversale + catégorie « nature » existante.
+ */
+const NATURE_METIERS: { id: string; label: string; accent: string; keywords: string[] }[] = [
+  { id: 'parcs-jardins', label: 'Parcs & Jardins', accent: '#596827', keywords: ['parc', 'jardin public', 'square', 'arboretum', 'espace vert', 'jardin botanique'] },
+  { id: 'randonnees', label: 'Randonnées', accent: '#777140', keywords: ['randonnee', 'sentier', 'rando', 'trek', 'balade nature'] },
+  { id: 'voies-vertes', label: 'Voies vertes & pistes cyclables', accent: '#487B58', keywords: ['voie verte', 'piste cyclable', 'veloroute', 'chemin cyclable'] },
+  { id: 'lacs-rivieres', label: 'Lacs & Rivières', accent: '#316E7C', keywords: ['lac', 'riviere', 'plan d eau', 'etang', 'base nautique'] },
+  { id: 'reserves-naturelles', label: 'Réserves naturelles', accent: '#8E8E47', keywords: ['reserve naturelle', 'parc naturel', 'zone protegee', 'espace naturel'] },
+  { id: 'jardineries', label: 'Jardineries & Pépinières', accent: '#7B8B2C', keywords: ['jardinerie', 'pepiniere', 'horticulture', 'graineterie'] },
+  { id: 'animaleries', label: 'Animaleries & services animaliers', accent: '#C57522', keywords: ['animalerie', 'toilettage', 'veterinaire', 'pension pour animaux', 'education canine'] },
+  { id: 'peche', label: 'Pêche', accent: '#386382', keywords: ['peche', 'articles de peche', 'etang de peche', 'pisciculture'] },
+  { id: 'equitation', label: 'Équitation', accent: '#84501E', keywords: ['equitation', 'centre equestre', 'ecurie', 'poney', 'manege', 'haras'] },
+  { id: 'plein-air', label: 'Activités de plein air', accent: '#6D7576', keywords: ['plein air', 'escalade', 'via ferrata', 'accrobranche', 'canoe', 'parapente'] },
+];
+const NATURE_KEYWORDS: string[] = NATURE_METIERS.flatMap((m) => m.keywords);
+const natureMatch: MerchantPredicate = either(catMatch('nature'), textMatch(...NATURE_KEYWORDS));
+
+/**
  * Grandes familles (Niveau 1) + « Tous » géré à part par le composant. Chaque famille est une
  * BRANCHE (`children`). « Plus » regroupe les catégories restantes (nature / autres).
  */
@@ -363,11 +383,12 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     children: MOBILITE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
-    // Nature = FEUILLE au 1er niveau (pas de sous-catégories) → un tap filtre directement la carte.
+    // Nature — 10 sous-catégories avec pictogrammes dédiés (référence). Branche multi-niveaux.
     id: 'nature',
     label: 'Nature',
     icon: 'feather',
-    match: catMatch('nature'),
+    match: natureMatch,
+    children: NATURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
 ];
 
