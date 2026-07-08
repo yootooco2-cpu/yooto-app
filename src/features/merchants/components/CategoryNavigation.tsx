@@ -9,7 +9,7 @@ import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { cryptogramAsset } from '../cryptogramAssets';
-import { restaurantPicto } from '../restaurantPictos';
+import { familyPicto } from '../familyPictos';
 
 import {
   CATEGORY_FAMILIES,
@@ -85,7 +85,7 @@ export function CategoryNavigation({ onChange }: Props) {
               <Capsule
                 key={it.id}
                 label={it.label}
-                imageIcon={it.iconId ? cryptogramAsset(it.iconId) : it.pictoKey ? restaurantPicto(it.pictoKey) : undefined}
+                imageIcon={it.iconId ? cryptogramAsset(it.iconId) : it.pictoKey ? familyPicto(family.id, it.pictoKey) : undefined}
                 accent={it.accent}
                 active={nav.activeSubcategory === it.id}
                 onPress={() => toggleSub(family, it)}

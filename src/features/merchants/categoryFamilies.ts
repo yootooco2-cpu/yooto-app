@@ -76,6 +76,14 @@ const rItem = (id: string, label: string, accent: string, match: MerchantPredica
   pictoKey: id,
   accent,
 });
+/** Item BIEN-ÊTRE : pictogramme dédié + accent + prédicat TEXTE (métier transversal). */
+const beItem = (id: string, label: string, accent: string, keywords: string[]): FamilyItem => ({
+  id,
+  label,
+  match: textMatch(...keywords),
+  pictoKey: id,
+  accent,
+});
 
 const RESTO = anyCat('restaurants', 'cafes');
 const BIENETRE = anyCat('bienetre', 'sport');
@@ -157,6 +165,40 @@ const ARTISAN_KEYWORDS: string[] = ARTISAN_METIERS.flatMap((m) => m.keywords);
 const artisanMatch: MerchantPredicate = (m) => catMatch('artisanat')(m) || textMatch(...ARTISAN_KEYWORDS)(m);
 
 /**
+ * MÉTIERS DU BIEN-ÊTRE — soin, mouvement, santé douce & modification corporelle. Structure plate
+ * et extensible (id = nom du pictogramme, label, accent = couleur du badge, mots-clés métier).
+ * Reconnaissance TEXTE transversale (indépendante de la catégorie commerciale) : un ostéopathe,
+ * un tatoueur ou un naturopathe remonte bien, quelle que soit sa catégorie Google.
+ */
+interface WellnessMetier {
+  id: string;
+  label: string;
+  accent: string;
+  keywords: string[];
+}
+
+const BIENETRE_METIERS: WellnessMetier[] = [
+  { id: 'spa-hammam', label: 'Spa & Hammam', accent: '#3EA79F', keywords: ['spa', 'hammam', 'sauna', 'balneo', 'thermes'] },
+  { id: 'fitness', label: 'Fitness', accent: '#DD6145', keywords: ['fitness', 'musculation', 'salle de sport', 'gym', 'crossfit', 'remise en forme'] },
+  { id: 'yoga', label: 'Yoga', accent: '#699E57', keywords: ['yoga'] },
+  { id: 'pilates', label: 'Pilates', accent: '#61ACC4', keywords: ['pilates'] },
+  { id: 'coaching-sportif', label: 'Coaching sportif', accent: '#DC7B11', keywords: ['coach sportif', 'coaching', 'personal trainer', 'preparateur physique'] },
+  { id: 'osteopathe', label: 'Ostéopathe', accent: '#39838C', keywords: ['osteopathe', 'osteopathie'] },
+  { id: 'chiropracteur', label: 'Chiropracteur', accent: '#5A6C9D', keywords: ['chiropracteur', 'chiropraxie', 'chiropractie'] },
+  { id: 'kinesitherapeute', label: 'Kinésithérapeute', accent: '#269F69', keywords: ['kinesitherapeute', 'kinesitherapie', 'masseur-kine'] },
+  { id: 'sophrologie', label: 'Sophrologie', accent: '#986DB4', keywords: ['sophrologue', 'sophrologie'] },
+  { id: 'reflexologie', label: 'Réflexologie', accent: '#66A783', keywords: ['reflexologie', 'reflexologue'] },
+  { id: 'naturopathie', label: 'Naturopathie', accent: '#7CAF56', keywords: ['naturopathe', 'naturopathie'] },
+  { id: 'acupuncture', label: 'Acupuncture', accent: '#DA9413', keywords: ['acupuncture', 'acuponcture', 'acupuncteur'] },
+  { id: 'tatoueur', label: 'Tatoueur', accent: '#7E5799', keywords: ['tatoueur', 'tatouage', 'tattoo'] },
+  { id: 'perceur', label: 'Perceur', accent: '#DC648A', keywords: ['perceur', 'piercing', 'percage'] },
+];
+
+/** Famille Bien-être = catégories bien-être/sport OU un métier du bien-être (union de mots-clés). */
+const BIENETRE_KEYWORDS: string[] = BIENETRE_METIERS.flatMap((m) => m.keywords);
+const bienetreMatch: MerchantPredicate = either(BIENETRE, textMatch(...BIENETRE_KEYWORDS));
+
+/**
  * Les 7 familles (Niveau 1) + « Tous » géré à part par le composant. « Plus » regroupe les
  * catégories restantes (nature / autres) qui n'entrent pas dans les familles principales.
  */
@@ -206,17 +248,13 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
     ],
   },
   {
+    // Bien-être — 14 métiers (soin, mouvement, santé douce, modification corporelle) avec
+    // pictogrammes dédiés + touches de couleur. Sous-catégories générées depuis BIENETRE_METIERS.
     id: 'bienetre',
     label: 'Bien-être',
     icon: 'heart',
-    match: BIENETRE,
-    items: [
-      item('coiffeurs', 'Coiffeurs', withText(catMatch('bienetre'), 'coiffeur', 'coiffure', 'barbier')),
-      item('instituts', 'Instituts', withText(catMatch('bienetre'), 'institut', 'esthetique', 'beaute')),
-      item('massages', 'Massages', withText(catMatch('bienetre'), 'massage', 'spa', 'detente')),
-      item('fitness', 'Fitness / Yoga', withText(BIENETRE, 'yoga', 'fitness', 'salle', 'sport', 'pilates')),
-      item('bienetre', 'Bien-être', catMatch('bienetre')),
-    ],
+    match: bienetreMatch,
+    items: BIENETRE_METIERS.map((m) => beItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
     // Artisanat = MÉTIERS D'ART (patrimoine vivant français), pas des boutiques. Sous-catégories
