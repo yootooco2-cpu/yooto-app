@@ -17,7 +17,6 @@ import {
 import { MerchantDetailsSheet } from '@/components/merchants/MerchantDetailsSheet';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
-import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { PreferenceService } from '@/services/PreferenceService';
 import { YText } from '@/components/ui/YText';
@@ -160,11 +159,6 @@ export default function MapScreen() {
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
-  // DEUX ÉTATS D'INTERFACE, une SEULE source de vérité (selectedMerchant) :
-  //  • ExploreMode (selectedMerchant === null) → recherche + catégories + carte + MENU LATÉRAL ;
-  //  • MerchantFocusMode (selectedMerchant !== null) → recherche + catégories + carte + FICHE,
-  //    et SEUL le menu latéral est masqué. On ne cache jamais la recherche ni les catégories.
-  const exploring = selectedMerchant === null;
 
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
@@ -294,9 +288,7 @@ export default function MapScreen() {
               sections={quickAccessSections}
             />
 
-            {/* Navigation VERTICALE flottante — TOUJOURS montée (jamais recréée). Masquée +
-                non-cliquable en consultation, restaurée en fondu/translation en exploration. */}
-            <FloatingMapNavigation visible={exploring} />
+            {/* Menu vertical supprimé : la navigation officielle est la barre du bas partagée. */}
 
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet
