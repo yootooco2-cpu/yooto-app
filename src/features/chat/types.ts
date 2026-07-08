@@ -1,50 +1,57 @@
 /**
- * Types du domaine CHAT — l'espace d'échange local de YOOTOO (particuliers ↔ professionnels).
+ * Domaine CHAT — l'espace d'échange local de YOOTOO (particuliers ↔ professionnels).
  *
- * STRUCTURE ÉVOLUTIVE, sans donnée ni logique métier : ces contrats cadrent les fonctionnalités
- * qui seront développées progressivement — fil de discussions, conversations locales, catégories,
- * recherche, notifications, puis messagerie privée (2ᵉ temps). Aucune fonctionnalité n'est encore
- * branchée : la page Chat n'expose pour l'instant que la STRUCTURE.
+ * Modèle pensé pour être branché tel quel sur Supabase (tables `chat_participants`,
+ * `chat_conversations`, `chat_messages`). Aujourd'hui alimenté par des données FICTIVES via
+ * `mockChatRepository`, demain par `supabaseChatRepository` — même interface `ChatRepository`,
+ * aucun écran à retoucher.
  */
 
-/** Nature de l'auteur : un habitant ou un commerçant/pro. */
-export type ChatAuthorKind = 'particulier' | 'professionnel';
+/** Nature d'un membre : un habitant ou un commerçant/pro. */
+export type ChatParticipantKind = 'particulier' | 'professionnel';
 
-export interface ChatAuthor {
+/** Un membre de la communauté (→ table `chat_participants`). */
+export interface ChatParticipant {
   id: string;
-  kind: ChatAuthorKind;
+  kind: ChatParticipantKind;
   name: string;
   avatarUrl?: string | null;
-  /** Renseigné pour un professionnel : le commerce rattaché. */
+  /** Pour un professionnel : le commerce rattaché (jointure future vers `merchants`). */
   merchantId?: string;
+  /** Ancrage local optionnel (ex. « 800 m »). */
+  distanceLabel?: string;
 }
 
-/** Un sujet du FIL DE DISCUSSIONS (public), rattaché à une catégorie et ancré localement. */
-export interface ChatThread {
+/** Un message d'une conversation (→ table `chat_messages`). */
+export interface ChatMessage {
   id: string;
-  categoryId: string;
-  author: ChatAuthor;
-  title: string;
-  excerpt: string;
-  repliesCount: number;
-  createdAt: string; // ISO 8601
-  lastActivityAt: string; // ISO 8601
-  /** Ancrage local (quartier / ville) — cœur des « conversations locales ». */
-  place?: string;
-}
-
-/** Une réponse dans un fil (2ᵉ temps). */
-export interface ChatReply {
-  id: string;
-  threadId: string;
-  author: ChatAuthor;
+  conversationId: string;
+  senderId: string;
   body: string;
-  createdAt: string;
+  createdAt: string; // ISO 8601 (timestamptz Supabase)
 }
 
-/** Conversation PRIVÉE entre membres (messagerie — développée dans un second temps). */
+/** Une conversation / discussion (→ table `chat_conversations`). */
 export interface ChatConversation {
   id: string;
-  participants: ChatAuthor[];
-  lastMessageAt: string;
+  title: string;
+  /** Catégorie de discussion (voir `CHAT_CATEGORIES`), optionnelle. */
+  categoryId?: string;
+  /** Membre à l'origine de la discussion — affiché sur la carte du fil. */
+  authorId: string;
+  /** Tous les membres de la conversation (incluant l'utilisateur courant s'il a rejoint). */
+  participantIds: string[];
+  /** L'utilisateur courant participe → apparaît dans « Vos discussions ». */
+  joined: boolean;
+  /** Messages non lus pour l'utilisateur courant. */
+  unreadCount: number;
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601 — dernière activité (tri du fil)
+}
+
+/** Vue prête à afficher d'une conversation (conversation + auteur + dernier message résolus). */
+export interface ChatConversationView {
+  conversation: ChatConversation;
+  author: ChatParticipant;
+  lastMessage: ChatMessage | null;
 }

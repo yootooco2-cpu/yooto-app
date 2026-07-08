@@ -31,6 +31,8 @@ export default function RootLayout() {
                 <Stack.Screen name="auth" />
                 <Stack.Screen name="settings" />
                 <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="chat/[id]" />
+                <Stack.Screen name="chat/new" options={{ presentation: 'modal' }} />
               </Stack>
             </ToastProvider>
           </QueryClientProvider>
