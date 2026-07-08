@@ -18,6 +18,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
+import { useControlCenterAccess } from '@/features/admin/access';
 import { useLinkedProviders, useProfileRow, useSession } from '@/features/auth';
 import { useSettings } from '@/features/settings/SettingsProvider';
 import { haptics } from '@/lib/haptics';
@@ -36,6 +37,7 @@ export default function SettingsScreen() {
   const linked = useLinkedProviders(isAuthenticated ? userId : null);
   const { settings, setNotification, setMapSetting } = useSettings();
   const toast = useToast();
+  const controlCenter = useControlCenterAccess();
 
   const [signingOut, setSigningOut] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -70,6 +72,13 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* ---------- CENTRE DE PILOTAGE (équipe / admin uniquement) ---------- */}
+        {controlCenter ? (
+          <SettingsSection title="Équipe YOOTOO">
+            <SettingsNavigationRow icon={{ set: 'feather', name: 'activity' }} label="Centre de pilotage" subtitle="Supervision & santé de la plateforme" onPress={() => router.push('/pilotage')} />
+          </SettingsSection>
+        ) : null}
+
         {/* ---------- COMPTE ---------- */}
         <SettingsSection title="Compte">
           {isAuthenticated ? (
