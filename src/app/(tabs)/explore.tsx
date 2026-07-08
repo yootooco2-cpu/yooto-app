@@ -38,7 +38,6 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
-import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusBarStrip } from '@/components/ui/StatusBarStrip';
 import { SearchMenu } from '@/features/merchants/components/SearchMenu';
@@ -377,7 +376,6 @@ export default function MapScreen() {
                   query={query}
                   onQueryChange={setQuery}
                   onCategoryChange={(match) => setMapMatch(() => match)}
-                  trailing={<ProfileAvatarButton />}
                 />
                 {nearbyActive && location.status === 'denied' ? (
                   <YText variant="caption" style={styles.nearbyDenied}>
