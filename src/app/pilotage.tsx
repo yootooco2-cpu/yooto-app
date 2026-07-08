@@ -12,21 +12,10 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { useControlCenterAccess } from '@/features/admin/access';
-import { selectDiscussions, useChatStore } from '@/features/chat';
-import { useFavoriteIds } from '@/features/favorites';
-import { getMapConfig } from '@/features/map';
-import { DEMO_REQUIRE_PHOTO, hasMerchantPhoto, useMerchants } from '@/features/merchants';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { useCockpitData, type CockpitMetric, type CockpitSection, type SignalStatus } from '@/features/admin/cockpit';
+import { useChatStore } from '@/features/chat';
 
-type Status = 'up' | 'degraded' | 'down';
-
-function relTime(ts: number, now: number): string {
-  const diff = Math.max(0, now - ts);
-  if (diff < 60_000) return "à l'instant";
-  if (diff < 3_600_000) return `il y a ${Math.floor(diff / 60_000)} min`;
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
+const STATUS_LABEL: Record<SignalStatus, string> = { up: 'Opérationnel', degraded: 'Dégradé', down: 'Hors service' };
 
 export default function PilotageScreen() {
   const access = useControlCenterAccess();
@@ -34,52 +23,15 @@ export default function PilotageScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [now] = useState(() => Date.now());
-
-  const merchantsQuery = useMerchants();
-  const favCount = useFavoriteIds().length;
   const chatInit = useChatStore((s) => s.init);
-  const activity = useChatStore((s) => s.activity);
-  const conversations = useChatStore((s) => s.conversations);
-  const messages = useChatStore((s) => s.messages);
+  const data = useCockpitData(now);
 
   useEffect(() => {
     void chatInit();
   }, [chatInit]);
 
-  const merchants = merchantsQuery.data ?? [];
-  const total = merchants.length;
-  const withPhoto = merchants.filter(hasMerchantPhoto).length;
-  const coverage = total ? Math.round((withPhoto / total) * 100) : 0;
-  const producers = merchants.filter((m) => m.isProducer || m.category === 'producer').length;
-  const restaurants = merchants.filter((m) => m.category === 'restaurant').length;
-  const shops = merchants.filter((m) => m.category === 'shop').length;
-  const lastSync = merchantsQuery.dataUpdatedAt ? relTime(merchantsQuery.dataUpdatedAt, now) : '—';
-
-  const supabaseOk = getSupabaseClient() !== null;
-  const mapboxOk = Boolean(getMapConfig().token);
-  const dataError = merchantsQuery.isError;
-  const dataLoading = merchantsQuery.isLoading;
-
-  const supabaseStatus: Status = !supabaseOk ? 'down' : dataError ? 'degraded' : 'up';
-  const apiStatus: Status = !supabaseOk ? 'down' : dataError ? 'degraded' : dataLoading ? 'degraded' : 'up';
-  const mapboxStatus: Status = mapboxOk ? 'up' : 'down';
-  const authStatus: Status = supabaseOk ? 'up' : 'down';
-  const storageStatus: Status = supabaseOk ? 'up' : 'down';
-
-  const publications = activity.length;
-  const publicDiscussions = selectDiscussions(conversations, 'all').length;
-  const messageCount = Object.values(messages).reduce((n, list) => n + list.length, 0);
-
-  const journal: { tone: Status; text: string; time?: string }[] = [
-    dataError
-      ? { tone: 'down', text: 'Échec de synchronisation des commerces' }
-      : dataLoading
-        ? { tone: 'degraded', text: 'Synchronisation des commerces en cours…' }
-        : { tone: 'up', text: `Synchronisation commerces — ${total} chargés`, time: lastSync },
-    { tone: coverage >= 90 ? 'up' : 'degraded', text: `Couverture photo — ${withPhoto}/${total} (${coverage} %)` },
-    { tone: mapboxOk ? 'up' : 'down', text: `Carte Mapbox — ${mapboxOk ? 'connectée' : 'token absent'}` },
-    { tone: supabaseOk ? 'up' : 'down', text: `Supabase — ${supabaseOk ? 'client actif' : 'non configuré'}` },
-  ];
+  const toneColor = (s: SignalStatus | undefined): string =>
+    s === 'up' ? colors.success : s === 'degraded' ? colors.warning : s === 'down' ? colors.danger : colors.text;
 
   if (!access) {
     return (
@@ -94,6 +46,8 @@ export default function PilotageScreen() {
     );
   }
 
+  const healthColor = toneColor(data.health.tone);
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.xl }]} showsVerticalScrollIndicator={false}>
@@ -104,66 +58,120 @@ export default function PilotageScreen() {
           </Pressable>
           <View style={styles.titleCol}>
             <YText style={[styles.title, { color: colors.text }]}>Centre de pilotage</YText>
-            <YText variant="caption" color="muted">Supervision · équipe YOOTOO</YText>
-          </View>
-          <View style={[styles.livePill, glass.panel]}>
-            <View style={[styles.dot, { backgroundColor: dataError ? colors.danger : colors.success }]} />
-            <YText style={[styles.livePillText, { color: colors.text }]}>{dataError ? 'Incident' : 'En ligne'}</YText>
+            <YText variant="caption" color="muted">Cockpit · équipe YOOTOO</YText>
           </View>
         </View>
 
-        {/* Données */}
-        <Section icon="database" title="Données" colors={colors}>
-          <Metric label="Commerces (total)" value={String(total)} colors={colors} />
-          <Metric label="Avec photo" value={String(withPhoto)} colors={colors} />
-          <Metric label="Couverture photo" value={`${coverage} %`} colors={colors} tone={coverage >= 90 ? colors.success : colors.warning} />
-          <Metric label="Producteurs" value={String(producers)} colors={colors} />
-          <Metric label="Restaurants" value={String(restaurants)} colors={colors} />
-          <Metric label="Boutiques / artisans" value={String(shops)} colors={colors} />
-          <Metric label="Dernière synchronisation" value={lastSync} colors={colors} last />
+        {/* 1 · Santé globale */}
+        <View style={[styles.hero, glass.panel, shadows.md]}>
+          <View style={styles.heroTop}>
+            <View style={[styles.heroDot, { backgroundColor: healthColor }]} />
+            <YText variant="caption" color="muted">État de YOOTOO</YText>
+          </View>
+          <View style={styles.heroScoreRow}>
+            <YText style={[styles.heroScore, { color: healthColor }]}>{data.health.score}</YText>
+            <YText style={[styles.heroPct, { color: healthColor }]}>%</YText>
+          </View>
+          <View style={styles.heroBar}>
+            <View style={[styles.heroBarFill, { width: `${data.health.score}%`, backgroundColor: healthColor }]} />
+          </View>
+          <View style={[styles.services, { borderTopColor: colors.border }]}>
+            {data.services.map((s) => (
+              <View key={s.key} style={styles.serviceRow}>
+                <View style={[styles.pillDot, { backgroundColor: toneColor(s.status) }]} />
+                <YText variant="caption" style={{ flex: 1, color: colors.text }}>{s.label}</YText>
+                <YText variant="caption" style={{ color: toneColor(s.status), fontWeight: '700' }}>{STATUS_LABEL[s.status]}</YText>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* 2 · Priorités */}
+        <Section icon="alert-circle" title="Priorités du jour" colors={colors}>
+          <View style={[styles.card, glass.panel, shadows.sm, styles.cardPad]}>
+            {data.priorities.map((p, i) => {
+              const c = p.severity === 'critical' ? colors.danger : p.severity === 'warn' ? colors.warning : p.severity === 'ok' ? colors.success : colors.mutedText;
+              return (
+                <View key={i} style={[styles.prioRow, i < data.priorities.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+                  <Feather name={p.severity === 'ok' ? 'check-circle' : p.severity === 'info' ? 'info' : 'alert-triangle'} size={15} color={c} />
+                  <YText variant="body" style={{ flex: 1, color: colors.text }}>{p.text}</YText>
+                </View>
+              );
+            })}
+          </View>
         </Section>
 
-        {/* Utilisateurs */}
-        <Section icon="users" title="Utilisateurs" colors={colors}>
-          <Metric label="Favoris enregistrés" value={String(favCount)} colors={colors} />
-          <Metric label="Publications du Chat" value={String(publications)} colors={colors} />
-          <Metric label="Discussions publiques" value={String(publicDiscussions)} colors={colors} />
-          <Metric label="Messages" value={String(messageCount)} colors={colors} />
-          <Metric label="Comptes créés" value="—" colors={colors} />
-          <Metric label="Utilisateurs actifs" value="—" colors={colors} last />
+        {/* 3 · Activité utilisateur */}
+        <Section icon="users" title="Activité utilisateur" colors={colors}>
+          <MetricGrid section={data.user} colors={colors} toneColor={toneColor} />
         </Section>
 
-        {/* Services */}
-        <Section icon="activity" title="Services" colors={colors}>
-          <StatusRow label="Supabase" status={supabaseStatus} colors={colors} />
-          <StatusRow label="Mapbox" status={mapboxStatus} colors={colors} />
-          <StatusRow label="Authentification" status={authStatus} colors={colors} />
-          <StatusRow label="Stockage" status={storageStatus} colors={colors} />
-          <StatusRow label="API" status={apiStatus} colors={colors} last />
+        {/* 4 · Réseau commerçant */}
+        <Section icon="shopping-bag" title="Réseau commerçant" colors={colors}>
+          <MetricGrid section={data.network} colors={colors} toneColor={toneColor} />
         </Section>
 
-        {/* Application */}
-        <Section icon="smartphone" title="Application" colors={colors}>
-          <Metric label="Version" value={APP_VERSION} colors={colors} />
-          <Metric label="Build" value={String(APP_BUILD)} colors={colors} />
-          <Metric label="Environnement" value={__DEV__ ? 'DEV' : 'PROD'} colors={colors} />
-          <Metric label="Mode démo" value={DEMO_REQUIRE_PHOTO ? 'Oui' : 'Non'} colors={colors} />
-          <Metric label="Plateforme" value={Platform.OS} colors={colors} last />
+        {/* 5 · Performance */}
+        <Section icon="zap" title="Performance" colors={colors}>
+          <MetricGrid section={data.performance} colors={colors} toneColor={toneColor} />
         </Section>
 
-        {/* Journal */}
+        {/* 6 · IA — YootChat */}
+        <Section icon="cpu" title="Intelligence artificielle" colors={colors}>
+          <View style={[styles.card, glass.panel, shadows.sm, styles.cardPad]}>
+            <YText variant="caption" color="muted">Architecture prête (seam AIProvider). Indicateurs à connecter :</YText>
+            <PendingChips items={data.ai.pending} colors={colors} />
+          </View>
+        </Section>
+
+        {/* 7 · Journal */}
         <Section icon="list" title="Journal" colors={colors}>
-          {journal.map((e, i) => (
-            <View key={i} style={[styles.logRow, i < journal.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-              <View style={[styles.dot, { backgroundColor: e.tone === 'up' ? colors.success : e.tone === 'degraded' ? colors.warning : colors.danger }]} />
-              <YText variant="caption" style={{ flex: 1, color: colors.text }} numberOfLines={2}>{e.text}</YText>
-              {e.time ? <YText variant="caption" color="muted">{e.time}</YText> : null}
-            </View>
-          ))}
+          <View style={[styles.card, glass.panel, shadows.sm, styles.cardPad]}>
+            {data.journal.map((e, i) => (
+              <View key={i} style={[styles.logRow, i < data.journal.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
+                <View style={[styles.pillDot, { backgroundColor: toneColor(e.tone) }]} />
+                <YText variant="caption" style={{ flex: 1, color: colors.text }} numberOfLines={2}>{e.text}</YText>
+                {e.time ? <YText variant="caption" color="muted">{e.time}</YText> : null}
+              </View>
+            ))}
+          </View>
         </Section>
 
-        <YText variant="caption" color="muted" style={styles.footer}>{APP_NAME} · console interne — visible en développement et pour les administrateurs.</YText>
+        <YText variant="caption" color="muted" style={styles.footer}>
+          {APP_NAME} v{APP_VERSION} · build {APP_BUILD} · {__DEV__ ? 'DEV' : 'PROD'} · {Platform.OS}
+        </YText>
       </ScrollView>
+    </View>
+  );
+}
+
+function MetricGrid({ section, colors, toneColor }: { section: CockpitSection; colors: ReturnType<typeof useTheme>['colors']; toneColor: (s: SignalStatus | undefined) => string }) {
+  return (
+    <View style={styles.gridWrap}>
+      <View style={styles.grid}>
+        {section.real.map((m: CockpitMetric) => (
+          <View key={m.label} style={[styles.tile, glass.panel, shadows.sm]}>
+            <YText style={[styles.tileValue, { color: m.tone ? toneColor(m.tone) : colors.text }]}>{m.value}</YText>
+            <YText variant="caption" color="muted" numberOfLines={1}>{m.label}</YText>
+          </View>
+        ))}
+      </View>
+      {section.pending.length > 0 ? <PendingChips items={section.pending} colors={colors} /> : null}
+    </View>
+  );
+}
+
+function PendingChips({ items, colors }: { items: string[]; colors: ReturnType<typeof useTheme>['colors'] }) {
+  return (
+    <View style={styles.pendingWrap}>
+      <YText variant="caption" style={[styles.pendingLabel, { color: colors.mutedText }]}>À connecter</YText>
+      <View style={styles.chips}>
+        {items.map((it) => (
+          <View key={it} style={[styles.chip, { borderColor: colors.border }]}>
+            <YText variant="caption" style={{ color: colors.mutedText }}>{it}</YText>
+          </View>
+        ))}
+      </View>
     </View>
   );
 }
@@ -175,56 +183,50 @@ function Section({ icon, title, colors, children }: { icon: keyof typeof Feather
         <Feather name={icon} size={15} color={colors.primary} />
         <YText style={[styles.sectionTitle, { color: colors.text }]}>{title}</YText>
       </View>
-      <View style={[styles.card, glass.panel, shadows.sm]}>{children}</View>
-    </View>
-  );
-}
-
-function Metric({ label, value, colors, tone, last }: { label: string; value: string; colors: ReturnType<typeof useTheme>['colors']; tone?: string; last?: boolean }) {
-  return (
-    <View style={[styles.row, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-      <YText variant="body" style={{ color: colors.mutedText }}>{label}</YText>
-      <YText variant="body" style={[styles.value, { color: tone ?? colors.text }]}>{value}</YText>
-    </View>
-  );
-}
-
-function StatusRow({ label, status, colors, last }: { label: string; status: Status; colors: ReturnType<typeof useTheme>['colors']; last?: boolean }) {
-  const map = {
-    up: { c: colors.success, t: 'Opérationnel' },
-    degraded: { c: colors.warning, t: 'Dégradé' },
-    down: { c: colors.danger, t: 'Hors service' },
-  }[status];
-  return (
-    <View style={[styles.row, !last && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border }]}>
-      <YText variant="body" style={{ color: colors.mutedText }}>{label}</YText>
-      <View style={styles.statusPill}>
-        <View style={[styles.dot, { backgroundColor: map.c }]} />
-        <YText variant="caption" style={{ color: map.c, fontWeight: '700' }}>{map.t}</YText>
-      </View>
+      {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  content: { paddingHorizontal: spacing.lg, gap: spacing.lg },
+  content: { paddingHorizontal: spacing.lg, gap: spacing.xl },
   denied: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, padding: spacing.xl },
   backBtn: { marginTop: spacing.sm, paddingHorizontal: spacing.lg, paddingVertical: 10, borderRadius: radii.pill, borderWidth: 1 },
   header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   iconBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   titleCol: { flex: 1, gap: 2 },
-  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
-  livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.pill },
-  livePillText: { fontSize: 12, fontWeight: '700' },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+
+  hero: { borderRadius: radii.xl, padding: spacing.lg, gap: spacing.sm },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroDot: { width: 9, height: 9, borderRadius: 5 },
+  heroScoreRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  heroScore: { fontSize: 52, fontWeight: '800', letterSpacing: -2, lineHeight: 56 },
+  heroPct: { fontSize: 22, fontWeight: '800', marginBottom: 8, marginLeft: 2 },
+  heroBar: { height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.10)', overflow: 'hidden', marginTop: 2 },
+  heroBarFill: { height: '100%', borderRadius: 3 },
+  services: { marginTop: spacing.md, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.xs },
+  serviceRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 9 },
+  pillDot: { width: 8, height: 8, borderRadius: 4 },
+
   section: { gap: spacing.sm },
   sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: spacing.xs },
   sectionTitle: { fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
-  card: { borderRadius: radii.lg, paddingHorizontal: spacing.md },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, gap: spacing.md },
-  value: { fontWeight: '700', fontVariant: ['tabular-nums'] },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  card: { borderRadius: radii.lg },
+  cardPad: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  prioRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 12 },
+
+  gridWrap: { gap: spacing.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  tile: { width: '31.5%', flexGrow: 1, borderRadius: radii.lg, paddingVertical: spacing.md, paddingHorizontal: spacing.md, gap: 4 },
+  tileValue: { fontSize: 24, fontWeight: '800', letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+
+  pendingWrap: { gap: 8, paddingHorizontal: spacing.xs },
+  pendingLabel: { fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6, fontSize: 10.5 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: radii.pill, borderWidth: 1, opacity: 0.7 },
+
   logRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 11 },
   footer: { textAlign: 'center', marginTop: spacing.sm },
 });
