@@ -74,7 +74,7 @@ export function CategoryNavigation({ onChange }: Props) {
         {path.length ? (
           <Capsule icon="chevron-left" onPress={back} accessibilityLabel="Retour" back />
         ) : (
-          <Capsule icon="crosshair" label="Tous" active onPress={selectTous} />
+          <Capsule icon="crosshair" label="Tous" active={activeLeafId === null} onPress={selectTous} />
         )}
         {nodes.map((node) => (
           <Capsule

@@ -363,13 +363,11 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     children: MOBILITE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
-    id: 'plus',
-    label: 'Plus',
-    icon: 'more-horizontal',
+    // Nature = FEUILLE au 1er niveau (pas de sous-catégories) → un tap filtre directement la carte.
+    id: 'nature',
+    label: 'Nature',
+    icon: 'feather',
     match: catMatch('nature'),
-    children: [
-      item('nature', 'Nature', catMatch('nature')),
-    ],
   },
 ];
 

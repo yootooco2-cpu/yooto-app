@@ -18,7 +18,7 @@ const merchant = (over: Partial<Merchant>): Merchant =>
   }) as Merchant;
 
 describe('categoryFamilies', () => {
-  it('expose les 7 grandes familles (Niveau 1) dans l’ordre de la référence', () => {
+  it('expose les grandes familles (Niveau 1) dans l’ordre de la référence', () => {
     expect(CATEGORY_FAMILIES.map((f) => f.label)).toEqual([
       'Alimentation',
       'Restaurants',
@@ -26,8 +26,14 @@ describe('categoryFamilies', () => {
       'Artisanat',
       'Culture',
       'Mobilité',
-      'Plus',
+      'Nature',
     ]);
+  });
+
+  it('Nature est une FEUILLE au 1er niveau (pas de sous-catégories) qui filtre directement', () => {
+    const nature = categoryFamilyById('nature');
+    expect(nature?.children).toBeUndefined();
+    expect(nature?.match?.(merchant({ category: 'shop', rawMerchantType: 'nature' }))).toBeDefined();
   });
 
   it('regroupe les catégories existantes (union de match) — un producteur ∈ Alimentation', () => {
@@ -41,8 +47,8 @@ describe('categoryFamilies', () => {
     expect(producteurs?.match?.(merchant({ isProducer: true }))).toBe(true);
   });
 
-  it('chaque grande famille est une branche (a des enfants)', () => {
-    expect(CATEGORY_FAMILIES.every((f) => (f.children?.length ?? 0) > 0)).toBe(true);
+  it('chaque nœud de 1er niveau est valide (une branche avec enfants, ou une feuille avec match)', () => {
+    expect(CATEGORY_FAMILIES.every((f) => (f.children?.length ?? 0) > 0 || typeof f.match === 'function')).toBe(true);
   });
 
   it('les sous-catégories Alimentation portent leur pictogramme (cryptogramme existant)', () => {
