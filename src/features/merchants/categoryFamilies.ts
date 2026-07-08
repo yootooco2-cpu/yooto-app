@@ -366,10 +366,9 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     id: 'plus',
     label: 'Plus',
     icon: 'more-horizontal',
-    match: anyCat('nature', 'autres'),
+    match: catMatch('nature'),
     children: [
       item('nature', 'Nature', catMatch('nature')),
-      item('autres', 'Autres', catMatch('autres')),
     ],
   },
 ];
