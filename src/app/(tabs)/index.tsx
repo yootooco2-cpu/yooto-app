@@ -31,7 +31,7 @@ export default function HomeScreen() {
     () =>
       buildHomeSections(merchants, {
         context: discoveryContext,
-        limits: { recommendedToday: 8, nearbyProducers: 8, toDiscover: 8 },
+        limits: { recommendedToday: 8, nearby: 8, toDiscover: 8 },
       }),
     [merchants, discoveryContext],
   );
@@ -84,9 +84,9 @@ export default function HomeScreen() {
               delay={60}
             />
             <MerchantCarousel
-              title="Producteurs proches"
-              subtitle="Circuit court & vente directe"
-              merchants={sections.nearbyProducers}
+              title="À proximité"
+              subtitle="Les commerces les plus proches de vous"
+              merchants={sections.nearby}
               delay={120}
             />
             <MerchantCarousel

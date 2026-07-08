@@ -25,7 +25,7 @@ export { editorialScore } from './editorial/editorialScore';
 
 export interface HomeSectionLimits {
   recommendedToday?: number
-  nearbyProducers?: number
+  nearby?: number
   toDiscover?: number
 }
 
@@ -37,7 +37,7 @@ export interface BuildHomeSectionsOptions {
 
 export interface HomeSections {
   recommendedToday: Merchant[]
-  nearbyProducers: Merchant[]
+  nearby: Merchant[]
   toDiscover: Merchant[]
 }
 
@@ -48,7 +48,7 @@ export interface HomeSections {
  */
 export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSectionsOptions = {}): HomeSections {
   const limitR = opts.limits?.recommendedToday ?? 8
-  const limitP = opts.limits?.nearbyProducers ?? 8
+  const limitN = opts.limits?.nearby ?? 8
   const limitD = opts.limits?.toDiscover ?? 8
 
   // « Recommandés » : MÊME moteur que Carte/Commerçants — ranking éditorial sur TOUT le corpus
@@ -61,19 +61,22 @@ export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSections
     window: limitR,
   }).slice(0, limitR)
 
-  // « Producteurs proches » : éditorial PRIMAIRE (helper unique) ; distance en tie-break
-  // (ordre d'entrée trié par distance + tri STABLE du helper).
-  const producers = merchants.filter((m) => m.isProducer || m.category === 'producer')
-  const producersByDistance = [...producers].sort((a, b) => {
-    const da = a.distanceKm ?? Number.POSITIVE_INFINITY
-    const db = b.distanceKm ?? Number.POSITIVE_INFINITY
-    return da !== db ? da - db : a.name.localeCompare(b.name)
-  })
-  const nearbyProducers = rankMerchantsEditorially(producersByDistance).slice(0, limitP)
+  // « À proximité » : les commerces les PLUS PROCHES, tous commerces confondus (plus de filtre
+  // producteurs). Tri par distance croissante (nom en tie-break), hors « Recommandés » pour ne
+  // jamais dupliquer une carte entre les deux premières sections.
+  const usedR = new Set<string>(recommendedToday.map((m) => m.id))
+  const nearby = [...merchants]
+    .filter((m) => !usedR.has(m.id))
+    .sort((a, b) => {
+      const da = a.distanceKm ?? Number.POSITIVE_INFINITY
+      const db = b.distanceKm ?? Number.POSITIVE_INFINITY
+      return da !== db ? da - db : a.name.localeCompare(b.name)
+    })
+    .slice(0, limitN)
 
   // « À découvrir » : la suite éditoriale (helper unique), hors sections ci-dessus, avec un cap
   // de diversité (max 2 par bucket) pour éviter la monopolisation par les domaines premium.
-  const used = new Set<string>([...recommendedToday, ...nearbyProducers].map((m) => m.id))
+  const used = new Set<string>([...recommendedToday, ...nearby].map((m) => m.id))
   const candidates = rankMerchantsEditorially(merchants).filter((m) => !used.has(m.id))
   const MAX_PER_BUCKET = 2
   const bucketCount = new Map<Merchant['category'], number>()
@@ -94,5 +97,5 @@ export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSections
     }
   }
 
-  return { recommendedToday, nearbyProducers, toDiscover }
+  return { recommendedToday, nearby, toDiscover }
 }
