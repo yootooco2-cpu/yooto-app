@@ -100,7 +100,8 @@ export function CategoryNavigation({ onChange }: Props) {
                 </YText>
               </View>
             ) : null}
-            <ScrollView style={styles.list} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+            {/* Hauteur DYNAMIQUE : toutes les sous-catégories affichées d'un coup, aucun scroll interne. */}
+            <View style={styles.list}>
               {panelNodes.map((node, i) => (
                 <MenuRow
                   key={node.id}
@@ -112,7 +113,7 @@ export function CategoryNavigation({ onChange }: Props) {
                   onPress={() => onTapSub(node)}
                 />
               ))}
-            </ScrollView>
+            </View>
           </Animated.View>
         </>
       ) : null}
@@ -254,8 +255,8 @@ const styles = StyleSheet.create({
   }),
   panelHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   panelTitle: { fontWeight: '700' },
-  // Liste verticale : une ligne pleine largeur par sous-catégorie ; scroll interne si longue.
-  list: { alignSelf: 'stretch', maxHeight: 360 },
+  // Liste verticale : une ligne pleine largeur par sous-catégorie. Hauteur libre (aucun scroll).
+  list: { alignSelf: 'stretch' },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
