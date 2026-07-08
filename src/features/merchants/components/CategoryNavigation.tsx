@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, Platform, ScrollView, StyleSheet, type ImageSourcePropType, type ViewStyle } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { Pressable, Platform, ScrollView, StyleSheet, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
@@ -14,72 +14,108 @@ import { cryptogramAsset } from '../cryptogramAssets';
 import { familyPicto } from '../familyPictos';
 
 interface Props {
-  /** Émet le prédicat de filtrage résolu (null = « Tous »). La carte l'applique sans recharger. */
+  /** Émet le prédicat de filtrage résolu (null = aucune catégorie). La carte l'applique sans recharger. */
   onChange: (match: MerchantPredicate | null) => void;
 }
 
 /**
- * CategoryNavigation — navigateur catégories HIÉRARCHIQUE GÉNÉRIQUE (N niveaux), piloté par un
- * arbre `CategoryNode`. Fonctionne pour 2 niveaux (Alimentation → sous-catégories) comme pour 3+
- * (Artisanat → familles → métiers), et se réutilise pour toute future famille multi-niveaux.
- *
- * Une pile de navigation (`path`) mémorise la descente : on affiche les enfants du dernier nœud
- * (ou les grandes familles à la racine). Un nœud BRANCHE (`children`) → on descend d'un niveau ;
- * un nœud FEUILLE → filtre la carte. Retour « ‹ » = on remonte. Capsules verre premium, capsule
- * active en vert, halo d'accent, fondu au changement de niveau — mêmes composants/animations
- * partout. Le composant ne remonte qu'un PRÉDICAT ; aucune donnée dupliquée ; Discovery non touché.
+ * CategoryNavigation — barre de grandes familles + PANNEAU DÉROULANT (glassmorphism) des
+ * sous-catégories. La rangée des familles reste toujours visible ; un clic sur une famille fait
+ * DESCENDRE un panneau juste en dessous avec ses sous-catégories (grille verticale, pas de scroll
+ * latéral). Refermable : re-clic sur la famille, choix d'une sous-catégorie, ou clic extérieur.
+ * Générique N niveaux : une sous-catégorie qui a elle-même des enfants (Artisanat) approfondit le
+ * panneau avec un retour « ‹ ». Le composant ne remonte qu'un PRÉDICAT ; Discovery non touché.
  */
 export function CategoryNavigation({ onChange }: Props) {
-  // Pile de descente : [] = racine (grandes familles). Dernier nœud = niveau courant.
-  const [path, setPath] = useState<CategoryNode[]>([]);
+  // Pile du PANNEAU ouvert : [] = fermé ; [famille] = panneau famille ; [famille, sous-famille] = plus profond.
+  const [panelPath, setPanelPath] = useState<CategoryNode[]>([]);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
+  const [activeFamilyId, setActiveFamilyId] = useState<string | null>(null);
 
-  const current = path.length ? path[path.length - 1] : null;
-  const nodes = current ? current.children ?? [] : CATEGORY_FAMILIES;
-  const rootFamilyId = path.length ? path[0].id : '';
+  const isOpen = panelPath.length > 0;
+  const panelNode = isOpen ? panelPath[panelPath.length - 1] : null;
+  const panelNodes = panelNode?.children ?? [];
+  const panelRootId = isOpen ? panelPath[0].id : '';
 
-  const drill = (node: CategoryNode) => {
-    setPath([...path, node]);
-    setActiveLeafId(null);
-    onChange(node.match ?? null); // ouverture branche → filtre = union de la branche
-  };
+  const close = () => setPanelPath([]);
 
-  const back = () => {
-    const next = path.slice(0, -1);
-    setPath(next);
-    setActiveLeafId(null);
-    onChange(next.length ? next[next.length - 1].match ?? null : null); // remonte au filtre parent
-  };
-
-  const selectLeaf = (node: CategoryNode) => {
+  const applyLeaf = (familyId: string, node: CategoryNode) => {
     const isActive = activeLeafId === node.id;
     setActiveLeafId(isActive ? null : node.id);
-    onChange(isActive ? current?.match ?? null : node.match ?? null); // désélection → filtre parent
+    setActiveFamilyId(isActive ? null : familyId);
+    onChange(isActive ? null : node.match ?? null);
+    setPanelPath([]); // choisir une sous-catégorie referme le panneau
   };
 
-  const onTap = (node: CategoryNode) => (node.children && node.children.length ? drill(node) : selectLeaf(node));
+  const onTapFamily = (node: CategoryNode) => {
+    if (node.children && node.children.length) {
+      setPanelPath((p) => (p[0]?.id === node.id ? [] : [node])); // toggle du panneau
+    } else {
+      applyLeaf(node.id, node); // feuille de 1er niveau (Nature) → filtre direct
+    }
+  };
 
-  const picto = (node: CategoryNode): ImageSourcePropType | undefined =>
-    node.iconId ? cryptogramAsset(node.iconId) : node.pictoKey ? familyPicto(rootFamilyId, node.pictoKey) : undefined;
+  const onTapSub = (node: CategoryNode) => {
+    if (node.children && node.children.length) {
+      setPanelPath((p) => [...p, node]); // sous-branche (Artisanat) → on approfondit le panneau
+    } else {
+      applyLeaf(panelRootId, node);
+    }
+  };
+
+  const panelBack = () => setPanelPath((p) => p.slice(0, -1));
+
+  const picto = (node: CategoryNode, rootId: string): ImageSourcePropType | undefined =>
+    node.iconId ? cryptogramAsset(node.iconId) : node.pictoKey ? familyPicto(rootId, node.pictoKey) : undefined;
 
   return (
-    <Animated.View key={path.map((p) => p.id).join('/') || 'root'} entering={FadeIn.duration(190)}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {/* Retour « ‹ » uniquement en sous-niveau ; pas de capsule « Tous » à la racine. */}
-        {path.length ? <Capsule icon="chevron-left" onPress={back} accessibilityLabel="Retour" back /> : null}
-        {nodes.map((node) => (
+    <View style={styles.container}>
+      {/* Rangée des grandes familles — toujours visible (au-dessus du backdrop). */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} style={styles.rowLayer}>
+        {CATEGORY_FAMILIES.map((fam) => (
           <Capsule
-            key={node.id}
-            label={node.label}
-            icon={node.icon}
-            imageIcon={picto(node)}
-            accent={node.accent}
-            active={activeLeafId === node.id}
-            onPress={() => onTap(node)}
+            key={fam.id}
+            label={fam.label}
+            icon={fam.icon}
+            imageIcon={picto(fam, fam.id)}
+            active={panelPath[0]?.id === fam.id || activeFamilyId === fam.id}
+            onPress={() => onTapFamily(fam)}
           />
         ))}
       </ScrollView>
-    </Animated.View>
+
+      {/* Panneau déroulant + backdrop de fermeture (clic extérieur). */}
+      {isOpen ? (
+        <>
+          <Pressable style={styles.backdrop} onPress={close} accessibilityRole="button" accessibilityLabel="Fermer le menu" />
+          <Animated.View
+            key={panelPath.map((p) => p.id).join('/')}
+            entering={FadeInDown.duration(160)}
+            style={[styles.panel, glass.panel, styles.panelShadow]}>
+            {panelPath.length > 1 ? (
+              <View style={styles.panelHead}>
+                <Capsule icon="chevron-left" back onPress={panelBack} accessibilityLabel="Retour" />
+                <YText variant="caption" style={[styles.panelTitle, { color: glass.onDark }]} numberOfLines={1}>
+                  {panelNode?.label}
+                </YText>
+              </View>
+            ) : null}
+            <View style={styles.grid}>
+              {panelNodes.map((node) => (
+                <Capsule
+                  key={node.id}
+                  label={node.label}
+                  imageIcon={picto(node, panelRootId)}
+                  accent={node.accent}
+                  active={activeLeafId === node.id}
+                  onPress={() => onTapSub(node)}
+                />
+              ))}
+            </View>
+          </Animated.View>
+        </>
+      ) : null}
+    </View>
   );
 }
 
@@ -142,7 +178,33 @@ const accentGlow = (color: string): ViewStyle =>
     : { shadowColor: color, shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 5 };
 
 const styles = StyleSheet.create({
+  container: { position: 'relative' },
+  rowLayer: { zIndex: 3 },
   row: { gap: spacing.sm, paddingRight: spacing.sm, alignItems: 'center' },
+  // Backdrop transparent : clic extérieur → fermeture. Couvre la zone sous la rangée.
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, height: 1000, zIndex: 1 },
+  // Panneau déroulant en VERRE, ABSOLU juste sous la rangée (top:100%) → il survole le contenu
+  // sans décaler la mise en page ni repousser les FAB. Grille verticale (wrap), jamais de scroll latéral.
+  panel: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    zIndex: 2,
+    marginTop: spacing.sm,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  panelShadow: Platform.select({
+    web: { boxShadow: '0 14px 34px rgba(0,0,0,0.34)' },
+    default: { shadowColor: '#000', shadowOpacity: 0.32, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 14 },
+  }),
+  panelHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  panelTitle: { fontWeight: '700' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -157,10 +219,8 @@ const styles = StyleSheet.create({
   chipBack: { paddingHorizontal: spacing.sm + 2, borderColor: 'rgba(142,182,123,0.55)' },
   chipPressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
   picto: { width: 22, height: 22 },
-  // État inactif : pictogramme très légèrement désaturé/atténué (cohérent avec la référence).
   pictoInactive: { opacity: 0.92 },
   label: { fontWeight: '600' },
-  // Ombre extrêmement douce → capsule flottante sur la carte.
   glassShadow: Platform.select({
     web: { boxShadow: '0 6px 20px rgba(0,0,0,0.22)' },
     default: { shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 4 },
