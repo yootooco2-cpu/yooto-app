@@ -31,10 +31,15 @@ export interface ChatMessage {
   createdAt: string; // ISO 8601 (timestamptz Supabase)
 }
 
+/** Portée d'une conversation : publique (espace « Discussions ») ou privée (espace « Messages »). */
+export type ChatVisibility = 'public' | 'private';
+
 /** Une conversation / discussion (→ table `chat_conversations`). */
 export interface ChatConversation {
   id: string;
   title: string;
+  /** Publique (place du village) ou privée (messagerie 1:1). */
+  visibility: ChatVisibility;
   /** Catégorie de discussion (voir `CHAT_CATEGORIES`), optionnelle. */
   categoryId?: string;
   /** Membre à l'origine de la discussion — affiché sur la carte du fil. */
@@ -47,6 +52,35 @@ export interface ChatConversation {
   unreadCount: number;
   createdAt: string; // ISO 8601
   updatedAt: string; // ISO 8601 — dernière activité (tri du fil)
+}
+
+/** Nature d'une carte d'activité (fil vivant du territoire). */
+export type ActivityKind =
+  | 'arrivage'
+  | 'produit'
+  | 'evenement'
+  | 'degustation'
+  | 'sortie'
+  | 'nouveau_pro'
+  | 'offre'
+  | 'annonce';
+
+/**
+ * Une CARTE VIVANTE du fil « Activité » (→ future table `chat_activity`). Ce n'est pas un message :
+ * c'est un événement local (arrivage, offre, concert, nouveau commerçant…) publié par un membre.
+ */
+export interface ActivityItem {
+  id: string;
+  kind: ActivityKind;
+  /** Émoji d'accroche (🥖 🍓 🎵 …). */
+  emoji: string;
+  authorId: string;
+  title: string;
+  body?: string;
+  categoryId?: string;
+  /** Indicateur de proximité (« à 400 m »). */
+  place?: string;
+  createdAt: string; // ISO 8601
 }
 
 /** Vue prête à afficher d'une conversation (conversation + auteur + dernier message résolus). */

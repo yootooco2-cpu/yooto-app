@@ -1,5 +1,5 @@
-import { CURRENT_USER_ID, MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_PARTICIPANTS } from './mockData';
-import type { ChatConversation, ChatMessage, ChatParticipant } from './types';
+import { CURRENT_USER_ID, MOCK_ACTIVITY, MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_PARTICIPANTS } from './mockData';
+import type { ActivityItem, ChatConversation, ChatMessage, ChatParticipant } from './types';
 
 /**
  * Contrat d'accès aux données du Chat — la SEULE couture avec le backend. Aujourd'hui :
@@ -10,6 +10,7 @@ import type { ChatConversation, ChatMessage, ChatParticipant } from './types';
 export interface ChatRepository {
   listParticipants(): Promise<ChatParticipant[]>;
   listConversations(): Promise<ChatConversation[]>;
+  listActivity(): Promise<ActivityItem[]>;
   listMessages(conversationId: string): Promise<ChatMessage[]>;
   sendMessage(input: { conversationId: string; senderId: string; body: string }): Promise<ChatMessage>;
   createConversation(input: { title: string; body: string; authorId: string; categoryId?: string }): Promise<{
@@ -23,6 +24,7 @@ export interface ChatRepository {
 let participants: ChatParticipant[] = MOCK_PARTICIPANTS.map((p) => ({ ...p }));
 let conversations: ChatConversation[] = MOCK_CONVERSATIONS.map((c) => ({ ...c, participantIds: [...c.participantIds] }));
 let messages: ChatMessage[] = MOCK_MESSAGES.map((m) => ({ ...m }));
+const activity: ActivityItem[] = MOCK_ACTIVITY.map((a) => ({ ...a }));
 
 let seq = 0;
 const uid = (prefix: string): string => `${prefix}_${Date.now().toString(36)}_${(seq++).toString(36)}`;
@@ -38,6 +40,11 @@ export const mockChatRepository: ChatRepository = {
   async listConversations() {
     const sorted = [...conversations].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     return delay(sorted.map((c) => ({ ...c })));
+  },
+
+  async listActivity() {
+    const sorted = [...activity].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return delay(sorted.map((a) => ({ ...a })));
   },
 
   async listMessages(conversationId) {
@@ -70,6 +77,7 @@ export const mockChatRepository: ChatRepository = {
     const conversation: ChatConversation = {
       id: uid('conv'),
       title: title.trim(),
+      visibility: 'public',
       categoryId,
       authorId,
       participantIds: [authorId],

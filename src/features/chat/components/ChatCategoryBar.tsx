@@ -16,13 +16,12 @@ interface Props {
 }
 
 /**
- * Barre horizontale des CATÉGORIES de discussion — même langage visuel que le reste de YOOTOO
- * (capsules en verre, capsule active teintée de l'univers Chat). Structure : sélection locale, le
- * filtrage réel du fil sera branché quand les discussions arriveront.
+ * Barre horizontale des CATÉGORIES de discussion. Chaque capsule active prend la COULEUR de sa
+ * catégorie (identité chaleureuse et repérage immédiat) ; « Toutes » prend l'accent de l'univers.
  */
 export function ChatCategoryBar({ activeId, onSelect }: Props) {
   const section = useSectionTheme();
-  const items = [{ id: 'all', label: 'Tous', icon: 'grid' as const }, ...CHAT_CATEGORIES];
+  const items = [{ id: 'all', label: 'Toutes', icon: 'grid' as const, accent: section.accent }, ...CHAT_CATEGORIES];
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
@@ -37,11 +36,11 @@ export function ChatCategoryBar({ activeId, onSelect }: Props) {
             accessibilityLabel={c.label}
             style={({ pressed }) => [
               styles.chip,
-              active ? { backgroundColor: section.accent, borderColor: section.accent } : glass.panel,
+              active ? { backgroundColor: c.accent, borderColor: c.accent } : glass.panel,
               pressed && styles.pressed,
             ]}>
-            <Feather name={c.icon} size={15} color={active ? section.onAccent : glass.onDark} />
-            <YText variant="caption" numberOfLines={1} style={{ color: active ? section.onAccent : glass.onDark, fontWeight: '600' }}>
+            <Feather name={c.icon} size={15} color={active ? '#FFFFFF' : glass.onDark} />
+            <YText variant="caption" numberOfLines={1} style={{ color: active ? '#FFFFFF' : glass.onDark, fontWeight: '700' }}>
               {c.label}
             </YText>
           </Pressable>
@@ -57,7 +56,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm - 2,
-    minHeight: 40,
+    minHeight: 38,
     paddingVertical: 8,
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,

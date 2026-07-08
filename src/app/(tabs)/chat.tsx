@@ -10,12 +10,17 @@ import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
 import { spacing } from '@/design/tokens/spacing';
 import {
-  ChatSegmentedTabs,
+  ActivityCard,
+  ChatCategoryBar,
+  ChatSpaceSwitcher,
   ConversationCard,
-  filterByTab,
+  selectDiscussions,
+  selectPrivateMessages,
   toConversationView,
+  unreadPrivateCount,
   useChatStore,
-  type ChatTab,
+  type ChatConversationView,
+  type ChatSpace,
 } from '@/features/chat';
 
 /** Bouton d'action circulaire en verre (même langage que l'avatar profil). */
@@ -37,28 +42,36 @@ function ChatBody() {
   const conversations = useChatStore((s) => s.conversations);
   const participants = useChatStore((s) => s.participants);
   const messages = useChatStore((s) => s.messages);
+  const activity = useChatStore((s) => s.activity);
 
-  const [tab, setTab] = useState<ChatTab>('all');
+  const [space, setSpace] = useState<ChatSpace>('activity');
+  const [category, setCategory] = useState('all');
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
+  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     void init();
   }, [init]);
 
-  const [now] = useState(() => Date.now());
   const q = query.trim().toLowerCase();
-  const views = useMemo(
-    () => conversations.map((c) => toConversationView(participants, messages, c)),
+  const unread = useMemo(() => unreadPrivateCount(conversations), [conversations]);
+
+  const matchesQuery = (v: ChatConversationView) =>
+    `${v.author.name} ${v.conversation.title} ${v.lastMessage?.body ?? ''}`.toLowerCase().includes(q);
+
+  const discussionViews = useMemo(
+    () => selectDiscussions(conversations, category).map((c) => toConversationView(participants, messages, c)),
+    [conversations, category, participants, messages],
+  );
+  const messageViews = useMemo(
+    () => selectPrivateMessages(conversations).map((c) => toConversationView(participants, messages, c)),
     [conversations, participants, messages],
   );
-  const shown = useMemo(() => {
-    const tabbed = filterByTab(views, tab);
-    if (!q) return tabbed;
-    return tabbed.filter((v) =>
-      `${v.author.name} ${v.conversation.title} ${v.lastMessage?.body ?? ''}`.toLowerCase().includes(q),
-    );
-  }, [views, tab, q]);
+
+  const shownActivity = q
+    ? activity.filter((a) => `${participants[a.authorId]?.name ?? ''} ${a.title} ${a.body ?? ''}`.toLowerCase().includes(q))
+    : activity;
 
   return (
     <YScreen transparent gap="md" padding="lg">
@@ -74,27 +87,46 @@ function ChatBody() {
         </View>
       </View>
 
+      <ChatSpaceSwitcher space={space} onChange={setSpace} unread={unread} />
+
       {searching ? (
-        <YSearchBar variant="glass" value={query} onChangeText={setQuery} placeholder="Rechercher une discussion, un membre…" />
+        <YSearchBar variant="glass" value={query} onChangeText={setQuery} placeholder="Rechercher dans la place du village…" />
       ) : null}
 
-      <ChatSegmentedTabs tab={tab} onChange={setTab} />
+      {space === 'discussions' ? <ChatCategoryBar activeId={category} onSelect={setCategory} /> : null}
 
-      <FlatList
-        data={shown}
-        keyExtractor={(v) => v.conversation.id}
-        renderItem={({ item }) => (
-          <ConversationCard view={item} now={now} onPress={() => router.push(`/chat/${item.conversation.id}`)} />
-        )}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <YText variant="body" style={{ color: glass.onDarkMuted, textAlign: 'center', marginTop: spacing.xl }}>
-            Aucune discussion pour l’instant.
-          </YText>
-        }
-      />
+      {space === 'activity' ? (
+        <FlatList
+          data={shownActivity}
+          keyExtractor={(a) => a.id}
+          renderItem={({ item }) => <ActivityCard item={item} author={participants[item.authorId]} now={now} />}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={<Empty label="Rien de neuf autour de vous pour l’instant." />}
+        />
+      ) : (
+        <FlatList
+          data={(space === 'discussions' ? discussionViews : messageViews).filter((v) => (q ? matchesQuery(v) : true))}
+          keyExtractor={(v) => v.conversation.id}
+          renderItem={({ item }) => (
+            <ConversationCard view={item} now={now} onPress={() => router.push(`/chat/${item.conversation.id}`)} />
+          )}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <Empty label={space === 'messages' ? 'Aucun message privé pour l’instant.' : 'Aucune discussion dans cette catégorie.'} />
+          }
+        />
+      )}
     </YScreen>
+  );
+}
+
+function Empty({ label }: { label: string }) {
+  return (
+    <YText variant="body" style={{ color: glass.onDarkMuted, textAlign: 'center', marginTop: spacing.xl }}>
+      {label}
+    </YText>
   );
 }
 

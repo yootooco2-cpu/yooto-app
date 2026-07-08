@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { CURRENT_USER_ID } from './mockData';
 import { mockChatRepository, type ChatRepository } from './repository';
-import type { ChatConversation, ChatConversationView, ChatMessage, ChatParticipant } from './types';
+import type { ActivityItem, ChatConversation, ChatConversationView, ChatMessage, ChatParticipant } from './types';
 
 /** Repository actif — MOCK aujourd'hui, `supabaseChatRepository` demain (une seule ligne à changer). */
 const repository: ChatRepository = mockChatRepository;
@@ -13,6 +13,7 @@ interface ChatState {
   participants: Record<string, ChatParticipant>;
   conversations: ChatConversation[]; // triées par activité décroissante
   messages: Record<string, ChatMessage[]>; // par conversationId (ordre chronologique)
+  activity: ActivityItem[]; // fil « Activité » (récent → ancien)
   init: () => Promise<void>;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, body: string) => Promise<void>;
@@ -29,12 +30,14 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   participants: {},
   conversations: [],
   messages: {},
+  activity: [],
 
   async init() {
     if (get().ready) return;
-    const [participants, conversations] = await Promise.all([
+    const [participants, conversations, activity] = await Promise.all([
       repository.listParticipants(),
       repository.listConversations(),
+      repository.listActivity(),
     ]);
     const byId: Record<string, ChatParticipant> = {};
     participants.forEach((p) => {
@@ -46,7 +49,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     conversations.forEach((c, i) => {
       messages[c.id] = lists[i];
     });
-    set({ ready: true, participants: byId, conversations: sortByActivity(conversations), messages });
+    set({ ready: true, participants: byId, conversations: sortByActivity(conversations), messages, activity });
   },
 
   async loadMessages(conversationId) {
@@ -92,7 +95,8 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
 // ── Sélecteurs purs (dérivations affichables) ─────────────────────────────────────────────────
 
-export type ChatTab = 'all' | 'pro' | 'particulier' | 'mine';
+/** Les trois espaces de la « place du village ». */
+export type ChatSpace = 'activity' | 'discussions' | 'messages';
 
 /** Construit la vue affichable d'une conversation (auteur + dernier message résolus). */
 export function toConversationView(
@@ -108,16 +112,22 @@ export function toConversationView(
   };
 }
 
-/** Filtre le fil selon l'onglet actif (Tous / Professionnels / Particuliers / Vos discussions). */
-export function filterByTab(views: ChatConversationView[], tab: ChatTab): ChatConversationView[] {
-  switch (tab) {
-    case 'pro':
-      return views.filter((v) => v.author.kind === 'professionnel');
-    case 'particulier':
-      return views.filter((v) => v.author.kind === 'particulier');
-    case 'mine':
-      return views.filter((v) => v.conversation.joined);
-    default:
-      return views;
-  }
+/** Discussions PUBLIQUES (place du village), optionnellement filtrées par catégorie. */
+export function selectDiscussions(
+  conversations: ChatConversation[],
+  categoryId: string = 'all',
+): ChatConversation[] {
+  return conversations.filter(
+    (c) => c.visibility === 'public' && (categoryId === 'all' || c.categoryId === categoryId),
+  );
+}
+
+/** Conversations PRIVÉES (messagerie 1:1). */
+export function selectPrivateMessages(conversations: ChatConversation[]): ChatConversation[] {
+  return conversations.filter((c) => c.visibility === 'private');
+}
+
+/** Total de messages non lus dans la messagerie privée (badge de l'espace « Messages »). */
+export function unreadPrivateCount(conversations: ChatConversation[]): number {
+  return selectPrivateMessages(conversations).reduce((n, c) => n + c.unreadCount, 0);
 }
