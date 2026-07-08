@@ -6,6 +6,7 @@ import { MerchantCard } from '@/components/cards/MerchantCard';
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
 import { spacing } from '@/design/tokens/spacing';
+import { useMerchantCardWidth } from '@/features/layout';
 import type { Merchant } from '@/features/merchants';
 
 type Props = {
@@ -16,14 +17,16 @@ type Props = {
   delay?: number;
 };
 
-const CARD_WIDTH = 260;
-/** Espace horizontal entre cartes — respiration premium (Apple/Airbnb/Spotify). N'affecte QUE
- *  l'écart entre deux cartes : largeur/hauteur des cartes, marges du carrousel et peek inchangés. */
-const CARD_GAP = 32;
+// Cartes qui « se touchent presque » (peek fort) : écart très faible dans la fourchette 4–8 px.
+const CARD_GAP = 6;
 
 /** Section d'accueil : titre + carrousel horizontal de cartes commerce premium. */
 export function MerchantCarousel({ title, subtitle, merchants, delay = 0 }: Props) {
   const router = useRouter();
+  // Largeur STRICTEMENT identique à une carte de la grille Commerçants (référence unique) → même
+  // impact visuel, aucune variante. Le reste (hauteur, ratio, coins, ombres, marges, typo, badges)
+  // vient du composant MerchantCard partagé, donc identique par construction.
+  const cardWidth = useMerchantCardWidth();
   if (merchants.length === 0) return null;
 
   return (
@@ -49,7 +52,7 @@ export function MerchantCarousel({ title, subtitle, merchants, delay = 0 }: Prop
           <Animated.View
             key={merchant.id}
             entering={FadeInDown.delay(delay + i * 55).duration(300)}
-            style={styles.card}>
+            style={{ width: cardWidth }}>
             <MerchantCard
               merchant={merchant}
               onPress={() =>
@@ -86,8 +89,5 @@ const styles = StyleSheet.create({
   row: {
     gap: CARD_GAP,
     paddingRight: spacing.md,
-  },
-  card: {
-    width: CARD_WIDTH,
   },
 });

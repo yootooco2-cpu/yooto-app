@@ -13,3 +13,16 @@ export const DESKTOP_BREAKPOINT = 1024;
 export function isDesktopWeb(os: string, width: number): boolean {
   return os === 'web' && width >= DESKTOP_BREAKPOINT;
 }
+
+/** Nb de colonnes de la grille Commerçants — RÉFÉRENCE visuelle unique des cartes YOOTOO. */
+export const MERCHANT_GRID_COLUMNS = 3;
+
+/**
+ * Largeur EXACTE d'une carte de commerce, telle que produite par la grille Commerçants
+ * (référence). Formule identique à la grille : (fenêtre − 2·marge − (colonnes−1)·gap) / colonnes.
+ * Réutilisée par les carrousels de l'Accueil → cartes strictement identiques, sans variante.
+ */
+export function merchantCardWidth(windowWidth: number, gutter: number, columnGap: number): number {
+  const inner = windowWidth - gutter * 2 - columnGap * (MERCHANT_GRID_COLUMNS - 1);
+  return Math.max(0, inner / MERCHANT_GRID_COLUMNS);
+}
