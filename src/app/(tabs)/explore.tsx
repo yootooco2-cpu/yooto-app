@@ -39,6 +39,7 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
+import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SearchMenu } from '@/features/merchants/components/SearchMenu';
 import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
@@ -378,7 +379,12 @@ export default function MapScreen() {
                 {/* MENU OFFICIEL PARTAGÉ (recherche + catégories). Le prédicat est enveloppé dans
                     `() => match` : sinon React interprète la fonction passée au setter comme un
                     updater et l'exécute (bug). */}
-                <SearchMenu query={query} onQueryChange={setQuery} onCategoryChange={(match) => setMapMatch(() => match)} />
+                <SearchMenu
+                  query={query}
+                  onQueryChange={setQuery}
+                  onCategoryChange={(match) => setMapMatch(() => match)}
+                  trailing={<ProfileAvatarButton />}
+                />
                 {nearbyActive && location.status === 'denied' ? (
                   <YText variant="caption" style={styles.nearbyDenied}>
                     Localisation indisponible — activez-la pour trier par distance.

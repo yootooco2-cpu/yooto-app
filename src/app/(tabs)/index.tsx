@@ -3,6 +3,7 @@ import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimate
 
 import { HomeHero } from '@/components/home/HomeHero';
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
+import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
@@ -60,8 +61,13 @@ export default function HomeScreen() {
       <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
         <HomeHero greeting={greetingForNow()} scrollY={scrollY} />
 
-        {/* MENU OFFICIEL PARTAGÉ : recherche + navigation catégories hiérarchique. */}
-        <SearchMenu query={query} onQueryChange={setQuery} onCategoryChange={(m) => setCategoryMatch(() => m)} />
+        {/* MENU OFFICIEL PARTAGÉ : recherche + navigation catégories hiérarchique + profil. */}
+        <SearchMenu
+          query={query}
+          onQueryChange={setQuery}
+          onCategoryChange={(m) => setCategoryMatch(() => m)}
+          trailing={<ProfileAvatarButton />}
+        />
 
         {filtering ? (
           filtered.length > 0 ? (

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { MerchantCard } from '@/components/cards/MerchantCard';
+import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
@@ -42,8 +43,13 @@ export default function MerchantsScreen() {
   return (
     <SectionScreen section="commerce">
       <YScreen transparent gap="sm" padding="lg">
-        {/* MENU OFFICIEL PARTAGÉ (identique à Carte & Accueil) : recherche + catégories. */}
-        <SearchMenu query={query} onQueryChange={setQuery} onCategoryChange={(m) => setCategoryMatch(() => m)} />
+        {/* MENU OFFICIEL PARTAGÉ (identique à Carte & Accueil) : recherche + catégories + profil. */}
+        <SearchMenu
+          query={query}
+          onQueryChange={setQuery}
+          onCategoryChange={(m) => setCategoryMatch(() => m)}
+          trailing={<ProfileAvatarButton />}
+        />
 
         {isLoading ? (
           <YText variant="body" color="muted">
