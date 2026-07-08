@@ -1,36 +1,68 @@
 import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { glass } from '@/design/tokens/glass';
+import { motion } from '@/design/tokens/motion';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { typography } from '@/design/tokens/typography';
+import { useReducedMotion } from '@/features/system/useReducedMotion';
 import { continueWithProvider, signInWithEmailLink } from '@/lib/supabase/authActions';
 
-/** Bouton social (conventions Google / Apple approximées). */
-function SocialButton({ provider, onPress }: { provider: 'google' | 'apple'; onPress: () => void }) {
+/**
+ * Micro-interaction d'appui : le contenu s'enfonce légèrement puis rebondit doucement.
+ * Se dégrade en no-op si l'utilisateur a réduit les animations.
+ */
+function usePressScale(reduced: boolean) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const to = (value: number) =>
+    Animated.spring(scale, { toValue: value, useNativeDriver: true, ...motion.spring.press }).start();
+  const onPressIn = () => {
+    if (!reduced) to(motion.pressScale);
+  };
+  const onPressOut = () => {
+    if (!reduced) to(1);
+  };
+  return { scale, onPressIn, onPressOut };
+}
+
+/** Bouton social (conventions Google / Apple approximées), avec retour tactile animé. */
+function SocialButton({
+  provider,
+  onPress,
+  reduced,
+}: {
+  provider: 'google' | 'apple';
+  onPress: () => void;
+  reduced: boolean;
+}) {
   const isApple = provider === 'apple';
+  const { scale, onPressIn, onPressOut } = usePressScale(reduced);
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={isApple ? 'Continuer avec Apple' : 'Continuer avec Google'}
-      style={({ pressed }) => [styles.social, isApple ? styles.apple : styles.google, pressed && styles.pressed]}>
-      {isApple ? (
-        <YText style={[styles.glyph, { color: '#FFFFFF' }]}>{''}</YText>
-      ) : (
-        <View style={styles.gBadge}>
-          <YText style={styles.gLetter}>G</YText>
-        </View>
-      )}
-      <YText style={[styles.socialLabel, { color: isApple ? '#FFFFFF' : colors.text }]}>
-        {isApple ? 'Continuer avec Apple' : 'Continuer avec Google'}
-      </YText>
-    </Pressable>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={isApple ? 'Continuer avec Apple' : 'Continuer avec Google'}
+        style={[styles.social, isApple ? styles.apple : styles.google]}>
+        {isApple ? (
+          <YText style={[styles.glyph, { color: '#FFFFFF' }]}>{''}</YText>
+        ) : (
+          <View style={styles.gBadge}>
+            <YText style={styles.gLetter}>G</YText>
+          </View>
+        )}
+        <YText style={[styles.socialLabel, { color: isApple ? '#FFFFFF' : colors.text }]}>
+          {isApple ? 'Continuer avec Apple' : 'Continuer avec Google'}
+        </YText>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -45,6 +77,10 @@ interface Props {
  * Feuille d'authentification JUSTE-À-TEMPS. Surgit quand l'utilisateur a créé quelque chose à
  * garder (favori). Upgrade zéro perte : si session anonyme → liaison d'identité (favoris conservés).
  * Non bloquante : « Plus tard » referme sans rien perdre.
+ *
+ * Présentation (R6) : le voile se fond et la feuille glisse depuis le bas avec un ressort ferme.
+ * On reste monté le temps de l'animation de sortie, puis on se démonte. Respecte « Réduire les
+ * animations » (transition instantanée).
  */
 export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
   const [showEmail, setShowEmail] = useState(false);
@@ -52,6 +88,51 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState<null | 'google' | 'apple' | 'email'>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const reduced = useReducedMotion();
+  // Rendu monté tant que l'animation d'entrée/sortie est en cours.
+  const [mounted, setMounted] = useState(open);
+  // 0 = fermé (bas / transparent), 1 = ouvert (en place / opaque).
+  const progress = useRef(new Animated.Value(0)).current;
+  // Hauteur mesurée de la feuille → distance de glissement.
+  const [sheetHeight, setSheetHeight] = useState(0);
+  const laterPress = usePressScale(reduced);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      if (reduced) {
+        progress.setValue(1);
+        return;
+      }
+      Animated.spring(progress, { toValue: 1, useNativeDriver: true, ...motion.spring.sheet }).start();
+    } else if (mounted) {
+      if (reduced) {
+        progress.setValue(0);
+        setMounted(false);
+        return;
+      }
+      Animated.timing(progress, {
+        toValue: 0,
+        duration: motion.duration.base,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, reduced]);
+
+  // Réinitialise le sous-état email quand la feuille se referme complètement.
+  useEffect(() => {
+    if (!mounted) {
+      setShowEmail(false);
+      setEmail('');
+      setSent(false);
+      setError(null);
+      setBusy(null);
+    }
+  }, [mounted]);
 
   const onProvider = async (provider: 'google' | 'apple') => {
     if (busy) return;
@@ -81,11 +162,26 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
       ? `Gardez vos ${favoritesCount} favori${favoritesCount > 1 ? 's' : ''}`
       : 'Rejoignez YOOTOO';
 
+  const subtitle =
+    favoritesCount > 0
+      ? 'Vos adresses vous suivent sur tous vos appareils. Sans mot de passe, en quelques secondes.'
+      : 'Retrouvez vos lieux partout, sans mot de passe. En quelques secondes.';
+
+  // Distance de glissement : hauteur de la feuille (repli 320 avant première mesure).
+  const travel = sheetHeight || 320;
+  const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [travel, 0] });
+
+  if (!mounted) return null;
+
   return (
-    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.root}>
-        <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />
-        <View style={[styles.sheet, glass.panel]}>
+        <Animated.View style={[styles.backdrop, { opacity: progress }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" />
+        </Animated.View>
+        <Animated.View
+          onLayout={(e) => setSheetHeight(e.nativeEvent.layout.height)}
+          style={[styles.sheet, glass.panel, { transform: [{ translateY }] }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             <YText variant="title" style={{ color: glass.onDark }}>
@@ -96,13 +192,15 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
             </Pressable>
           </View>
           <YText variant="body" style={{ color: glass.onDarkMuted, marginBottom: spacing.md }}>
-            Retrouvez-les sur tous vos appareils. Sans mot de passe, en quelques secondes.
+            {subtitle}
           </YText>
 
           {!showEmail ? (
             <View style={styles.actions}>
-              <SocialButton provider="google" onPress={() => void onProvider('google')} />
-              {Platform.OS === 'ios' ? <SocialButton provider="apple" onPress={() => void onProvider('apple')} /> : null}
+              <SocialButton provider="google" reduced={reduced} onPress={() => void onProvider('google')} />
+              {Platform.OS === 'ios' ? (
+                <SocialButton provider="apple" reduced={reduced} onPress={() => void onProvider('apple')} />
+              ) : null}
               <View style={styles.divider}>
                 <View style={styles.line} />
                 <YText variant="caption" style={{ color: glass.onDarkMuted }}>
@@ -126,6 +224,7 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
                 autoCapitalize="none"
                 inputMode="email"
                 returnKeyType="done"
+                onSubmitEditing={() => void onEmail()}
               />
               <YButton
                 label={sent ? 'Lien envoyé ✓' : busy === 'email' ? 'Envoi…' : 'Recevoir le lien'}
@@ -146,12 +245,20 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
             </YText>
           ) : null}
 
-          <Pressable onPress={onClose} hitSlop={8} style={styles.later} accessibilityRole="button">
-            <YText variant="caption" style={{ color: glass.onDarkMuted }}>
-              Plus tard
-            </YText>
-          </Pressable>
-        </View>
+          <Animated.View style={{ transform: [{ scale: laterPress.scale }], alignSelf: 'center' }}>
+            <Pressable
+              onPress={onClose}
+              onPressIn={laterPress.onPressIn}
+              onPressOut={laterPress.onPressOut}
+              hitSlop={8}
+              style={styles.later}
+              accessibilityRole="button">
+              <YText variant="caption" style={{ color: glass.onDarkMuted }}>
+                Plus tard
+              </YText>
+            </Pressable>
+          </Animated.View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -173,7 +280,6 @@ const styles = StyleSheet.create({
   social: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, height: 52, borderRadius: radii.lg, borderWidth: 1 },
   google: { backgroundColor: colors.surface, borderColor: colors.border },
   apple: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
-  pressed: { opacity: 0.9 },
   glyph: { fontSize: 18 },
   socialLabel: { fontSize: typography.body.fontSize, fontWeight: '600' },
   gBadge: { width: 20, height: 20, borderRadius: 4, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
@@ -189,5 +295,5 @@ const styles = StyleSheet.create({
     color: glass.onDark,
     fontSize: typography.body.fontSize,
   },
-  later: { alignSelf: 'center', marginTop: spacing.md },
+  later: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, marginTop: spacing.md },
 });
