@@ -38,12 +38,6 @@ export function CategoryNavigation({ onChange }: Props) {
   const nodes = current ? current.children ?? [] : CATEGORY_FAMILIES;
   const rootFamilyId = path.length ? path[0].id : '';
 
-  const selectTous = () => {
-    setPath([]);
-    setActiveLeafId(null);
-    onChange(null);
-  };
-
   const drill = (node: CategoryNode) => {
     setPath([...path, node]);
     setActiveLeafId(null);
@@ -71,11 +65,8 @@ export function CategoryNavigation({ onChange }: Props) {
   return (
     <Animated.View key={path.map((p) => p.id).join('/') || 'root'} entering={FadeIn.duration(190)}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {path.length ? (
-          <Capsule icon="chevron-left" onPress={back} accessibilityLabel="Retour" back />
-        ) : (
-          <Capsule icon="crosshair" label="Tous" active={activeLeafId === null} onPress={selectTous} />
-        )}
+        {/* Retour « ‹ » uniquement en sous-niveau ; pas de capsule « Tous » à la racine. */}
+        {path.length ? <Capsule icon="chevron-left" onPress={back} accessibilityLabel="Retour" back /> : null}
         {nodes.map((node) => (
           <Capsule
             key={node.id}

@@ -6,7 +6,7 @@ import BottomSheet, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type LayoutChangeEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -17,7 +17,6 @@ import {
 import { MerchantDetailsSheet } from '@/components/merchants/MerchantDetailsSheet';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
-import { YChip } from '@/components/ui/YChip';
 import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { PreferenceService } from '@/services/PreferenceService';
@@ -37,8 +36,6 @@ import {
   type MapViewport,
 } from '@/features/map';
 import {
-  filterCryptogramAsset,
-  QUICK_FILTERS,
   useMerchantSearch,
   useMerchantSearchStore,
   type Merchant,
@@ -91,7 +88,7 @@ const TOP_SCRIM = ['rgba(17,23,20,0.90)', 'rgba(17,23,20,0.45)', 'rgba(17,23,20,
 export default function MapScreen() {
   // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
   useFavoritesSync();
-  const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
+  const { query, setQuery, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
     useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [quickAccessOpen, setQuickAccessOpen] = useState(false);
@@ -384,24 +381,6 @@ export default function MapScreen() {
                     On enveloppe le prédicat dans `() => match` : sinon React interprète la fonction
                     passée au setter comme un updater et l'exécute (bug). */}
                 <CategoryNavigation onChange={(match) => setMapMatch(() => match)} />
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.filtersScroll}
-                  contentContainerStyle={styles.filters}>
-                  {/* Sur la carte : uniquement « Ouvert maintenant » (Autour de moi / Producteurs
-                      retirés de cette ligne — inchangés sur /commerçants). */}
-                  {QUICK_FILTERS.filter((filter) => filter.id === 'open').map((filter) => (
-                    <YChip
-                      key={filter.id}
-                      label={filter.label}
-                      icon={filterCryptogramAsset(filter.id)}
-                      active={filters.includes(filter.id)}
-                      onPress={() => toggleFilter(filter.id)}
-                      variant="glass"
-                    />
-                  ))}
-                </ScrollView>
                 {nearbyActive && location.status === 'denied' ? (
                   <YText variant="caption" style={styles.nearbyDenied}>
                     Localisation indisponible — activez-la pour trier par distance.
@@ -428,14 +407,6 @@ const styles = StyleSheet.create({
   },
   screenWrap: {
     flex: 1,
-  },
-  filtersScroll: {
-    flexGrow: 0,
-  },
-  filters: {
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
-    alignItems: 'center',
   },
   mapArea: {
     flex: 1,
