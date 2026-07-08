@@ -1,5 +1,5 @@
-import { CURRENT_USER_ID, MOCK_ACTIVITY, MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_PARTICIPANTS } from './mockData';
-import type { ActivityItem, ChatConversation, ChatMessage, ChatParticipant } from './types';
+import { CURRENT_USER_ID, MOCK_ACTIVITY, MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_NOTIFICATIONS, MOCK_PARTICIPANTS } from './mockData';
+import type { ActivityItem, ChatConversation, ChatMessage, ChatNotification, ChatParticipant } from './types';
 
 /**
  * Contrat d'accès aux données du Chat — la SEULE couture avec le backend. Aujourd'hui :
@@ -12,6 +12,10 @@ export interface ChatRepository {
   listConversations(): Promise<ChatConversation[]>;
   listActivity(): Promise<ActivityItem[]>;
   listMessages(conversationId: string): Promise<ChatMessage[]>;
+  listNotifications(): Promise<ChatNotification[]>;
+  markNotificationRead(id: string): Promise<void>;
+  /** Suivre / ne plus suivre un acteur (commerçant, producteur, habitant). */
+  setFollow(actorId: string, follow: boolean): Promise<void>;
   sendMessage(input: { conversationId: string; senderId: string; body: string }): Promise<ChatMessage>;
   createConversation(input: { title: string; body: string; authorId: string; categoryId?: string }): Promise<{
     conversation: ChatConversation;
@@ -25,6 +29,8 @@ let participants: ChatParticipant[] = MOCK_PARTICIPANTS.map((p) => ({ ...p }));
 let conversations: ChatConversation[] = MOCK_CONVERSATIONS.map((c) => ({ ...c, participantIds: [...c.participantIds] }));
 let messages: ChatMessage[] = MOCK_MESSAGES.map((m) => ({ ...m }));
 const activity: ActivityItem[] = MOCK_ACTIVITY.map((a) => ({ ...a }));
+let notifications: ChatNotification[] = MOCK_NOTIFICATIONS.map((n) => ({ ...n }));
+const following = new Set<string>();
 
 let seq = 0;
 const uid = (prefix: string): string => `${prefix}_${Date.now().toString(36)}_${(seq++).toString(36)}`;
@@ -52,6 +58,22 @@ export const mockChatRepository: ChatRepository = {
       .filter((m) => m.conversationId === conversationId)
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return delay(list.map((m) => ({ ...m })));
+  },
+
+  async listNotifications() {
+    const sorted = [...notifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return delay(sorted.map((n) => ({ ...n })));
+  },
+
+  async markNotificationRead(id) {
+    notifications = notifications.map((n) => (n.id === id ? { ...n, read: true } : n));
+    return delay(undefined);
+  },
+
+  async setFollow(actorId, follow) {
+    if (follow) following.add(actorId);
+    else following.delete(actorId);
+    return delay(undefined);
   },
 
   async sendMessage({ conversationId, senderId, body }) {

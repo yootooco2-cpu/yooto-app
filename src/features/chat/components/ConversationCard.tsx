@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
@@ -7,6 +8,7 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
+import { actorKindLabel, isTerritoryActor } from '../logic';
 import { formatChatTime } from '../time';
 import type { ChatConversationView } from '../types';
 import { ChatAvatar } from './ChatAvatar';
@@ -17,9 +19,8 @@ export function ConversationCard({ view, now, onPress }: { view: ChatConversatio
   const { colors } = useTheme();
   const section = useSectionTheme();
   const { conversation, author, lastMessage } = view;
-  const isPro = author.kind === 'professionnel';
-  const typeLabel = isPro ? 'Professionnel' : 'Particulier';
-  const typeColor = isPro ? section.accent : colors.mutedText;
+  const typeLabel = actorKindLabel(author.kind);
+  const typeColor = isTerritoryActor(author.kind) ? section.accent : colors.mutedText;
   const preview = lastMessage?.body ?? conversation.title;
   const time = lastMessage ? formatChatTime(lastMessage.createdAt, now) : formatChatTime(conversation.updatedAt, now);
 
@@ -36,9 +37,12 @@ export function ConversationCard({ view, now, onPress }: { view: ChatConversatio
       <ChatAvatar name={author.name} avatarUrl={author.avatarUrl} size={52} />
 
       <View style={styles.mid}>
-        <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>
-          {author.name}
-        </YText>
+        <View style={styles.nameRow}>
+          <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>
+            {author.name}
+          </YText>
+          {author.verified ? <Feather name="check-circle" size={13} color={section.accent} /> : null}
+        </View>
         <View style={styles.metaRow}>
           <View style={[styles.typeBadge, { backgroundColor: colors.surfaceAlt }]}>
             <YText style={[styles.typeText, { color: typeColor }]}>{typeLabel}</YText>
@@ -82,7 +86,8 @@ const styles = StyleSheet.create({
   },
   pressed: { opacity: 0.97, transform: [{ scale: 0.985 }] },
   mid: { flex: 1, gap: 3 },
-  name: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  name: { flexShrink: 1, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill },
   typeText: { fontSize: 11, fontWeight: '700' },

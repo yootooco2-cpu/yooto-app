@@ -8,6 +8,7 @@ import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
 import { chatCategoryById } from '../categories';
+import { actorKindLabel } from '../logic';
 import { formatChatTime } from '../time';
 import type { ActivityItem, ChatParticipant } from '../types';
 import { ChatAvatar } from './ChatAvatar';
@@ -18,19 +19,22 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
   const { colors } = useTheme();
   const category = chatCategoryById(item.categoryId);
   const accent = category?.accent ?? colors.primary;
-  const isPro = author?.kind === 'professionnel';
+  const kindLabel = author ? actorKindLabel(author.kind) : null;
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.top}>
         <ChatAvatar name={author?.name ?? '—'} avatarUrl={author?.avatarUrl} size={40} />
         <View style={styles.who}>
-          <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>
-            {author?.name ?? '—'}
-          </YText>
+          <View style={styles.nameRow}>
+            <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>
+              {author?.name ?? '—'}
+            </YText>
+            {author?.verified ? <Feather name="check-circle" size={13} color={accent} /> : null}
+          </View>
           <YText variant="caption" color="muted" numberOfLines={1}>
-            {isPro ? 'Professionnel' : 'Particulier'}
-            {item.place ? ` · ${item.place}` : ''}
+            {kindLabel ?? ''}
+            {item.place ? `${kindLabel ? ' · ' : ''}${item.place}` : ''}
           </YText>
         </View>
         <YText variant="caption" color="muted">
@@ -74,7 +78,8 @@ const styles = StyleSheet.create({
   },
   top: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   who: { flex: 1 },
-  name: { fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  name: { flexShrink: 1, fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
   body: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   emojiWrap: { width: 48, height: 48, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
   emoji: { fontSize: 26 },

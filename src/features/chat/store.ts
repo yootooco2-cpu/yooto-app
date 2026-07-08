@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { CURRENT_USER_ID } from './mockData';
 import { mockChatRepository, type ChatRepository } from './repository';
-import type { ActivityItem, ChatConversation, ChatConversationView, ChatMessage, ChatParticipant } from './types';
+import type { ActivityItem, ChatConversation, ChatConversationView, ChatMessage, ChatNotification, ChatParticipant } from './types';
 
 /** Repository actif — MOCK aujourd'hui, `supabaseChatRepository` demain (une seule ligne à changer). */
 const repository: ChatRepository = mockChatRepository;
@@ -14,11 +14,15 @@ interface ChatState {
   conversations: ChatConversation[]; // triées par activité décroissante
   messages: Record<string, ChatMessage[]>; // par conversationId (ordre chronologique)
   activity: ActivityItem[]; // fil « Activité » (récent → ancien)
+  notifications: ChatNotification[];
+  following: Record<string, boolean>; // acteurs suivis (id → true)
   init: () => Promise<void>;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, body: string) => Promise<void>;
   createConversation: (input: { title: string; body: string; categoryId?: string }) => Promise<string>;
   markRead: (conversationId: string) => void;
+  markNotificationRead: (id: string) => Promise<void>;
+  toggleFollow: (actorId: string) => Promise<void>;
 }
 
 const sortByActivity = (list: ChatConversation[]): ChatConversation[] =>
@@ -31,13 +35,16 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   conversations: [],
   messages: {},
   activity: [],
+  notifications: [],
+  following: {},
 
   async init() {
     if (get().ready) return;
-    const [participants, conversations, activity] = await Promise.all([
+    const [participants, conversations, activity, notifications] = await Promise.all([
       repository.listParticipants(),
       repository.listConversations(),
       repository.listActivity(),
+      repository.listNotifications(),
     ]);
     const byId: Record<string, ChatParticipant> = {};
     participants.forEach((p) => {
@@ -49,7 +56,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     conversations.forEach((c, i) => {
       messages[c.id] = lists[i];
     });
-    set({ ready: true, participants: byId, conversations: sortByActivity(conversations), messages, activity });
+    set({ ready: true, participants: byId, conversations: sortByActivity(conversations), messages, activity, notifications });
   },
 
   async loadMessages(conversationId) {
@@ -91,6 +98,17 @@ export const useChatStore = create<ChatState>()((set, get) => ({
       conversations: s.conversations.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)),
     }));
   },
+
+  async markNotificationRead(id) {
+    set((s) => ({ notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)) }));
+    await repository.markNotificationRead(id);
+  },
+
+  async toggleFollow(actorId) {
+    const next = !get().following[actorId];
+    set((s) => ({ following: { ...s.following, [actorId]: next } }));
+    await repository.setFollow(actorId, next);
+  },
 }));
 
 // ── Sélecteurs purs (dérivations affichables) ─────────────────────────────────────────────────
@@ -130,4 +148,9 @@ export function selectPrivateMessages(conversations: ChatConversation[]): ChatCo
 /** Total de messages non lus dans la messagerie privée (badge de l'espace « Messages »). */
 export function unreadPrivateCount(conversations: ChatConversation[]): number {
   return selectPrivateMessages(conversations).reduce((n, c) => n + c.unreadCount, 0);
+}
+
+/** Nombre de notifications non lues. */
+export function unreadNotifications(notifications: ChatNotification[]): number {
+  return notifications.filter((n) => !n.read).length;
 }
