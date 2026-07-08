@@ -1,12 +1,14 @@
 import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
-import { Pressable, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Pressable, Platform, ScrollView, StyleSheet, type ImageSourcePropType } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
+import { cryptogramAsset } from '../cryptogramAssets';
 
 import {
   CATEGORY_FAMILIES,
@@ -82,6 +84,7 @@ export function CategoryNavigation({ onChange }: Props) {
               <Capsule
                 key={it.id}
                 label={it.label}
+                imageIcon={it.iconId ? cryptogramAsset(it.iconId) : undefined}
                 active={nav.activeSubcategory === it.id}
                 onPress={() => toggleSub(family, it)}
               />
@@ -103,6 +106,7 @@ export function CategoryNavigation({ onChange }: Props) {
 function Capsule({
   label,
   icon,
+  imageIcon,
   active = false,
   back = false,
   onPress,
@@ -110,6 +114,8 @@ function Capsule({
 }: {
   label?: string;
   icon?: FeatherName;
+  /** Pictogramme cryptogramme YOOTOO (prioritaire sur `icon`). */
+  imageIcon?: ImageSourcePropType;
   active?: boolean;
   back?: boolean;
   onPress: () => void;
@@ -128,7 +134,11 @@ function Capsule({
         back && styles.chipBack,
         pressed && styles.chipPressed,
       ]}>
-      {icon ? <Feather name={icon} size={16} color={iconColor} /> : null}
+      {imageIcon ? (
+        <Image source={imageIcon} style={styles.picto} contentFit="contain" />
+      ) : icon ? (
+        <Feather name={icon} size={16} color={iconColor} />
+      ) : null}
       {label ? (
         <YText variant="caption" style={[styles.label, { color: glass.onDark }]} numberOfLines={1}>
           {label}
@@ -156,6 +166,7 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: ACTIVE_GREEN, borderColor: ACTIVE_GREEN },
   chipBack: { paddingHorizontal: spacing.sm + 2, borderColor: 'rgba(142,182,123,0.55)' },
   chipPressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
+  picto: { width: 22, height: 22 },
   label: { fontWeight: '600' },
   // Ombre extrêmement douce → capsule flottante sur la carte.
   glassShadow: Platform.select({

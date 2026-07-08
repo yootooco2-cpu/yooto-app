@@ -45,6 +45,12 @@ describe('categoryFamilies', () => {
     expect(CATEGORY_FAMILIES.every((f) => f.items.length > 0)).toBe(true);
   });
 
+  it('les sous-catégories Alimentation portent leur pictogramme (cryptogramme existant)', () => {
+    const alim = categoryFamilyById('alimentation');
+    expect(alim?.items.length).toBe(11);
+    expect(alim?.items.every((i) => i.iconId !== undefined)).toBe(true);
+  });
+
   it('Artisanat = métiers d’art (ébénistes, luthiers…) reconnus par le métier, pas les boutiques', () => {
     const art = categoryFamilyById('artisanat');
     const labels = art?.items.map((i) => i.label) ?? [];

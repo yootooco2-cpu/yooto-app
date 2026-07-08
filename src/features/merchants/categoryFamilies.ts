@@ -1,6 +1,7 @@
 import { type ComponentProps } from 'react';
 import { type Feather } from '@expo/vector-icons';
 
+import type { CryptogramId } from './cryptograms';
 import { merchantCategoryById, type MerchantCategoryId } from './merchantCategoryFilters';
 import type { Merchant } from './types';
 
@@ -20,6 +21,9 @@ export interface FamilyItem {
   id: string;
   label: string;
   match: MerchantPredicate;
+  /** Cryptogramme YOOTOO existant (l'asset image est résolu par le composant — couche données
+   *  sans require d'image, testable). Optionnel : sinon la capsule est en texte / fallback. */
+  iconId?: CryptogramId;
 }
 
 export interface CategoryFamily {
@@ -48,6 +52,16 @@ const withText = (base: MerchantPredicate, ...terms: string[]): MerchantPredicat
 const textMatch = (...terms: string[]): MerchantPredicate => withText(() => true, ...terms);
 
 const item = (id: string, label: string, match: MerchantPredicate): FamilyItem => ({ id, label, match });
+/**
+ * Item de sous-catégorie ADOSSÉ à une catégorie existante : réutilise son prédicat `match` ET son
+ * pictogramme (cryptogramme YOOTOO déjà créé). Aucun nouvel asset. `id` = id catégorie (unique).
+ */
+const catItem = (id: MerchantCategoryId, label: string): FamilyItem => ({
+  id,
+  label,
+  match: catMatch(id),
+  iconId: merchantCategoryById(id)?.icon,
+});
 
 const RESTO = anyCat('restaurants', 'cafes');
 const BIENETRE = anyCat('bienetre', 'sport');
@@ -142,17 +156,17 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
       'epiceries', 'traiteurs', 'patisseries', 'marches', 'cavistes', 'cooperatives',
     ),
     items: [
-      item('producteurs', 'Producteurs', catMatch('producteurs')),
-      item('boulangeries', 'Boulangeries', catMatch('boulangeries')),
-      item('primeurs', 'Primeurs', catMatch('primeurs')),
-      item('fromageries', 'Fromageries', catMatch('fromageries')),
-      item('boucheries', 'Boucheries', catMatch('boucheries')),
-      item('poissonneries', 'Poissonneries', catMatch('poissonneries')),
-      item('epiceries', 'Épiceries', catMatch('epiceries')),
-      item('traiteurs', 'Traiteurs', catMatch('traiteurs')),
-      item('patisseries', 'Pâtisseries', catMatch('patisseries')),
-      item('marches', 'Marchés', catMatch('marches')),
-      item('cavistes', 'Cavistes', catMatch('cavistes')),
+      catItem('producteurs', 'Producteurs'),
+      catItem('boulangeries', 'Boulangeries'),
+      catItem('primeurs', 'Primeurs'),
+      catItem('fromageries', 'Fromageries'),
+      catItem('boucheries', 'Boucheries'),
+      catItem('poissonneries', 'Poissonneries'),
+      catItem('epiceries', 'Épiceries'),
+      catItem('traiteurs', 'Traiteurs'),
+      catItem('patisseries', 'Pâtisseries'),
+      catItem('marches', 'Marchés'),
+      catItem('cavistes', 'Cavistes'),
     ],
   },
   {
