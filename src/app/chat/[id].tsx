@@ -45,7 +45,6 @@ function ConversationBody() {
     markRead(id);
   }, [id, loadMessages, markRead]);
 
-  const isGroup = (conversation?.participantIds.length ?? 0) > 2;
   const author = conversation ? participants[conversation.authorId] : undefined;
 
   const onSend = () => {
@@ -89,13 +88,14 @@ function ConversationBody() {
         renderItem={({ item, index }) => {
           const mine = item.senderId === currentUserId;
           const prev = messages[index - 1];
-          const showSender = isGroup && !mine && (!prev || prev.senderId !== item.senderId);
+          const firstOfRun = !prev || prev.senderId !== item.senderId;
           return (
             <MessageBubble
               message={item}
+              author={participants[item.senderId]}
               mine={mine}
-              senderName={participants[item.senderId]?.name}
-              showSender={showSender}
+              showAvatar={firstOfRun}
+              showName={firstOfRun && !mine}
               now={now}
             />
           );

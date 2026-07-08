@@ -113,7 +113,7 @@ export const mockChatRepository: ChatRepository = {
 
   async sendMessage({ conversationId, senderId, body }) {
     const now = new Date().toISOString();
-    const message: ChatMessage = { id: uid('msg'), conversationId, senderId, body, createdAt: now };
+    const message: ChatMessage = { id: uid('msg'), conversationId, senderId, body, createdAt: now, status: 'sent' };
     messages = [...messages, message];
     conversations = conversations.map((c) =>
       c.id === conversationId

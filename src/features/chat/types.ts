@@ -70,12 +70,16 @@ export interface ChatGeo {
 
 // ── Messages & conversations ────────────────────────────────────────────────────────────────────
 
+export type ChatMessageStatus = 'sent' | 'delivered' | 'read';
+
 export interface ChatMessage {
   id: string;
   conversationId: string;
   senderId: string;
   body: string;
   createdAt: string; // ISO 8601
+  /** Statut d'un message ENVOYÉ par l'utilisateur (indicateur discret). */
+  status?: ChatMessageStatus;
   /** Méta-IA (remplies plus tard par YootChat) — n'altèrent jamais le rendu. */
   lang?: string;
   translatedBody?: string;

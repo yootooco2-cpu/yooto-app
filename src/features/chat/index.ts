@@ -9,6 +9,7 @@ export type {
   ChatGeo,
   GeoScope,
   ChatMessage,
+  ChatMessageStatus,
   ChatConversation,
   ChatConversationView,
   ChatVisibility,
