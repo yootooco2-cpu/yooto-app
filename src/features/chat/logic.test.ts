@@ -1,4 +1,4 @@
-import { actorKindLabel, bikeMinutes, geoScope, isFresh, isLiveNow, isTerritoryActor, isTrusted, proximityHint, reputationScore, walkMinutes } from './logic';
+import { actorKindLabel, avatarUri, bikeMinutes, geoScope, isFresh, isLiveNow, isTerritoryActor, isTrusted, presence, proximityHint, reputationScore, walkMinutes } from './logic';
 
 describe('geoScope', () => {
   it('classe par distance (near / neighborhood / city)', () => {
@@ -63,5 +63,30 @@ describe('activité en direct', () => {
   it('isFresh sous la minute', () => {
     expect(isFresh(new Date(NOW - 20_000).toISOString(), NOW)).toBe(true);
     expect(isFresh(new Date(NOW - 120_000).toISOString(), NOW)).toBe(false);
+  });
+});
+
+describe('avatarUri (priorité logo > façade > perso > initiales)', () => {
+  it('respecte l’ordre de priorité', () => {
+    expect(avatarUri({ logoUrl: 'L', coverUrl: 'C', avatarUrl: 'A' })).toBe('L');
+    expect(avatarUri({ coverUrl: 'C', avatarUrl: 'A' })).toBe('C');
+    expect(avatarUri({ avatarUrl: 'A' })).toBe('A');
+    expect(avatarUri({})).toBeNull();
+  });
+});
+
+describe('présence (statut crédible, pas de point vert systématique)', () => {
+  const NOW = new Date('2026-07-08T20:00:00Z').getTime();
+  it('en ligne', () => {
+    expect(presence({ online: true }, NOW)).toEqual({ label: 'En ligne', online: true });
+  });
+  it('paliers d’activité', () => {
+    expect(presence({ lastActiveAt: new Date(NOW - 2 * 60_000).toISOString() }, NOW)).toEqual({ label: 'Actif il y a 2 min', online: false });
+    expect(presence({ lastActiveAt: new Date(NOW - 15 * 60_000).toISOString() }, NOW)).toEqual({ label: 'Dernière activité il y a 15 min', online: false });
+    const p = presence({ lastActiveAt: new Date(NOW - 3 * 60 * 60_000).toISOString() }, NOW);
+    expect(p?.label).toMatch(/^Actif aujourd'hui à \d{2}:\d{2}$/);
+  });
+  it('aucune donnée → null', () => {
+    expect(presence({}, NOW)).toBeNull();
   });
 });

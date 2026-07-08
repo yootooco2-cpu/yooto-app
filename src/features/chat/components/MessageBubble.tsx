@@ -8,7 +8,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
-import { isTerritoryActor } from '../logic';
+import { avatarUri, isTerritoryActor } from '../logic';
 import { formatChatTime } from '../time';
 import type { ChatMessage, ChatParticipant } from '../types';
 import { ChatAvatar } from './ChatAvatar';
@@ -52,7 +52,7 @@ export function MessageBubble({
   const status = message.status ?? 'read';
 
   const avatarNode = showAvatar ? (
-    <ChatAvatar name={author?.name ?? '—'} avatarUrl={author?.avatarUrl} size={AVATAR} />
+    <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={AVATAR} />
   ) : (
     <View style={styles.spacer} />
   );

@@ -40,6 +40,9 @@ export {
   proximityHint,
   isLiveNow,
   isFresh,
+  avatarUri,
+  presence,
+  type Presence,
 } from './logic';
 export {
   useChatStore,

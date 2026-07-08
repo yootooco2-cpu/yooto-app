@@ -11,20 +11,36 @@ const soon = (minutes: number): string => new Date(Date.now() + minutes * 60_000
 /** Géo prête à l'emploi à partir d'une distance. */
 const geo = (km: number, neighborhood?: string) => ({ distanceKm: km, distanceLabel: km < 1 ? `${Math.round(km * 1000)} m` : `${km.toString().replace('.', ',')} km`, neighborhood, scope: geoScope(km) });
 
+/**
+ * Photos de démonstration (Unsplash CDN, vérifiées 200) — pendant les phases de démo, elles
+ * incarnent les « vraies » images des commerces (façade / image principale). En production, elles
+ * proviendront de la base via la fiche commerçant (`getMerchantCoverPhoto`).
+ */
+const PH = {
+  bread: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=200&h=200&fit=crop&q=80',
+  veggies: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&h=200&fit=crop&q=80',
+  cafe: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=200&h=200&fit=crop&q=80',
+  pottery: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=200&h=200&fit=crop&q=80',
+  wine: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=200&h=200&fit=crop&q=80',
+  bike: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200&h=200&fit=crop&q=80',
+  woman: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=200&h=200&fit=crop&crop=faces&q=80',
+  man: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=faces&q=80',
+};
+
 export const MOCK_PARTICIPANTS: ChatParticipant[] = [
   { id: CURRENT_USER_ID, kind: 'particulier', name: 'Vous', avatarUrl: null, neighborhood: 'Écusson' },
-  // Professionnels & producteurs (comptes vérifiés = socle de confiance)
-  { id: 'pro_boulangerie', kind: 'professionnel', name: 'Boulangerie du Marché', merchantId: 'm_boulangerie', verified: true, neighborhood: 'Écusson', distanceLabel: '400 m', geo: geo(0.4, 'Écusson'), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 42, acceptedAnswers: 3, confirmedRecos: 6 } },
-  { id: 'pro_ferme', kind: 'producteur', name: 'La Ferme de Lucie', merchantId: 'm_ferme', verified: true, distanceLabel: '3,2 km', geo: geo(3.2), badges: [{ kind: 'producteur_local', label: 'Producteur local' }], reputation: { helpfulScore: 55, acceptedAnswers: 2, confirmedRecos: 11 } },
-  { id: 'pro_cafe', kind: 'professionnel', name: 'Café des Arceaux', merchantId: 'm_cafe', verified: true, distanceLabel: '650 m', geo: geo(0.65), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 30, acceptedAnswers: 1, confirmedRecos: 4 } },
-  { id: 'pro_ceramique', kind: 'professionnel', name: 'Atelier Terracotta', merchantId: 'm_ceramique', verified: false, distanceLabel: '900 m', geo: geo(0.9), badges: [] },
-  { id: 'pro_cave', kind: 'professionnel', name: 'Cave des Cévennes', merchantId: 'm_cave', verified: true, distanceLabel: '1,1 km', geo: geo(1.1), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }] },
-  { id: 'assoc_velo', kind: 'association', name: 'Vélo-Cité Montpellier', verified: true, distanceLabel: '1,3 km', geo: geo(1.3), badges: [{ kind: 'association', label: 'Association locale' }] },
+  // Professionnels & producteurs (comptes vérifiés + vraies photos = crédibilité, présence réaliste)
+  { id: 'pro_boulangerie', kind: 'professionnel', name: 'Boulangerie du Marché', merchantId: 'm_boulangerie', coverUrl: PH.bread, verified: true, online: true, neighborhood: 'Écusson', distanceLabel: '400 m', geo: geo(0.4, 'Écusson'), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 42, acceptedAnswers: 3, confirmedRecos: 6 } },
+  { id: 'pro_ferme', kind: 'producteur', name: 'La Ferme de Lucie', merchantId: 'm_ferme', coverUrl: PH.veggies, verified: true, lastActiveAt: ago(8), distanceLabel: '3,2 km', geo: geo(3.2), badges: [{ kind: 'producteur_local', label: 'Producteur local' }], reputation: { helpfulScore: 55, acceptedAnswers: 2, confirmedRecos: 11 } },
+  { id: 'pro_cafe', kind: 'professionnel', name: 'Café des Arceaux', merchantId: 'm_cafe', coverUrl: PH.cafe, verified: true, online: true, distanceLabel: '650 m', geo: geo(0.65), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 30, acceptedAnswers: 1, confirmedRecos: 4 } },
+  { id: 'pro_ceramique', kind: 'professionnel', name: 'Atelier Terracotta', merchantId: 'm_ceramique', coverUrl: PH.pottery, verified: false, lastActiveAt: ago(18), distanceLabel: '900 m', geo: geo(0.9), badges: [] },
+  { id: 'pro_cave', kind: 'professionnel', name: 'Cave des Cévennes', merchantId: 'm_cave', coverUrl: PH.wine, verified: true, lastActiveAt: ago(190), distanceLabel: '1,1 km', geo: geo(1.1), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }] },
+  { id: 'assoc_velo', kind: 'association', name: 'Vélo-Cité Montpellier', coverUrl: PH.bike, verified: true, lastActiveAt: ago(45), distanceLabel: '1,3 km', geo: geo(1.3), badges: [{ kind: 'association', label: 'Association locale' }] },
   // Particuliers (réputation = utilité, jamais popularité)
-  { id: 'part_camille', kind: 'particulier', name: 'Camille R.', distanceLabel: '300 m', geo: geo(0.3, 'Écusson'), badges: [{ kind: 'bon_conseiller', label: 'Bon conseiller' }], reputation: { helpfulScore: 64, acceptedAnswers: 9, confirmedRecos: 7 } },
+  { id: 'part_camille', kind: 'particulier', name: 'Camille R.', avatarUrl: PH.woman, online: true, distanceLabel: '300 m', geo: geo(0.3, 'Écusson'), badges: [{ kind: 'bon_conseiller', label: 'Bon conseiller' }], reputation: { helpfulScore: 64, acceptedAnswers: 9, confirmedRecos: 7 } },
   { id: 'part_leo', kind: 'particulier', name: 'Léo M.', distanceLabel: '1,4 km', geo: geo(1.4) },
   { id: 'part_sofia', kind: 'particulier', name: 'Sofia B.', distanceLabel: '2,0 km', geo: geo(2.0), badges: [{ kind: 'ambassadeur_quartier', label: 'Ambassadrice de quartier' }], reputation: { helpfulScore: 51, acceptedAnswers: 4, confirmedRecos: 9 } },
-  { id: 'part_karim', kind: 'particulier', name: 'Karim T.', distanceLabel: '750 m', geo: geo(0.75) },
+  { id: 'part_karim', kind: 'particulier', name: 'Karim T.', avatarUrl: PH.man, distanceLabel: '750 m', geo: geo(0.75) },
 ];
 
 export const MOCK_CONVERSATIONS: ChatConversation[] = [

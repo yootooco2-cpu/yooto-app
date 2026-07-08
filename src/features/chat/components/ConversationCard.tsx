@@ -8,7 +8,7 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
-import { actorKindLabel, isTerritoryActor } from '../logic';
+import { actorKindLabel, avatarUri, isTerritoryActor } from '../logic';
 import { formatChatTime } from '../time';
 import type { ChatConversationView } from '../types';
 import { ChatAvatar } from './ChatAvatar';
@@ -34,7 +34,7 @@ export function ConversationCard({ view, now, onPress }: { view: ChatConversatio
         { backgroundColor: colors.surface, borderColor: colors.border },
         pressed && styles.pressed,
       ]}>
-      <ChatAvatar name={author.name} avatarUrl={author.avatarUrl} size={52} />
+      <ChatAvatar name={author.name} avatarUrl={avatarUri(author)} size={52} />
 
       <View style={styles.mid}>
         <View style={styles.nameRow}>

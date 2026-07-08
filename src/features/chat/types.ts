@@ -39,13 +39,22 @@ export interface ChatParticipant {
   id: string;
   kind: ChatParticipantKind;
   name: string;
+  /** Photo de profil personnelle (particulier). */
   avatarUrl?: string | null;
+  /** Logo officiel du commerce (priorité 1 d'affichage). */
+  logoUrl?: string | null;
+  /** Photo de façade / image principale du commerce (priorité 2). */
+  coverUrl?: string | null;
   /** Pour un pro/producteur : le commerce rattaché (jointure future vers `merchants`). */
   merchantId?: string;
   /** Compte vérifié (identité/lieu) → socle de confiance. */
   verified?: boolean;
   badges?: ChatBadge[];
   reputation?: ChatReputation;
+  /** Présence : en ligne maintenant. */
+  online?: boolean;
+  /** Dernière activité (ISO) → statut « Actif il y a X min », etc. */
+  lastActiveAt?: string;
   /** Ancrage local. */
   neighborhood?: string;
   geo?: ChatGeo;

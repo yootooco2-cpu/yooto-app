@@ -1,5 +1,39 @@
 import type { ChatParticipant, ChatParticipantKind, ChatReputation, GeoScope } from './types';
 
+// ── Avatar : vraie photo si disponible (logo > façade/image > photo perso > initiales) ───────────
+
+/**
+ * Meilleure image d'avatar selon la PRIORITÉ : 1) logo officiel, 2) photo de façade / image
+ * principale, 3) photo de profil perso. `null` → repli sur les initiales (dernier recours).
+ */
+export function avatarUri(p: Pick<ChatParticipant, 'logoUrl' | 'coverUrl' | 'avatarUrl'>): string | null {
+  return p.logoUrl ?? p.coverUrl ?? p.avatarUrl ?? null;
+}
+
+// ── Présence : statut d'activité crédible (jamais un point vert systématique) ─────────────────────
+
+export interface Presence {
+  label: string;
+  /** Seul « En ligne » affiche la pastille verte. */
+  online: boolean;
+}
+
+/** Statut d'activité discret d'un acteur, ou `null` si aucune donnée de présence. */
+export function presence(p: Pick<ChatParticipant, 'online' | 'lastActiveAt'>, now: number): Presence | null {
+  if (p.online) return { label: 'En ligne', online: true };
+  if (!p.lastActiveAt) return null;
+  const t = Date.parse(p.lastActiveAt);
+  if (Number.isNaN(t)) return null;
+  const min = Math.floor((now - t) / 60_000);
+  if (min < 0) return { label: 'En ligne', online: true };
+  if (min < 5) return { label: `Actif il y a ${Math.max(1, min)} min`, online: false };
+  if (min < 60) return { label: `Dernière activité il y a ${min} min`, online: false };
+  const d = new Date(t);
+  const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (d.toDateString() === new Date(now).toDateString()) return { label: `Actif aujourd'hui à ${hhmm}`, online: false };
+  return { label: `Actif le ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`, online: false };
+}
+
 /** Classe une distance en portée géographique (moteur local). « route » est contextuel (trajet). */
 export function geoScope(distanceKm: number | undefined): GeoScope {
   if (distanceKm == null) return 'city';

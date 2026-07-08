@@ -8,6 +8,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
+import { avatarUri } from '../logic';
 import { REACTIONS } from '../reactions';
 import { shareService } from '../share';
 import { useChatStore } from '../store';
@@ -104,7 +105,7 @@ export function ActivityActions({ item }: { item: ActivityItem }) {
             const a = participants[c.authorId];
             return (
               <View key={c.id} style={styles.comment}>
-                <ChatAvatar name={a?.name ?? '—'} avatarUrl={a?.avatarUrl} size={28} />
+                <ChatAvatar name={a?.name ?? '—'} avatarUrl={a ? avatarUri(a) : null} size={28} />
                 <View style={styles.cbody}>
                   <View style={styles.chead}>
                     <YText numberOfLines={1} style={[styles.cname, { color: colors.text }]}>{a?.name ?? '—'}</YText>
