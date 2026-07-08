@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
+import { getMerchantCoverPhoto, useMerchants } from '@/features/merchants';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
@@ -31,6 +32,8 @@ function ChatBody() {
   const router = useRouter();
   const init = useChatStore((s) => s.init);
   const ready = useChatStore((s) => s.ready);
+  const hydrateFromMerchants = useChatStore((s) => s.hydrateFromMerchants);
+  const { data: realMerchants } = useMerchants();
   const conversations = useChatStore((s) => s.conversations);
   const participants = useChatStore((s) => s.participants);
   const messages = useChatStore((s) => s.messages);
@@ -45,6 +48,24 @@ function ChatBody() {
   useEffect(() => {
     void init();
   }, [init]);
+
+  // Réconciliation : les acteurs pro du Chat = vrais commerces Supabase (nom, photo, fiche).
+  useEffect(() => {
+    if (!realMerchants) return;
+    const list = realMerchants
+      .map((m) => ({ m, photo: getMerchantCoverPhoto(m) }))
+      .filter((x) => x.photo !== null)
+      .slice(0, 8)
+      .map(({ m, photo }) => ({
+        id: m.id,
+        name: m.name,
+        category: m.category,
+        photo: photo as string,
+        distanceLabel: m.distanceLabel && m.distanceLabel !== '—' ? m.distanceLabel : undefined,
+        isProducer: m.isProducer,
+      }));
+    if (list.length > 0) hydrateFromMerchants(list);
+  }, [realMerchants, hydrateFromMerchants]);
 
   const q = query.trim().toLowerCase();
   const unread = useMemo(() => unreadPrivateCount(conversations), [conversations]);

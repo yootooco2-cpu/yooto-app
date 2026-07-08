@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { isLiveNow } from './logic';
+import { buildMerchantTemplate, MERCHANT_SLOTS, type ChatMerchant } from './merchantContent';
 import { CURRENT_USER_ID } from './mockData';
 import { mockChatRepository, type ChatRepository } from './repository';
 import type {
@@ -32,7 +33,9 @@ interface ChatState {
   saved: Record<string, boolean>; // publications enregistrées (id → true)
   myReactions: Record<string, ReactionEmoji | undefined>; // ma réaction par activité
   commentsByActivity: Record<string, ActivityComment[]>; // réponses par activité
+  merchantsHydrated: boolean; // acteurs pro reliés aux vrais commerces Supabase
   init: () => Promise<void>;
+  hydrateFromMerchants: (merchants: ChatMerchant[]) => void;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, body: string) => Promise<void>;
   createConversation: (input: { title: string; body: string; categoryId?: string }) => Promise<string>;
@@ -73,6 +76,7 @@ export const useChatStore = create<ChatState>()((set, get) => ({
   saved: {},
   myReactions: {},
   commentsByActivity: {},
+  merchantsHydrated: false,
 
   async init() {
     if (get().ready) return;
@@ -184,6 +188,67 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     set((s) => ({
       commentsByActivity: { ...s.commentsByActivity, [activityId]: [...(s.commentsByActivity[activityId] ?? []), comment] },
     }));
+  },
+
+  hydrateFromMerchants(list) {
+    if (get().merchantsHydrated) return;
+    const picked = list.slice(0, MERCHANT_SLOTS.length);
+    if (picked.length === 0) return; // aucun merchant réel dispo → on conserve le mock (fallback propre)
+
+    const bySlot = new Map<string, { m: ChatMerchant; t: ReturnType<typeof buildMerchantTemplate> }>();
+    MERCHANT_SLOTS.forEach((slot, i) => {
+      const m = picked[i];
+      if (m) bySlot.set(slot, { m, t: buildMerchantTemplate(m, i) });
+    });
+    const now = Date.now();
+
+    set((s) => {
+      const participants: Record<string, ChatParticipant> = { ...s.participants };
+      bySlot.forEach(({ m }, slot) => {
+        const prev = participants[slot];
+        participants[slot] = {
+          ...prev,
+          id: slot,
+          name: m.name,
+          kind: m.isProducer ? 'producteur' : 'professionnel',
+          coverUrl: m.photo,
+          avatarUrl: null,
+          merchantId: m.id,
+          verified: true,
+          distanceLabel: m.distanceLabel ?? prev?.distanceLabel,
+        };
+      });
+
+      const activity = s.activity.map((a) => {
+        const entry = bySlot.get(a.authorId);
+        if (!entry) return a;
+        const { t } = entry;
+        return { ...a, emoji: t.emoji, title: t.title, body: t.body, categoryId: t.chatCategory };
+      });
+
+      const conversations = s.conversations.map((c) => {
+        const entry = bySlot.get(c.authorId);
+        if (!entry) return c;
+        return { ...c, title: c.visibility === 'private' ? entry.m.name : entry.t.discussionTitle };
+      });
+
+      const messages = { ...s.messages };
+      conversations.forEach((c) => {
+        const entry = bySlot.get(c.authorId);
+        if (!entry) return;
+        if (c.visibility === 'private') {
+          messages[c.id] = [
+            { id: `${c.id}_m1`, conversationId: c.id, senderId: s.currentUserId, body: entry.t.dmFromUser, createdAt: new Date(now - 90 * 60000).toISOString() },
+            { id: `${c.id}_m2`, conversationId: c.id, senderId: c.authorId, body: entry.t.dmFromMerchant, createdAt: new Date(now - 12 * 60000).toISOString() },
+          ];
+        } else {
+          const existing = messages[c.id] ?? [];
+          if (existing[0]) messages[c.id] = [{ ...existing[0], body: entry.t.body }, ...existing.slice(1)];
+        }
+      });
+
+      return { participants, activity, conversations, messages, merchantsHydrated: true };
+    });
   },
 }));
 

@@ -25,6 +25,7 @@ export type {
   NotificationKind,
 } from './types';
 export { CURRENT_USER_ID } from './mockData';
+export { type ChatMerchant } from './merchantContent';
 export { mockChatRepository, type ChatRepository } from './repository';
 export { aiProvider, noopAIProvider, type AIProvider } from './ai';
 export { REACTIONS, reactionLabel } from './reactions';

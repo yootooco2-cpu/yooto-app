@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -22,6 +23,8 @@ import { FollowPill } from './FollowPill';
  */
 export function ActivityCard({ item, author, now }: { item: ActivityItem; author?: ChatParticipant; now: number }) {
   const { colors } = useTheme();
+  const router = useRouter();
+  const merchantId = author?.merchantId;
   const category = chatCategoryById(item.categoryId);
   const accent = category?.accent ?? colors.primary;
   const isBiz = Boolean(author && isTerritoryActor(author.kind));
@@ -39,14 +42,21 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.top}>
-        <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={40} online={online} />
-        <View style={styles.who}>
-          <View style={styles.nameRow}>
-            <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>{author?.name ?? '—'}</YText>
-            {author?.verified ? <Feather name="check-circle" size={13} color={accent} /> : null}
+        <Pressable
+          style={styles.identity}
+          disabled={!merchantId}
+          onPress={() => merchantId && router.push(`/merchant/${merchantId}`)}
+          accessibilityRole={merchantId ? 'button' : undefined}
+          accessibilityLabel={merchantId ? `Voir la fiche de ${author?.name}` : undefined}>
+          <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={40} online={online} />
+          <View style={styles.who}>
+            <View style={styles.nameRow}>
+              <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>{author?.name ?? '—'}</YText>
+              {author?.verified ? <Feather name="check-circle" size={13} color={accent} /> : null}
+            </View>
+            {meta ? <YText variant="caption" color="muted" numberOfLines={1}>{meta}</YText> : null}
           </View>
-          {meta ? <YText variant="caption" color="muted" numberOfLines={1}>{meta}</YText> : null}
-        </View>
+        </Pressable>
         <View style={styles.right}>
           {live || fresh ? (
             <View style={styles.live}>
@@ -87,6 +97,7 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
 const styles = StyleSheet.create({
   card: { gap: spacing.sm, padding: spacing.md, borderRadius: radii.xl, borderWidth: 1, ...shadows.sm },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  identity: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   who: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   name: { flexShrink: 1, fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
