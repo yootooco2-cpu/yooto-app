@@ -100,8 +100,12 @@ function ChatBody() {
 
       {space === 'discussions' ? <ChatCategoryBar activeId={category} onSelect={setCategory} /> : null}
 
+      {/* ZONE DE CONTENU À RÉGION FIXE (`flex: 1`) : seule la LISTE évolue à l'intérieur de son
+          cadre. L'en-tête, les onglets et les sous-catégories (au-dessus) ne bougent JAMAIS —
+          changer de catégorie n'est qu'un filtre, jamais une reconstruction d'écran. */}
       {space === 'activity' ? (
         <FlatList
+          style={styles.list}
           data={shownActivity}
           keyExtractor={(a) => a.id}
           renderItem={({ item }) => <ActivityCard item={item} author={participants[item.authorId]} now={now} />}
@@ -119,6 +123,7 @@ function ChatBody() {
         />
       ) : (
         <FlatList
+          style={styles.list}
           data={(space === 'discussions' ? discussionViews : messageViews).filter((v) => (q ? matchesQuery(v) : true))}
           keyExtractor={(v) => v.conversation.id}
           renderItem={({ item }) => (
@@ -160,6 +165,9 @@ const styles = StyleSheet.create({
   iconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   iconBtnActive: { opacity: 0.9 },
   iconBtnPressed: { opacity: 0.72, transform: [{ scale: 0.95 }] },
+  // Région de contenu FIXE : la liste occupe tout l'espace sous les filtres et défile en interne
+  // → l'en-tête/onglets/sous-catégories restent parfaitement immobiles quel que soit le filtre.
+  list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.lg },
   feedHead: { gap: spacing.lg, marginBottom: spacing.md },
 });
