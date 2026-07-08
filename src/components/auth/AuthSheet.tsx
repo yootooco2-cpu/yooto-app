@@ -1,7 +1,8 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { GoogleG } from '@/components/settings/BrandIcon';
 import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
@@ -11,7 +12,7 @@ import { spacing } from '@/design/tokens/spacing';
 import { typography } from '@/design/tokens/typography';
 import { continueWithProvider, signInWithEmailLink } from '@/lib/supabase/authActions';
 
-/** Bouton social (conventions Google / Apple approximées). */
+/** Bouton social avec les LOGOS OFFICIELS (Google quadrichrome, Apple monochrome). */
 function SocialButton({ provider, onPress }: { provider: 'google' | 'apple'; onPress: () => void }) {
   const isApple = provider === 'apple';
   return (
@@ -21,11 +22,9 @@ function SocialButton({ provider, onPress }: { provider: 'google' | 'apple'; onP
       accessibilityLabel={isApple ? 'Continuer avec Apple' : 'Continuer avec Google'}
       style={({ pressed }) => [styles.social, isApple ? styles.apple : styles.google, pressed && styles.pressed]}>
       {isApple ? (
-        <YText style={[styles.glyph, { color: '#FFFFFF' }]}>{''}</YText>
+        <MaterialCommunityIcons name="apple" size={20} color="#FFFFFF" />
       ) : (
-        <View style={styles.gBadge}>
-          <YText style={styles.gLetter}>G</YText>
-        </View>
+        <GoogleG size={20} />
       )}
       <YText style={[styles.socialLabel, { color: isApple ? '#FFFFFF' : colors.text }]}>
         {isApple ? 'Continuer avec Apple' : 'Continuer avec Google'}
@@ -46,7 +45,7 @@ interface Props {
  * garder (favori). Upgrade zéro perte : si session anonyme → liaison d'identité (favoris conservés).
  * Non bloquante : « Plus tard » referme sans rien perdre.
  */
-export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
+export function AuthSheet({ open, onClose }: Props) {
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -76,10 +75,7 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
     else setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Envoi impossible, vérifiez l’email.');
   };
 
-  const title =
-    favoritesCount > 0
-      ? `Gardez vos ${favoritesCount} favori${favoritesCount > 1 ? 's' : ''}`
-      : 'Rejoignez YOOTOO';
+  const title = 'Rejoignez YOOTOO';
 
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
@@ -96,7 +92,7 @@ export function AuthSheet({ open, onClose, favoritesCount = 0 }: Props) {
             </Pressable>
           </View>
           <YText variant="body" style={{ color: glass.onDarkMuted, marginBottom: spacing.md }}>
-            Retrouvez-les sur tous vos appareils. Sans mot de passe, en quelques secondes.
+            Créez votre compte et synchronisez-le sur tous vos appareils. Sans mot de passe, en quelques secondes.
           </YText>
 
           {!showEmail ? (
@@ -174,10 +170,7 @@ const styles = StyleSheet.create({
   google: { backgroundColor: colors.surface, borderColor: colors.border },
   apple: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
   pressed: { opacity: 0.9 },
-  glyph: { fontSize: 18 },
   socialLabel: { fontSize: typography.body.fontSize, fontWeight: '600' },
-  gBadge: { width: 20, height: 20, borderRadius: 4, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  gLetter: { color: '#4285F4', fontWeight: '800', fontSize: 14 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   line: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.14)' },
   field: {

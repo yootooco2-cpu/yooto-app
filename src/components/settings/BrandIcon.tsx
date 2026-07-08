@@ -5,7 +5,7 @@ import Svg, { Path } from 'react-native-svg';
 import { radii } from '@/design/tokens/radii';
 
 /** Logo Google officiel « G » quadrichrome (mark de connexion Google). */
-function GoogleG({ size = 18 }: { size?: number }) {
+export function GoogleG({ size = 18 }: { size?: number }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" accessibilityRole="image" accessibilityLabel="Google">
       <Path
