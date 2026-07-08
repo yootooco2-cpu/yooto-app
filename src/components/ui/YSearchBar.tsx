@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { Platform, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -13,13 +14,11 @@ type Props = Omit<TextInputProps, 'style'> & {
   variant?: 'default' | 'glass';
 };
 
-export function YSearchBar({
-  value,
-  onChangeText,
-  placeholder = 'Rechercher un commerce, un produit…',
-  variant = 'default',
-  ...props
-}: Props) {
+/** Barre de recherche YOOTOO. `ref` transmis au `TextInput` → focus programmatique possible. */
+export const YSearchBar = forwardRef<TextInput, Props>(function YSearchBar(
+  { value, onChangeText, placeholder = 'Rechercher un commerce, un produit…', variant = 'default', ...props },
+  ref,
+) {
   const { colors } = useTheme();
   const isGlass = variant === 'glass';
   const iconColor = isGlass ? glass.onDarkMuted : colors.mutedText;
@@ -36,6 +35,7 @@ export function YSearchBar({
         <View style={[styles.glassHandle, { backgroundColor: iconColor }]} />
       </View>
       <TextInput
+        ref={ref}
         style={[styles.input, { color: isGlass ? glass.onDark : colors.text }]}
         value={value}
         onChangeText={onChangeText}
@@ -47,7 +47,7 @@ export function YSearchBar({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {

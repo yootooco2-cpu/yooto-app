@@ -13,13 +13,15 @@ interface Props {
   /** Catégorie active (`all` = toutes). */
   activeId: string;
   onSelect: (id: string) => void;
+  /** Densité réduite (en-tête compact). */
+  dense?: boolean;
 }
 
 /**
  * Barre horizontale des CATÉGORIES de discussion. Chaque capsule active prend la COULEUR de sa
  * catégorie (identité chaleureuse et repérage immédiat) ; « Toutes » prend l'accent de l'univers.
  */
-export function ChatCategoryBar({ activeId, onSelect }: Props) {
+export function ChatCategoryBar({ activeId, onSelect, dense = false }: Props) {
   const section = useSectionTheme();
   const items = [{ id: 'all', label: 'Toutes', icon: 'grid' as const, accent: section.accent }, ...CHAT_CATEGORIES];
 
@@ -36,6 +38,7 @@ export function ChatCategoryBar({ activeId, onSelect }: Props) {
             accessibilityLabel={c.label}
             style={({ pressed }) => [
               styles.chip,
+              dense && styles.chipDense,
               active ? { backgroundColor: c.accent, borderColor: c.accent } : glass.panel,
               pressed && styles.pressed,
             ]}>
@@ -62,5 +65,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
   },
+  chipDense: { minHeight: 32, paddingVertical: 5, paddingHorizontal: spacing.sm + 4 },
   pressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
 });

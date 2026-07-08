@@ -19,7 +19,7 @@ const SPACES: { id: ChatSpace; label: string; icon: keyof typeof Feather.glyphMa
  * Sélecteur des trois ESPACES du Chat : Activité (le fil vivant) · Discussions (public) ·
  * Messages (privé). Contrôle segmenté en verre, segment actif teinté de l'univers Chat.
  */
-export function ChatSpaceSwitcher({ space, onChange, unread = 0 }: { space: ChatSpace; onChange: (s: ChatSpace) => void; unread?: number }) {
+export function ChatSpaceSwitcher({ space, onChange, unread = 0, dense = false }: { space: ChatSpace; onChange: (s: ChatSpace) => void; unread?: number; dense?: boolean }) {
   const section = useSectionTheme();
   return (
     <View style={[styles.container, glass.panel]}>
@@ -33,7 +33,7 @@ export function ChatSpaceSwitcher({ space, onChange, unread = 0 }: { space: Chat
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             accessibilityLabel={s.label}
-            style={[styles.segment, active && { backgroundColor: section.accent }]}>
+            style={[styles.segment, dense && styles.segmentDense, active && { backgroundColor: section.accent }]}>
             <Feather name={s.icon} size={15} color={color} />
             <YText variant="caption" numberOfLines={1} style={{ color, fontWeight: '700' }}>
               {s.label}
@@ -61,6 +61,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     borderRadius: radii.md,
   },
+  segmentDense: { paddingVertical: 6 },
   badge: { minWidth: 18, height: 18, borderRadius: 9, paddingHorizontal: 5, alignItems: 'center', justifyContent: 'center' },
   badgeText: { fontSize: 11, fontWeight: '800' },
 });

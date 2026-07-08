@@ -5,7 +5,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
+import { shadows } from '@/design/tokens/shadows';
 import { useProfileRow, useSession } from '@/features/auth';
+
+/** Anneau noir mat de l'avatar — identité personnelle, cohérente dans toute l'application. */
+const RING = '#0E1310';
 
 /** Initiale d'affichage (prénom ou email) pour le repli sans photo. */
 function initialOf(name: string | null, email: string | null): string {
@@ -14,11 +18,11 @@ function initialOf(name: string | null, email: string | null): string {
 }
 
 /**
- * Bouton AVATAR de profil — à côté de la barre de recherche (menu partagé). Affiche la photo de
- * profil (ou l'initiale en repli) et une PASTILLE VERTE quand l'utilisateur est connecté. Tap →
- * écran Profil. Lit la session en interne : réutilisable tel quel partout où vit le menu.
+ * Bouton AVATAR de profil — identité personnelle RÉUTILISÉE partout : photo (ou initiale), ANNEAU
+ * NOIR MAT, pastille verte « en ligne » quand connecté, ombre très légère. Tap → écran Profil.
+ * `size` permet de l'adapter (56 par défaut ; 48 dans l'en-tête du Chat) sans dupliquer le composant.
  */
-export function ProfileAvatarButton() {
+export function ProfileAvatarButton({ size = 56 }: { size?: number }) {
   const router = useRouter();
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -26,53 +30,38 @@ export function ProfileAvatarButton() {
   const avatarUrl = isAuthenticated ? profileRow.avatarUrl ?? identity?.avatarUrl : null;
   const initial = initialOf(profileRow.displayName ?? identity?.displayName ?? null, identity?.email ?? profileRow.email);
 
+  const dot = Math.round(size * 0.3);
+  const dotBorder = Math.max(2, Math.round(size * 0.055));
+
   return (
     <Pressable
       onPress={() => router.push('/profile')}
       accessibilityRole="button"
       accessibilityLabel={isAuthenticated ? 'Mon profil' : 'Se connecter'}
-      style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}>
-      {/* Cercle = EXACTEMENT le fond de la barre de recherche (glass.panel : couleur + opacité +
-          blur web + bordure). Langage visuel unique ; seul le contour/fond change. */}
-      <View style={[styles.avatar, glass.panel]}>
+      style={({ pressed }) => [{ width: size, height: size }, shadows.sm, pressed && styles.pressed]}>
+      {/* Fond en verre + ANNEAU NOIR MAT (l'anneau prime sur la bordure du verre). */}
+      <View style={[styles.avatar, glass.panel, styles.ring, { width: size, height: size, borderRadius: size / 2 }]}>
         {avatarUrl ? (
           <Image source={avatarUrl} style={styles.img} contentFit="cover" recyclingKey={avatarUrl} />
         ) : isAuthenticated ? (
-          <YText style={[styles.initial, { color: glass.onDark }]}>{initial}</YText>
+          <YText style={[styles.initial, { fontSize: size * 0.4, color: glass.onDark }]}>{initial}</YText>
         ) : (
-          <Feather name="user" size={24} color={glass.onDark} />
+          <Feather name="user" size={size * 0.43} color={glass.onDark} />
         )}
       </View>
-      {isAuthenticated ? <View style={styles.dot} /> : null}
+      {isAuthenticated ? (
+        <View style={[styles.dot, { width: dot, height: dot, borderRadius: dot / 2, borderWidth: dotBorder }]} />
+      ) : null}
     </Pressable>
   );
 }
 
-const SIZE = 56;
 const styles = StyleSheet.create({
-  wrap: { width: SIZE, height: SIZE },
   pressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
-  avatar: {
-    width: SIZE,
-    height: SIZE,
-    borderRadius: SIZE / 2,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Fond/contour = glass.panel (appliqué inline), exactement comme la barre de recherche.
-  },
+  avatar: { overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
+  ring: { borderWidth: 2, borderColor: RING },
   img: { width: '100%', height: '100%' },
-  initial: { fontSize: 22, fontWeight: '800' },
-  // Pastille de présence : vert connecté, bord sombre pour se détacher de la photo.
-  dot: {
-    position: 'absolute',
-    right: -1,
-    bottom: -1,
-    width: 17,
-    height: 17,
-    borderRadius: 8.5,
-    backgroundColor: '#69B96C',
-    borderWidth: 3,
-    borderColor: '#111714',
-  },
+  initial: { fontWeight: '800' },
+  // Pastille de présence « en ligne » : vert connecté, bord mat pour se détacher de la photo.
+  dot: { position: 'absolute', right: -1, bottom: -1, backgroundColor: '#69B96C', borderColor: RING },
 });

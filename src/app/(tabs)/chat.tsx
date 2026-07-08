@@ -1,8 +1,9 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YScreen } from '@/components/ui/YScreen';
 import { YSearchBar } from '@/components/ui/YSearchBar';
@@ -50,9 +51,9 @@ function ChatBody() {
 
   const [space, setSpace] = useState<ChatSpace>('activity');
   const [category, setCategory] = useState('all');
-  const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState('');
   const [now] = useState(() => Date.now());
+  const searchRef = useRef<TextInput>(null);
 
   useEffect(() => {
     void init();
@@ -79,26 +80,34 @@ function ChatBody() {
   const highlight = highlightActivity(activity, now);
 
   return (
-    <YScreen transparent gap="md" padding="lg">
-      {/* En-tête : identité + recherche + nouveau message. */}
+    <YScreen transparent gap="sm" padding="lg">
+      {/* LIGNE 1 — avatar (identité personnelle) + titre + actions. En-tête COMPACT. */}
       <View style={styles.header}>
+        <ProfileAvatarButton size={48} />
         <View style={styles.titleCol}>
           <YText style={[styles.title, { color: glass.onDark }]}>Chat</YText>
-          <YText style={[styles.subtitle, { color: glass.onDarkMuted }]}>Échangez avec votre communauté locale</YText>
+          <YText numberOfLines={1} style={[styles.subtitle, { color: glass.onDarkMuted }]}>Échangez avec votre communauté locale</YText>
         </View>
         <View style={styles.actions}>
-          <IconButton icon="search" label="Rechercher" active={searching} onPress={() => setSearching((s) => !s)} />
+          <IconButton icon="search" label="Rechercher" onPress={() => searchRef.current?.focus()} />
           <IconButton icon="edit" label="Nouveau message" onPress={() => router.push('/chat/new')} />
         </View>
       </View>
 
-      <ChatSpaceSwitcher space={space} onChange={setSpace} unread={unread} />
+      {/* BARRE DE RECHERCHE PERMANENTE — ancrage fixe, jamais masquée par un changement de catégorie. */}
+      <YSearchBar
+        ref={searchRef}
+        variant="glass"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Rechercher une discussion, un commerçant ou une personne…"
+      />
 
-      {searching ? (
-        <YSearchBar variant="glass" value={query} onChangeText={setQuery} placeholder="Rechercher dans la place du village…" />
-      ) : null}
+      {/* LIGNE 2 — onglets principaux (compacts). */}
+      <ChatSpaceSwitcher space={space} onChange={setSpace} unread={unread} dense />
 
-      {space === 'discussions' ? <ChatCategoryBar activeId={category} onSelect={setCategory} /> : null}
+      {/* LIGNE 3 — sous-catégories (denses), uniquement pour Discussions. */}
+      {space === 'discussions' ? <ChatCategoryBar activeId={category} onSelect={setCategory} dense /> : null}
 
       {/* ZONE DE CONTENU À RÉGION FIXE (`flex: 1`) : seule la LISTE évolue à l'intérieur de son
           cadre. L'en-tête, les onglets et les sous-catégories (au-dessus) ne bougent JAMAIS —
@@ -157,10 +166,10 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  titleCol: { flex: 1, gap: 4 },
-  title: { fontSize: 28, fontWeight: '800', letterSpacing: -0.6 },
-  subtitle: { fontSize: 14, lineHeight: 20 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  titleCol: { flex: 1, gap: 1 },
+  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
+  subtitle: { fontSize: 13, lineHeight: 17 },
   actions: { flexDirection: 'row', gap: spacing.sm },
   iconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   iconBtnActive: { opacity: 0.9 },
