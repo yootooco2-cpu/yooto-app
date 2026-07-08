@@ -389,7 +389,9 @@ export default function MapScreen() {
                   showsHorizontalScrollIndicator={false}
                   style={styles.filtersScroll}
                   contentContainerStyle={styles.filters}>
-                  {QUICK_FILTERS.map((filter) => (
+                  {/* Sur la carte : uniquement « Ouvert maintenant » (Autour de moi / Producteurs
+                      retirés de cette ligne — inchangés sur /commerçants). */}
+                  {QUICK_FILTERS.filter((filter) => filter.id === 'open').map((filter) => (
                     <YChip
                       key={filter.id}
                       label={filter.label}
