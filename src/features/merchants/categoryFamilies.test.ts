@@ -68,6 +68,22 @@ describe('categoryFamilies', () => {
     expect(resto?.children?.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
   });
 
+  it('Culture = 10 sous-catégories (picto + accent) ; Cinémas & Spectacles supprimés', () => {
+    const cult = categoryFamilyById('culture');
+    expect(cult?.children?.length).toBe(10);
+    expect(cult?.children?.map((i) => i.id)).toEqual([
+      'librairies', 'musees', 'galeries-art', 'theatres', 'salles-concert',
+      'mediatheques', 'disquaires', 'ateliers-creatifs', 'patrimoine', 'evenements-locaux',
+    ]);
+    expect(cult?.children?.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
+    // Cinémas & Spectacles n'existent plus.
+    const ids = cult?.children?.map((i) => i.id) ?? [];
+    expect(ids).not.toContain('cinemas');
+    expect(ids).not.toContain('spectacles');
+    const musees = cult?.children?.find((i) => i.id === 'musees');
+    expect(musees?.match?.(merchant({ name: 'Musée Fabre' }))).toBe(true);
+  });
+
   it('Artisanat = navigation à 3 niveaux : 11 familles (badge + accent) → métiers', () => {
     const art = categoryFamilyById('artisanat');
     // Niveau 2 : 11 familles, chacune avec pictogramme dédié + accent + enfants (métiers).

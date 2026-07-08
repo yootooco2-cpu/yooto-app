@@ -245,6 +245,25 @@ const ARTISANAT_KEYWORDS: string[] = ARTISANAT_FAMILIES.flatMap((f) => f.metiers
 const artisanatMatch: MerchantPredicate = either(catMatch('artisanat'), textMatch(...ARTISANAT_KEYWORDS));
 
 /**
+ * CULTURE — 10 lieux/univers avec pictogramme dédié + couleur d'accent (référence validée).
+ * Structure plate extensible. Reconnaissance TEXTE transversale + catégories culture existantes.
+ */
+const CULTURE_METIERS: { id: string; label: string; accent: string; keywords: string[] }[] = [
+  { id: 'librairies', label: 'Librairies', accent: '#8B5E3C', keywords: ['librairie', 'bouquiniste', 'livre'] },
+  { id: 'musees', label: 'Musées', accent: '#B79C7A', keywords: ['musee', 'museum'] },
+  { id: 'galeries-art', label: "Galeries d'art", accent: '#8A63D2', keywords: ['galerie', 'exposition', 'vernissage'] },
+  { id: 'theatres', label: 'Théâtres', accent: '#9B2F3F', keywords: ['theatre'] },
+  { id: 'salles-concert', label: 'Salles de concert', accent: '#4A6FA5', keywords: ['salle de concert', 'concert', 'opera', 'philharmonie', 'zenith', 'auditorium', 'salle de spectacle'] },
+  { id: 'mediatheques', label: 'Médiathèques', accent: '#5F8D7A', keywords: ['mediatheque', 'bibliotheque'] },
+  { id: 'disquaires', label: 'Disquaires', accent: '#3B3B3B', keywords: ['disquaire', 'vinyle', 'disque'] },
+  { id: 'ateliers-creatifs', label: 'Ateliers créatifs', accent: '#E09F3E', keywords: ['atelier creatif', 'atelier d art', 'cours de peinture', 'atelier artistique', 'atelier de dessin'] },
+  { id: 'patrimoine', label: 'Patrimoine', accent: '#A8895C', keywords: ['patrimoine', 'monument', 'chateau', 'abbaye', 'cathedrale', 'site historique'] },
+  { id: 'evenements-locaux', label: 'Événements locaux', accent: '#D77A3D', keywords: ['evenement', 'festival', 'billetterie', 'agenda culturel', 'salle des fetes'] },
+];
+const CULTURE_KEYWORDS: string[] = CULTURE_METIERS.flatMap((m) => m.keywords);
+const cultureMatch: MerchantPredicate = either(CULTURE, textMatch(...CULTURE_KEYWORDS));
+
+/**
  * Grandes familles (Niveau 1) + « Tous » géré à part par le composant. Chaque famille est une
  * BRANCHE (`children`). « Plus » regroupe les catégories restantes (nature / autres).
  */
@@ -308,17 +327,12 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     children: artisanatChildren,
   },
   {
+    // Culture — 10 lieux/univers avec pictogrammes dédiés (référence). Cinémas & Spectacles retirés.
     id: 'culture',
     label: 'Culture',
     icon: 'book-open',
-    match: CULTURE,
-    children: [
-      item('librairies', 'Librairies', catMatch('librairies')),
-      item('musees', 'Musées', withText(catMatch('culture'), 'musee', 'museum')),
-      item('galeries', 'Galeries', withText(catMatch('culture'), 'galerie', 'exposition', 'expo')),
-      item('cinemas', 'Cinémas', withText(catMatch('culture'), 'cinema', 'cine')),
-      item('spectacles', 'Spectacles', withText(catMatch('culture'), 'spectacle', 'theatre', 'concert', 'salle')),
-    ],
+    match: cultureMatch,
+    children: CULTURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
     id: 'mobilite',
