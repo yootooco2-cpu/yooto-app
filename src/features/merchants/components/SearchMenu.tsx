@@ -54,7 +54,11 @@ export function SearchMenu({ query, onQueryChange, onCategoryChange, placeholder
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
+  // Le menu (et donc le RIDEAU de sous-catégories qui déborde en absolu) doit toujours passer
+  // AU-DESSUS des frères suivants (carrousels de recommandations, grille commerces…). Sans cela,
+  // ces frères, plus bas dans le DOM, se peignent par-dessus le rideau. On élève tout le sous-arbre
+  // du menu ; le rideau interne suit sa pile locale. `position:'relative'` rend le zIndex effectif.
+  wrap: { gap: spacing.sm, position: 'relative', zIndex: 20 },
   head: { gap: 2, paddingHorizontal: spacing.xs },
   title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.4 },
   subtitle: { fontSize: 14, lineHeight: 19 },
