@@ -1,42 +1,33 @@
 import { useRouter } from 'expo-router';
-import { useMemo } from 'react';
-import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import { MerchantCard } from '@/components/cards/MerchantCard';
+import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
-import { YChip } from '@/components/ui/YChip';
-import { SectionScreen } from '@/components/theme/SectionScreen';
-import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
-import { YSearchBar } from '@/components/ui/YSearchBar';
+import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YText } from '@/components/ui/YText';
 import { spacing } from '@/design/tokens/spacing';
 import {
-  QUICK_FILTERS,
-  filterCryptogramAsset,
+  SearchMenu,
   useMerchantSearch,
-  useMerchantSearchStore,
   type Merchant,
+  type MerchantPredicate,
 } from '@/features/merchants';
-import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
-import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
 
 export default function MerchantsScreen() {
   const router = useRouter();
-  const { query, setQuery, filters, toggleFilter, results, isLoading, isError, refetch } =
-    useMerchantSearch();
+  const { query, setQuery, results, isLoading, isError, refetch } = useMerchantSearch();
 
-  // Catégorie principale sélectionnée : SOURCE UNIQUE dans le store (présélectionnable
-  // depuis l'Accueil). Post-filtre local de la grille ; n'altère pas useMerchantSearch.
-  const activeCategory = useMerchantSearchStore((s) => s.activeCategory);
-  const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
-  const displayed = useMemo(() => {
-    const cat = merchantCategoryById(activeCategory);
-    return cat ? results.filter(cat.match) : results;
-  }, [results, activeCategory]);
+  // Filtre catégorie (prédicat) émis par le MENU OFFICIEL PARTAGÉ → post-filtre local de la grille.
+  const [categoryMatch, setCategoryMatch] = useState<MerchantPredicate | null>(null);
+  const displayed = useMemo(
+    () => (categoryMatch ? results.filter(categoryMatch) : results),
+    [results, categoryMatch],
+  );
 
-  // Grille fixe : exactement 3 colonnes sur toutes les tailles d'écran.
   const numColumns = 3;
 
   const renderItem = ({ item }: { item: Merchant }) => (
@@ -51,89 +42,55 @@ export default function MerchantsScreen() {
   return (
     <SectionScreen section="commerce">
       <YScreen transparent gap="sm" padding="lg">
-      <YText variant="caption" color="primary">
-        YOOTOO · Commerçants
-      </YText>
+        {/* MENU OFFICIEL PARTAGÉ (identique à Carte & Accueil) : recherche + catégories. */}
+        <SearchMenu query={query} onQueryChange={setQuery} onCategoryChange={(m) => setCategoryMatch(() => m)} />
 
-      <YSearchBar value={query} onChangeText={setQuery} />
-
-      {/* Catégories principales sous la recherche (navigation guidée). */}
-      <MerchantCategoryBar
-        active={activeCategory}
-        onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
-        contentContainerStyle={styles.filters}>
-        {QUICK_FILTERS.map((filter) => (
-          <YChip
-            key={filter.id}
-            label={filter.label}
-            icon={filterCryptogramAsset(filter.id)}
-            active={filters.includes(filter.id)}
-            onPress={() => toggleFilter(filter.id)}
-          />
-        ))}
-      </ScrollView>
-
-      {isLoading ? (
-        <YText variant="body" color="muted">
-          Chargement des commerces…
-        </YText>
-      ) : isError ? (
-        <YCard variant="outline">
-          <YText variant="subtitle">Impossible de charger les commerces</YText>
+        {isLoading ? (
           <YText variant="body" color="muted">
-            Vérifiez votre connexion, puis réessayez.
+            Chargement des commerces…
           </YText>
-          <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
-        </YCard>
-      ) : (
-        // FlatList = virtualisation : seuls les éléments visibles sont rendus
-        // (scroll fluide même avec des centaines de commerces).
-        <FlatList
-          key={`cols-${numColumns}`}
-          style={styles.list}
-          data={displayed}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          numColumns={numColumns}
-          columnWrapperStyle={numColumns > 1 ? styles.column : undefined}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={8}
-          maxToRenderPerBatch={8}
-          windowSize={7}
-          ListHeaderComponent={
-            <YText variant="label" color="muted">
-              {displayed.length} commerce{displayed.length > 1 ? 's' : ''}
-            </YText>
-          }
-          ListEmptyComponent={
+        ) : isError ? (
+          <YCard variant="outline">
+            <YText variant="subtitle">Impossible de charger les commerces</YText>
             <YText variant="body" color="muted">
-              Aucun commerce ne correspond à votre recherche.
+              Vérifiez votre connexion, puis réessayez.
             </YText>
-          }
-        />
-      )}
-      <SupportContactFooter />
+            <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
+          </YCard>
+        ) : (
+          // FlatList = virtualisation : seuls les éléments visibles sont rendus.
+          <FlatList
+            key={`cols-${numColumns}`}
+            style={styles.list}
+            data={displayed}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            numColumns={numColumns}
+            columnWrapperStyle={numColumns > 1 ? styles.column : undefined}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            initialNumToRender={8}
+            maxToRenderPerBatch={8}
+            windowSize={7}
+            ListHeaderComponent={
+              <YText variant="label" color="muted">
+                {displayed.length} commerce{displayed.length > 1 ? 's' : ''}
+              </YText>
+            }
+            ListEmptyComponent={
+              <YText variant="body" color="muted">
+                Aucun commerce ne correspond à votre recherche.
+              </YText>
+            }
+          />
+        )}
+        <SupportContactFooter />
       </YScreen>
     </SectionScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  filtersScroll: {
-    flexGrow: 0,
-  },
-  filters: {
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
-    alignItems: 'center',
-  },
   list: {
     flex: 1,
   },

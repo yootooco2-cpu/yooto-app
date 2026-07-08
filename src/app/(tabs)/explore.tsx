@@ -20,7 +20,6 @@ import { YCard } from '@/components/ui/YCard';
 import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { PreferenceService } from '@/services/PreferenceService';
-import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { glass } from '@/design/tokens/glass';
@@ -40,7 +39,7 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
-import { CategoryNavigation } from '@/features/merchants/components/CategoryNavigation';
+import { SearchMenu } from '@/features/merchants/components/SearchMenu';
 import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
 import { useSettings } from '@/features/settings/SettingsProvider';
@@ -376,11 +375,10 @@ export default function MapScreen() {
                 pointerEvents="none"
               />
               <View style={styles.topChromeInner} pointerEvents="box-none">
-                <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-                {/* Navigation catégories à 2 niveaux (grandes familles → sous-catégories).
-                    On enveloppe le prédicat dans `() => match` : sinon React interprète la fonction
-                    passée au setter comme un updater et l'exécute (bug). */}
-                <CategoryNavigation onChange={(match) => setMapMatch(() => match)} />
+                {/* MENU OFFICIEL PARTAGÉ (recherche + catégories). Le prédicat est enveloppé dans
+                    `() => match` : sinon React interprète la fonction passée au setter comme un
+                    updater et l'exécute (bug). */}
+                <SearchMenu query={query} onQueryChange={setQuery} onCategoryChange={(match) => setMapMatch(() => match)} />
                 {nearbyActive && location.status === 'denied' ? (
                   <YText variant="caption" style={styles.nearbyDenied}>
                     Localisation indisponible — activez-la pour trier par distance.

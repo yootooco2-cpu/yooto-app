@@ -19,6 +19,8 @@ export { cryptogramAsset, cryptogramAssetUri, filterCryptogramAsset } from './cr
 export { merchantsToMapMarkers } from './toMapMarkers';
 export { getMerchantRepository } from './repository';
 export { useMerchant, useMerchants, merchantKeys } from './queries';
+export { SearchMenu } from './components/SearchMenu';
+export { type MerchantPredicate } from './categoryFamilies';
 export { useMerchantSearch } from './useMerchantSearch';
 export { useMerchantSearchStore } from './searchStore';
 export {
