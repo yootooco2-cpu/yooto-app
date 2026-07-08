@@ -46,6 +46,8 @@ export function HomeHero({ greeting, scrollY }: Props) {
       </Animated.View>
 
       <Animated.View entering={FadeInDown.duration(220)} style={[styles.content, contentStyle]}>
+        {/* DA : le logo ne signe plus les écrans in-app — l'identité est portée par le contenu,
+            la carte, la typographie. Le salut ouvre directement le hero. */}
         <YText variant="caption" color="muted">
           {greeting}
         </YText>
