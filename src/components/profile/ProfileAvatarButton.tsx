@@ -38,7 +38,7 @@ export function ProfileAvatarButton() {
         ) : isAuthenticated ? (
           <YText style={[styles.initial, { color: glass.onDark }]}>{initial}</YText>
         ) : (
-          <Feather name="user" size={20} color={glass.onDark} />
+          <Feather name="user" size={24} color={glass.onDark} />
         )}
       </View>
       {isAuthenticated ? <View style={styles.dot} /> : null}
@@ -46,7 +46,7 @@ export function ProfileAvatarButton() {
   );
 }
 
-const SIZE = 46;
+const SIZE = 56;
 const styles = StyleSheet.create({
   wrap: { width: SIZE, height: SIZE },
   pressed: { opacity: 0.85, transform: [{ scale: 0.96 }] },
@@ -59,17 +59,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   img: { width: '100%', height: '100%' },
-  initial: { fontSize: 18, fontWeight: '800' },
+  initial: { fontSize: 22, fontWeight: '800' },
   // Pastille de présence : vert connecté, bord sombre pour se détacher de la photo.
   dot: {
     position: 'absolute',
     right: -1,
     bottom: -1,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 17,
+    height: 17,
+    borderRadius: 8.5,
     backgroundColor: '#69B96C',
-    borderWidth: 2.5,
+    borderWidth: 3,
     borderColor: '#111714',
   },
 });

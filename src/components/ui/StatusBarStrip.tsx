@@ -62,11 +62,11 @@ export function StatusBarStrip() {
       <View style={styles.right}>
         {/* Signal cellulaire (décoratif — non exposé au web). */}
         <View style={styles.signal}>
-          {[5, 8, 11, 14].map((h) => (
+          {[7, 11, 15, 19].map((h) => (
             <View key={h} style={[styles.sigBar, { height: h, backgroundColor: color }]} />
           ))}
         </View>
-        <Feather name="wifi" size={15} color={color} />
+        <Feather name="wifi" size={20} color={color} />
         {/* Batterie (niveau réel si disponible ; vert + éclair si en charge). */}
         <View style={styles.battery}>
           <View style={[styles.batteryBody, { borderColor: color }]}>
@@ -76,7 +76,7 @@ export function StatusBarStrip() {
                 { width: `${Math.round(level * 100)}%`, backgroundColor: battery?.charging ? '#69B96C' : color },
               ]}
             />
-            {battery?.charging ? <Feather name="zap" size={9} color="#000000" style={styles.bolt} /> : null}
+            {battery?.charging ? <Feather name="zap" size={12} color="#000000" style={styles.bolt} /> : null}
           </View>
           <View style={[styles.batteryCap, { backgroundColor: color }]} />
         </View>
@@ -100,14 +100,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingBottom: spacing.xs,
   },
-  time: { fontSize: 14, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  time: { fontSize: 18, fontWeight: '700', fontVariant: ['tabular-nums'] },
   right: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  signal: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 14 },
-  sigBar: { width: 3, borderRadius: 1 },
+  signal: { flexDirection: 'row', alignItems: 'flex-end', gap: 2.5, height: 19 },
+  sigBar: { width: 4, borderRadius: 1.5 },
   battery: { flexDirection: 'row', alignItems: 'center' },
-  batteryBody: { width: 22, height: 11, borderRadius: 3, borderWidth: 1, padding: 1, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
-  batteryFill: { height: '100%', borderRadius: 1.5 },
+  batteryBody: { width: 29, height: 15, borderRadius: 4, borderWidth: 1.5, padding: 1.5, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
+  batteryFill: { height: '100%', borderRadius: 2 },
   // Éclair de charge centré sur la batterie (comme iOS).
-  bolt: { position: 'absolute', left: 6, top: 1 },
-  batteryCap: { width: 2, height: 5, borderRadius: 1, marginLeft: 1 },
+  bolt: { position: 'absolute', left: 8.5, top: 1.5 },
+  batteryCap: { width: 3, height: 6, borderRadius: 1.5, marginLeft: 1.5 },
 });
