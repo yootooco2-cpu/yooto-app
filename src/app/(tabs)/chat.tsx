@@ -1,7 +1,6 @@
-import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
 
 import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
@@ -27,19 +26,6 @@ import {
   type ChatSpace,
 } from '@/features/chat';
 
-/** Bouton d'action circulaire en verre (même langage que l'avatar profil). */
-function IconButton({ icon, onPress, active, label }: { icon: keyof typeof Feather.glyphMap; onPress: () => void; active?: boolean; label: string }) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.iconBtn, glass.panel, active && styles.iconBtnActive, pressed && styles.iconBtnPressed]}>
-      <Feather name={icon} size={20} color={glass.onDark} />
-    </Pressable>
-  );
-}
-
 function ChatBody() {
   const router = useRouter();
   const init = useChatStore((s) => s.init);
@@ -53,7 +39,6 @@ function ChatBody() {
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
   const [now] = useState(() => Date.now());
-  const searchRef = useRef<TextInput>(null);
 
   useEffect(() => {
     void init();
@@ -81,22 +66,17 @@ function ChatBody() {
 
   return (
     <YScreen transparent gap="sm" padding="lg">
-      {/* LIGNE 1 — avatar (identité personnelle) + titre + actions. En-tête COMPACT. */}
+      {/* LIGNE 1 — titre à gauche, avatar (seul élément d'action) à droite. En-tête épuré. */}
       <View style={styles.header}>
-        <ProfileAvatarButton size={48} />
         <View style={styles.titleCol}>
           <YText style={[styles.title, { color: glass.onDark }]}>Chat</YText>
           <YText numberOfLines={1} style={[styles.subtitle, { color: glass.onDarkMuted }]}>Échangez avec votre communauté locale</YText>
         </View>
-        <View style={styles.actions}>
-          <IconButton icon="search" label="Rechercher" onPress={() => searchRef.current?.focus()} />
-          <IconButton icon="edit" label="Nouveau message" onPress={() => router.push('/chat/new')} />
-        </View>
+        <ProfileAvatarButton size={48} />
       </View>
 
       {/* BARRE DE RECHERCHE PERMANENTE — ancrage fixe, jamais masquée par un changement de catégorie. */}
       <YSearchBar
-        ref={searchRef}
         variant="glass"
         value={query}
         onChangeText={setQuery}
@@ -170,10 +150,6 @@ const styles = StyleSheet.create({
   titleCol: { flex: 1, gap: 1 },
   title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
   subtitle: { fontSize: 13, lineHeight: 17 },
-  actions: { flexDirection: 'row', gap: spacing.sm },
-  iconBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  iconBtnActive: { opacity: 0.9 },
-  iconBtnPressed: { opacity: 0.72, transform: [{ scale: 0.95 }] },
   // Région de contenu FIXE : la liste occupe tout l'espace sous les filtres et défile en interne
   // → l'en-tête/onglets/sous-catégories restent parfaitement immobiles quel que soit le filtre.
   list: { flex: 1 },
