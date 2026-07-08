@@ -16,6 +16,7 @@ import { spacing } from '@/design/tokens/spacing';
 import {
   SearchMenu,
   useMerchantSearch,
+  withPhotoForDemo,
   type Merchant,
   type MerchantPredicate,
 } from '@/features/merchants';
@@ -29,10 +30,11 @@ export default function MerchantsScreen() {
 
   // Filtre catégorie (prédicat) émis par le MENU OFFICIEL PARTAGÉ → post-filtre local de la grille.
   const [categoryMatch, setCategoryMatch] = useState<MerchantPredicate | null>(null);
-  const displayed = useMemo(
-    () => (categoryMatch ? results.filter(categoryMatch) : results),
-    [results, categoryMatch],
-  );
+  // Démo : uniquement les commerces avec une vraie photo, puis filtre catégorie.
+  const displayed = useMemo(() => {
+    const base = withPhotoForDemo(results);
+    return categoryMatch ? base.filter(categoryMatch) : base;
+  }, [results, categoryMatch]);
 
   const numColumns = 3;
 

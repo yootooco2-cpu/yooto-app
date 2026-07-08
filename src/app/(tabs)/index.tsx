@@ -9,7 +9,7 @@ import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
-import { SearchMenu, useMerchants, useMerchantSearchStore, type MerchantPredicate } from '@/features/merchants';
+import { SearchMenu, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
 
 // Bande d'ambiance ≈ une hauteur d'écran : l'image d'univers se dissout TRÈS progressivement vers
 // le fond sombre (fondu du BackgroundOverlay) et se prolonge sous la 1re section → aucune rupture.
@@ -17,7 +17,8 @@ const AMBIENT_HEIGHT = Math.round(Dimensions.get('window').height);
 
 export default function HomeScreen() {
   const { data } = useMerchants();
-  const merchants = useMemo(() => data ?? [], [data]);
+  // Démo : ne garder que les commerces avec une vraie photo (aucun repli visible dans les cartes).
+  const merchants = useMemo(() => withPhotoForDemo(data ?? []), [data]);
 
   // Parallax TRÈS discret du fond d'ambiance (image d'univers) au scroll.
   const scrollY = useSharedValue(0);

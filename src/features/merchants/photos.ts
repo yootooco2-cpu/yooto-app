@@ -23,3 +23,20 @@ export function getMerchantCoverPhoto(merchant: Merchant): string | null {
   if (galleryPhoto) return galleryPhoto;
   return null;
 }
+
+/** Vrai si le commerce dispose d'une photo RÉELLE exploitable. */
+export function hasMerchantPhoto(merchant: Merchant): boolean {
+  return getMerchantCoverPhoto(merchant) !== null;
+}
+
+/**
+ * DÉMO — n'exposer que les commerces AVEC une vraie photo dans les surfaces à cartes (Accueil,
+ * Commerçants) : réseau qui paraît complet et curé, zéro repli visible. Un seul point de bascule :
+ * passer à `false` pour réafficher tous les commerces (y compris ceux au repli premium).
+ */
+export const DEMO_REQUIRE_PHOTO = true;
+
+/** Filtre une liste selon `DEMO_REQUIRE_PHOTO` (no-op si le flag est désactivé). */
+export function withPhotoForDemo(merchants: Merchant[]): Merchant[] {
+  return DEMO_REQUIRE_PHOTO ? merchants.filter(hasMerchantPhoto) : merchants;
+}

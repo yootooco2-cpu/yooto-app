@@ -7,7 +7,7 @@ export {
 export { QUICK_FILTERS } from './filters';
 export { getMerchantById, localMerchantDataSource } from './selectors';
 export { buildRecommendationReasons, getMerchantTags } from './insights';
-export { getMerchantCoverPhoto, isRealPhotoUrl } from './photos';
+export { getMerchantCoverPhoto, isRealPhotoUrl, hasMerchantPhoto, withPhotoForDemo, DEMO_REQUIRE_PHOTO } from './photos';
 export {
   CRYPTOGRAMS,
   cryptogramColor,
