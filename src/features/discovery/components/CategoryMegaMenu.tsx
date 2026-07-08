@@ -1,6 +1,5 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Cryptogram } from '@/components/merchants/Cryptogram';
 import { YButton } from '@/components/ui/YButton';
@@ -33,10 +32,14 @@ export interface CategoryMegaMenuProps {
 
 /**
  * CategoryMegaMenu — méga-menu de découverte de l'Accueil, bâti sur le MÊME système que
- * la page Commerçants : barre de cryptogrammes partagée (MerchantCategoryBar), même config
- * (MERCHANT_CATEGORY_FILTERS), mêmes couleurs. Web : ouverture au survol (remplacement
- * instantané) ; Mobile : tap. Le panneau enrichit la catégorie active (sous-catégories +
- * accès direct). Autonome : ne fait que remonter des callbacks (recherche/navigation dehors).
+ * la page Commerçants (MerchantCategoryBar + MERCHANT_CATEGORY_FILTERS).
+ *
+ * Hover web robuste : UNE seule zone de survol continue (barre + panneau) via l'API Pointer
+ * Events (`onPointerEnter`/`onPointerLeave` — `pointerleave` non-bubbling, fiable) + un délai
+ * de fermeture annulable. Le panneau est directement accolé à la barre (aucun gap mort) et
+ * expose sa PROPRE zone pointer (double sécurité). Le menu ne se ferme qu'à la sortie COMPLÈTE
+ * du bloc → on peut descendre du bouton vers une sous-catégorie et cliquer avant fermeture.
+ * Mobile/touch : handlers gardés par `IS_WEB` → tap uniquement, inchangé.
  */
 export function CategoryMegaMenu({
   categories = MERCHANT_CATEGORY_FILTERS,
@@ -48,23 +51,49 @@ export function CategoryMegaMenu({
   const active = categories.find((c) => c.id === openId) ?? null;
   const accent = active ? cryptogramColor(active.icon) : colors.primary;
 
-  // Web : fermeture auto quand la souris quitte TOUT le bloc (barre + panneau). En RN Web,
-  // `onHoverOut` suit la sémantique `mouseleave` : il ne se déclenche pas en passant sur un
-  // descendant (chip → panneau) → aucun flicker, fermeture seulement à la sortie complète.
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  }, []);
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpenId(null), 160);
+  }, [cancelClose]);
+  const openNow = useCallback(
+    (id: MerchantCategoryId) => {
+      cancelClose();
+      setOpenId(id);
+    },
+    [cancelClose],
+  );
+  const closeNow = useCallback(() => {
+    cancelClose();
+    setOpenId(null);
+  }, [cancelClose]);
+  useEffect(() => cancelClose, [cancelClose]);
+
   return (
-    <Pressable
+    <View
       style={styles.root}
-      onHoverOut={IS_WEB ? () => setOpenId(null) : undefined}
-      focusable={false}
-      accessible={false}>
+      onPointerEnter={IS_WEB ? cancelClose : undefined}
+      onPointerLeave={IS_WEB ? scheduleClose : undefined}>
       <MerchantCategoryBar
         isActive={(id) => id === openId}
-        onToggle={(id) => setOpenId((cur) => (cur === id ? null : id))}
-        onHover={(id) => setOpenId(id)}
+        onToggle={(id) => {
+          cancelClose();
+          setOpenId((cur) => (cur === id ? null : id));
+        }}
+        onHover={(id) => openNow(id)}
       />
 
       {active ? (
-        <Animated.View entering={FadeIn.duration(140)} style={[styles.panel, shadows.md]}>
+        <View
+          style={[styles.panel, shadows.md]}
+          onPointerEnter={IS_WEB ? cancelClose : undefined}
+          onPointerLeave={IS_WEB ? scheduleClose : undefined}>
           <View style={styles.panelHeader}>
             <Cryptogram id={active.icon} size={30} />
             <YText variant="subtitle" style={{ color: accent }}>
@@ -79,7 +108,7 @@ export function CategoryMegaMenu({
                   key={subcategory.id}
                   onPress={() => {
                     onSelectSubcategory(active, subcategory);
-                    setOpenId(null);
+                    closeNow();
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={subcategory.label}
@@ -105,7 +134,7 @@ export function CategoryMegaMenu({
                 fullWidth
                 onPress={() => {
                   onSelectCategory(active);
-                  setOpenId(null);
+                  closeNow();
                 }}
               />
             </View>
@@ -116,29 +145,32 @@ export function CategoryMegaMenu({
                 fullWidth
                 onPress={() => {
                   onViewMap(active);
-                  setOpenId(null);
+                  closeNow();
                 }}
               />
             </View>
           </View>
-        </Animated.View>
+        </View>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
-    gap: spacing.sm,
+    // Zone de survol continue : aucun gap entre la barre et le panneau (le panneau est
+    // directement accolé → pas de « trou » qui déclenche un pointerleave prématuré).
+    zIndex: 10,
   },
   panel: {
-    marginTop: spacing.xs,
+    // Accolé à la barre (pas de marge haute) → hover ininterrompu barre → panneau.
     padding: spacing.lg,
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     gap: spacing.md,
+    zIndex: 20,
   },
   panelHeader: {
     flexDirection: 'row',
