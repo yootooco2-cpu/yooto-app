@@ -7,13 +7,10 @@ import { shadows } from '@/design/tokens/shadows';
 import { useFavoriteIds } from '@/features/favorites';
 
 const SIZE = 52;
-/** Rouge « cœur » de la marque (constant entre thèmes). */
-const HEART = '#D9645A';
 
 /**
- * Bouton FAVORIS — cœur en verre (même empreinte que l'ex-avatar), avec pastille de compteur.
- * Réutilisable dans le `trailing` du SearchMenu. `onPress` ouvre les favoris (feuille ou écran
- * selon l'hôte). Cœur teinté quand des favoris existent → repère immédiat.
+ * Bouton FAVORIS — cœur en verre (même empreinte que l'ex-avatar), teinte NEUTRE, avec pastille
+ * de compteur discrète. Réutilisable dans le `trailing` du SearchMenu. `onPress` ouvre les favoris.
  */
 export function FavoritesButton({ onPress }: { onPress: () => void }) {
   const count = useFavoriteIds().length;
@@ -25,7 +22,7 @@ export function FavoritesButton({ onPress }: { onPress: () => void }) {
       accessibilityRole="button"
       accessibilityLabel={active ? `Favoris (${count})` : 'Favoris'}
       style={({ pressed }) => [styles.btn, glass.panel, shadows.sm, pressed && styles.pressed]}>
-      <Feather name="heart" size={22} color={active ? HEART : glass.onDark} />
+      <Feather name="heart" size={22} color={glass.onDark} />
       {active ? (
         <View style={styles.badge}>
           <YText style={styles.badgeText}>{count}</YText>
@@ -48,9 +45,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: HEART,
+    backgroundColor: glass.onDark,
     borderWidth: 2,
     borderColor: '#111714',
   },
-  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  badgeText: { color: '#111714', fontSize: 11, fontWeight: '800' },
 });
