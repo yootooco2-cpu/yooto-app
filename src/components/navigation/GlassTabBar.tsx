@@ -25,7 +25,7 @@ const ICONS: Record<string, IconDef> = {
   index: { set: 'feather', name: 'home' },
   explore: { set: 'feather', name: 'map' },
   merchants: { set: 'feather', name: 'shopping-bag' },
-  'de-saison': { set: 'mci', name: 'leaf' },
+  chat: { set: 'feather', name: 'message-circle' },
   profile: { set: 'feather', name: 'user' },
 };
 
