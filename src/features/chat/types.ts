@@ -105,8 +105,11 @@ export interface ChatConversation {
 
 // ── Interactions sociales (Phase A) ─────────────────────────────────────────────────────────────
 
-/** Jeu de réactions rapides — contextuel, jamais compté dans la réputation. */
-export type ReactionEmoji = '👍' | '❤️' | '🔥' | '🙌' | '🥖';
+/**
+ * Réactions UTILES (jamais un simple « Like », jamais comptées dans la réputation) :
+ * 👍 Utile · ❤️ J'y vais · 👏 Bravo · 🙏 Merci · 🌱 Belle initiative.
+ */
+export type ReactionEmoji = '👍' | '❤️' | '👏' | '🙏' | '🌱';
 
 export interface ReactionSummary {
   emoji: ReactionEmoji;
@@ -115,6 +118,22 @@ export interface ReactionSummary {
 
 /** Signaux d'UTILITÉ qui, eux, nourrissent la réputation (à la différence des réactions). */
 export type HelpfulKind = 'accepted_answer' | 'confirmed_reco' | 'marked_useful';
+
+/** Une réponse à une carte d'activité (repliée par défaut : « Voir N réponses »). */
+export interface ActivityComment {
+  id: string;
+  activityId: string;
+  authorId: string;
+  body: string;
+  createdAt: string; // ISO 8601
+}
+
+/** Une ligne du bloc « Tendance près de chez vous » (compact, donne envie de descendre). */
+export interface Trend {
+  id: string;
+  emoji: string;
+  label: string;
+}
 
 // ── Fil d'activité (le fil raconte le TERRITOIRE, pas seulement les membres) ─────────────────────
 

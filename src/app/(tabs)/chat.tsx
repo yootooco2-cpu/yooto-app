@@ -14,6 +14,9 @@ import {
   ChatCategoryBar,
   ChatSpaceSwitcher,
   ConversationCard,
+  HighlightCard,
+  TrendsStrip,
+  highlightActivity,
   selectDiscussions,
   selectPrivateMessages,
   toConversationView,
@@ -43,6 +46,7 @@ function ChatBody() {
   const participants = useChatStore((s) => s.participants);
   const messages = useChatStore((s) => s.messages);
   const activity = useChatStore((s) => s.activity);
+  const trends = useChatStore((s) => s.trends);
 
   const [space, setSpace] = useState<ChatSpace>('activity');
   const [category, setCategory] = useState('all');
@@ -72,6 +76,7 @@ function ChatBody() {
   const shownActivity = q
     ? activity.filter((a) => `${participants[a.authorId]?.name ?? ''} ${a.title} ${a.body ?? ''}`.toLowerCase().includes(q))
     : activity;
+  const highlight = highlightActivity(activity, now);
 
   return (
     <YScreen transparent gap="md" padding="lg">
@@ -102,6 +107,14 @@ function ChatBody() {
           renderItem={({ item }) => <ActivityCard item={item} author={participants[item.authorId]} now={now} />}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={
+            q ? null : (
+              <View style={styles.feedHead}>
+                <TrendsStrip trends={trends} />
+                {highlight ? <HighlightCard item={highlight} author={participants[highlight.authorId]} now={now} /> : null}
+              </View>
+            )
+          }
           ListEmptyComponent={<Empty label="Rien de neuf autour de vous pour l’instant." />}
         />
       ) : (
@@ -148,4 +161,5 @@ const styles = StyleSheet.create({
   iconBtnActive: { opacity: 0.9 },
   iconBtnPressed: { opacity: 0.72, transform: [{ scale: 0.95 }] },
   listContent: { gap: spacing.sm, paddingBottom: spacing.lg },
+  feedHead: { gap: spacing.lg, marginBottom: spacing.md },
 });

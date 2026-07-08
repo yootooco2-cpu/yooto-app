@@ -18,13 +18,28 @@ export type {
   ActivityItem,
   ActivityKind,
   ActivitySource,
+  ActivityComment,
+  Trend,
   ChatNotification,
   NotificationKind,
 } from './types';
 export { CURRENT_USER_ID } from './mockData';
 export { mockChatRepository, type ChatRepository } from './repository';
 export { aiProvider, noopAIProvider, type AIProvider } from './ai';
-export { geoScope, actorKindLabel, isTerritoryActor, isTrusted, reputationScore } from './logic';
+export { REACTIONS, reactionLabel } from './reactions';
+export { shareService, noopShareService, SHARE_TARGET_LABELS, type ShareTarget, type ShareService, type ShareRef } from './share';
+export {
+  geoScope,
+  actorKindLabel,
+  isTerritoryActor,
+  isTrusted,
+  reputationScore,
+  walkMinutes,
+  bikeMinutes,
+  proximityHint,
+  isLiveNow,
+  isFresh,
+} from './logic';
 export {
   useChatStore,
   toConversationView,
@@ -32,6 +47,7 @@ export {
   selectPrivateMessages,
   unreadPrivateCount,
   unreadNotifications,
+  highlightActivity,
   type ChatSpace,
 } from './store';
 export { formatChatTime } from './time';
@@ -39,5 +55,9 @@ export { ChatCategoryBar } from './components/ChatCategoryBar';
 export { ChatSpaceSwitcher } from './components/ChatSpaceSwitcher';
 export { ChatAvatar } from './components/ChatAvatar';
 export { ActivityCard } from './components/ActivityCard';
+export { ActivityActions } from './components/ActivityActions';
+export { FollowPill } from './components/FollowPill';
+export { TrendsStrip } from './components/TrendsStrip';
+export { HighlightCard } from './components/HighlightCard';
 export { ConversationCard } from './components/ConversationCard';
 export { MessageBubble } from './components/MessageBubble';

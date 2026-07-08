@@ -1,4 +1,4 @@
-import { actorKindLabel, geoScope, isTerritoryActor, isTrusted, reputationScore } from './logic';
+import { actorKindLabel, bikeMinutes, geoScope, isFresh, isLiveNow, isTerritoryActor, isTrusted, proximityHint, reputationScore, walkMinutes } from './logic';
 
 describe('geoScope', () => {
   it('classe par distance (near / neighborhood / city)', () => {
@@ -34,5 +34,34 @@ describe('confiance (utilité, jamais popularité)', () => {
     expect(isTrusted({ reputation: { helpfulScore: 64, acceptedAnswers: 9, confirmedRecos: 7 } })).toBe(true);
     expect(isTrusted({ reputation: { helpfulScore: 10, acceptedAnswers: 1, confirmedRecos: 0 } })).toBe(false);
     expect(isTrusted({})).toBe(false);
+  });
+});
+
+describe('proximité (indicateurs discrets)', () => {
+  it('temps de marche / vélo (mini 1 min)', () => {
+    expect(walkMinutes(0.4)).toBe(5);
+    expect(bikeMinutes(3)).toBe(12);
+    expect(walkMinutes(0.01)).toBe(1);
+  });
+  it('proximityHint : marche si très proche, vélo si proche, rien au-delà', () => {
+    expect(proximityHint(0.4)).toEqual({ icon: '🚶', minutes: 5 });
+    expect(proximityHint(3)?.icon).toBe('🚴');
+    expect(proximityHint(9)).toBeNull();
+    expect(proximityHint(undefined)).toBeNull();
+  });
+});
+
+describe('activité en direct', () => {
+  const NOW = new Date('2026-07-08T20:00:00Z').getTime();
+  it('isLiveNow pendant l’événement', () => {
+    const start = new Date(NOW - 30 * 60_000).toISOString();
+    const end = new Date(NOW + 30 * 60_000).toISOString();
+    expect(isLiveNow(start, end, NOW)).toBe(true);
+    expect(isLiveNow(new Date(NOW + 60 * 60_000).toISOString(), undefined, NOW)).toBe(false);
+    expect(isLiveNow(undefined, undefined, NOW)).toBe(false);
+  });
+  it('isFresh sous la minute', () => {
+    expect(isFresh(new Date(NOW - 20_000).toISOString(), NOW)).toBe(true);
+    expect(isFresh(new Date(NOW - 120_000).toISOString(), NOW)).toBe(false);
   });
 });

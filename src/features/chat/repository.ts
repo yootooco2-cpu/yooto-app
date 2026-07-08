@@ -1,5 +1,5 @@
-import { CURRENT_USER_ID, MOCK_ACTIVITY, MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_NOTIFICATIONS, MOCK_PARTICIPANTS } from './mockData';
-import type { ActivityItem, ChatConversation, ChatMessage, ChatNotification, ChatParticipant } from './types';
+import { CURRENT_USER_ID, MOCK_ACTIVITY, MOCK_COMMENTS, MOCK_CONVERSATIONS, MOCK_MESSAGES, MOCK_NOTIFICATIONS, MOCK_PARTICIPANTS, MOCK_TRENDS } from './mockData';
+import type { ActivityComment, ActivityItem, ChatConversation, ChatMessage, ChatNotification, ChatParticipant, ReactionEmoji, Trend } from './types';
 
 /**
  * Contrat d'accès aux données du Chat — la SEULE couture avec le backend. Aujourd'hui :
@@ -11,11 +11,18 @@ export interface ChatRepository {
   listParticipants(): Promise<ChatParticipant[]>;
   listConversations(): Promise<ChatConversation[]>;
   listActivity(): Promise<ActivityItem[]>;
+  listTrends(): Promise<Trend[]>;
   listMessages(conversationId: string): Promise<ChatMessage[]>;
+  listComments(activityId: string): Promise<ActivityComment[]>;
+  addComment(input: { activityId: string; authorId: string; body: string }): Promise<ActivityComment>;
   listNotifications(): Promise<ChatNotification[]>;
   markNotificationRead(id: string): Promise<void>;
   /** Suivre / ne plus suivre un acteur (commerçant, producteur, habitant). */
   setFollow(actorId: string, follow: boolean): Promise<void>;
+  /** Persister une réaction (le calcul des compteurs est optimiste côté store). */
+  setReaction(activityId: string, emoji: ReactionEmoji, active: boolean): Promise<void>;
+  /** Enregistrer / retirer une publication. */
+  setSaved(activityId: string, saved: boolean): Promise<void>;
   sendMessage(input: { conversationId: string; senderId: string; body: string }): Promise<ChatMessage>;
   createConversation(input: { title: string; body: string; authorId: string; categoryId?: string }): Promise<{
     conversation: ChatConversation;
@@ -30,7 +37,10 @@ let conversations: ChatConversation[] = MOCK_CONVERSATIONS.map((c) => ({ ...c, p
 let messages: ChatMessage[] = MOCK_MESSAGES.map((m) => ({ ...m }));
 const activity: ActivityItem[] = MOCK_ACTIVITY.map((a) => ({ ...a }));
 let notifications: ChatNotification[] = MOCK_NOTIFICATIONS.map((n) => ({ ...n }));
+let comments: ActivityComment[] = MOCK_COMMENTS.map((c) => ({ ...c }));
+const trends: Trend[] = MOCK_TRENDS.map((t) => ({ ...t }));
 const following = new Set<string>();
+const savedSet = new Set<string>();
 
 let seq = 0;
 const uid = (prefix: string): string => `${prefix}_${Date.now().toString(36)}_${(seq++).toString(36)}`;
@@ -51,6 +61,31 @@ export const mockChatRepository: ChatRepository = {
   async listActivity() {
     const sorted = [...activity].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return delay(sorted.map((a) => ({ ...a })));
+  },
+
+  async listTrends() {
+    return delay(trends.map((t) => ({ ...t })));
+  },
+
+  async listComments(activityId) {
+    const list = comments.filter((c) => c.activityId === activityId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    return delay(list.map((c) => ({ ...c })));
+  },
+
+  async addComment({ activityId, authorId, body }) {
+    const comment: ActivityComment = { id: uid('cmt'), activityId, authorId, body: body.trim(), createdAt: new Date().toISOString() };
+    comments = [...comments, comment];
+    return delay(comment);
+  },
+
+  async setReaction() {
+    return delay(undefined);
+  },
+
+  async setSaved(activityId, saved) {
+    if (saved) savedSet.add(activityId);
+    else savedSet.delete(activityId);
+    return delay(undefined);
   },
 
   async listMessages(conversationId) {

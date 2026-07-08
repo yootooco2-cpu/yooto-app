@@ -1,5 +1,5 @@
 import { geoScope } from './logic';
-import type { ActivityItem, ChatConversation, ChatMessage, ChatNotification, ChatParticipant } from './types';
+import type { ActivityComment, ActivityItem, ChatConversation, ChatMessage, ChatNotification, ChatParticipant, Trend } from './types';
 
 /** Identifiant de l'utilisateur courant (sera l'id Supabase auth plus tard). */
 export const CURRENT_USER_ID = 'me';
@@ -67,12 +67,12 @@ export const MOCK_MESSAGES: ChatMessage[] = [
  * ouvre, un concert dans 2h, une fermeture exceptionnelle, un établissement rejoint YOOTOO…).
  */
 export const MOCK_ACTIVITY: ActivityItem[] = [
-  { id: 'a1', kind: 'arrivage', source: 'member', emoji: '🥖', authorId: 'pro_boulangerie', title: 'Les baguettes tradition sortent du four', body: 'Fournée de midi prête, encore tièdes.', categoryId: 'producteurs', place: 'à 400 m', geo: geo(0.4, 'Écusson'), createdAt: ago(4), reactions: [{ emoji: '🥖', count: 14 }, { emoji: '🔥', count: 5 }] },
+  { id: 'a1', kind: 'arrivage', source: 'member', emoji: '🥖', authorId: 'pro_boulangerie', title: 'Les baguettes tradition sortent du four', body: 'Fournée de midi prête, encore tièdes.', categoryId: 'producteurs', place: 'à 400 m', geo: geo(0.4, 'Écusson'), createdAt: ago(4), reactions: [{ emoji: '👍', count: 14 }, { emoji: '🌱', count: 5 }] },
   { id: 'a2', kind: 'ouverture', source: 'territory', emoji: '🎨', authorId: 'pro_ceramique', title: 'L’atelier Terracotta ouvre ses portes ce matin', body: 'Démonstration de tournage jusqu’à midi.', categoryId: 'artisanat', place: 'à 900 m', geo: geo(0.9), createdAt: ago(18), reactions: [{ emoji: '❤️', count: 8 }] },
-  { id: 'a3', kind: 'marche', source: 'territory', emoji: '🧺', authorId: 'pro_ferme', title: 'Le marché de producteurs vient de commencer', body: 'Place de la mairie jusqu’à 13h — fraises, fromages, miel.', categoryId: 'evenements', place: 'à 3,2 km', geo: geo(3.2), createdAt: ago(35), startsAt: ago(35), endsAt: soon(240), reactions: [{ emoji: '🙌', count: 11 }] },
-  { id: 'a4', kind: 'offre', source: 'member', emoji: '🎁', authorId: 'pro_cafe', title: 'Offre du jour : -20% sur les pâtisseries après 18h', categoryId: 'bons-plans', place: 'à 650 m', geo: geo(0.65), createdAt: ago(52), reactions: [{ emoji: '👍', count: 22 }, { emoji: '🔥', count: 6 }] },
+  { id: 'a3', kind: 'marche', source: 'territory', emoji: '🧺', authorId: 'pro_ferme', title: 'Le marché de producteurs vient de commencer', body: 'Place de la mairie jusqu’à 13h — fraises, fromages, miel.', categoryId: 'evenements', place: 'à 3,2 km', geo: geo(3.2), createdAt: ago(35), startsAt: ago(35), endsAt: soon(240), reactions: [{ emoji: '👏', count: 11 }] },
+  { id: 'a4', kind: 'offre', source: 'member', emoji: '🎁', authorId: 'pro_cafe', title: 'Offre du jour : -20% sur les pâtisseries après 18h', categoryId: 'bons-plans', place: 'à 650 m', geo: geo(0.65), createdAt: ago(52), reactions: [{ emoji: '👍', count: 22 }, { emoji: '❤️', count: 6 }] },
   { id: 'a5', kind: 'recolte', source: 'territory', emoji: '🍓', authorId: 'pro_ferme', title: 'Les premières fraises sont récoltées', body: 'Gariguettes cueillies ce matin, en quantité limitée.', categoryId: 'producteurs', place: 'à 3,2 km', geo: geo(3.2), createdAt: ago(70), reactions: [{ emoji: '❤️', count: 17 }] },
-  { id: 'a6', kind: 'concert', source: 'territory', emoji: '🎵', authorId: 'pro_cafe', title: 'Concert live dans 2 heures', body: 'Trio jazz manouche à 20h, entrée libre.', categoryId: 'culture', place: 'à 650 m', geo: geo(0.65), createdAt: ago(85), startsAt: soon(120), reactions: [{ emoji: '🙌', count: 9 }] },
+  { id: 'a6', kind: 'concert', source: 'territory', emoji: '🎵', authorId: 'pro_cafe', title: 'Concert live dans 2 heures', body: 'Trio jazz manouche à 20h, entrée libre.', categoryId: 'culture', place: 'à 650 m', geo: geo(0.65), createdAt: ago(85), startsAt: soon(120), reactions: [{ emoji: '❤️', count: 9 }] },
   { id: 'a7', kind: 'benevolat', source: 'member', emoji: '🤝', authorId: 'assoc_velo', title: 'Vélo-Cité cherche 3 bénévoles pour dimanche', body: 'Atelier de réparation participatif, aucune compétence requise.', categoryId: 'entraide', place: 'à 1,3 km', geo: geo(1.3), createdAt: ago(110) },
   { id: 'a8', kind: 'fermeture', source: 'territory', emoji: '🔒', authorId: 'pro_boulangerie', title: 'Fermeture exceptionnelle cet après-midi', body: 'Réouverture demain 7h. Merci de votre compréhension !', categoryId: 'vie-locale', place: 'à 400 m', geo: geo(0.4, 'Écusson'), createdAt: ago(140) },
   { id: 'a9', kind: 'nouveau_pro', source: 'territory', emoji: '✨', authorId: 'pro_cave', title: 'La Cave des Cévennes rejoint YOOTOO', body: 'Vins nature et cuvées de vignerons du coin.', categoryId: 'vie-locale', place: 'à 1,1 km', geo: geo(1.1), createdAt: ago(200), reactions: [{ emoji: '❤️', count: 6 }] },
@@ -84,4 +84,22 @@ export const MOCK_NOTIFICATIONS: ChatNotification[] = [
   { id: 'n3', kind: 'reco', actorId: 'part_sofia', title: 'Un voisin a recommandé la Boulangerie du Marché', ref: { type: 'activity', id: 'a1' }, createdAt: ago(90), read: false },
   { id: 'n4', kind: 'event_reminder', title: 'Concert live ce soir — vous êtes intéressé·e', ref: { type: 'activity', id: 'a6' }, createdAt: ago(120), read: true },
   { id: 'n5', kind: 'follow', actorId: 'part_karim', title: 'Karim T. vous suit désormais', createdAt: ago(300), read: true },
+];
+
+/** Réponses aux cartes d'activité — repliées par défaut (« Voir N réponses »). */
+export const MOCK_COMMENTS: ActivityComment[] = [
+  { id: 'cm1', activityId: 'a1', authorId: 'part_camille', body: 'Vos pains sont les meilleurs du quartier 🙌', createdAt: ago(20) },
+  { id: 'cm2', activityId: 'a1', authorId: 'part_leo', body: 'J’arrive dans 10 min !', createdAt: ago(6) },
+  { id: 'cm3', activityId: 'a3', authorId: 'part_karim', body: 'Il reste des fraises à cette heure-ci ?', createdAt: ago(15) },
+  { id: 'cm4', activityId: 'a4', authorId: 'part_sofia', body: 'Parfait pour le goûter, merci du partage !', createdAt: ago(30) },
+  { id: 'cm5', activityId: 'a6', authorId: 'part_camille', body: 'On y sera, hâte !', createdAt: ago(40) },
+];
+
+/** Bloc « Tendance près de chez vous » — compact, donne le pouls du territoire. */
+export const MOCK_TRENDS: Trend[] = [
+  { id: 't1', emoji: '🔥', label: '18 commerces participent au marché aujourd’hui' },
+  { id: 't2', emoji: '🥖', label: '12 boulangeries publient leurs fournées' },
+  { id: 't3', emoji: '🍷', label: '4 dégustations commencent ce soir' },
+  { id: 't4', emoji: '🎵', label: '6 événements dans un rayon de 5 km' },
+  { id: 't5', emoji: '🌱', label: '8 producteurs sont présents aujourd’hui' },
 ];
