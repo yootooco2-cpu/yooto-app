@@ -17,8 +17,9 @@ type Props = {
 };
 
 const CARD_WIDTH = 260;
-/** Espace horizontal entre cartes — un cran plus aéré (premium) sans changer le nb visible. */
-const CARD_GAP = 20;
+/** Espace horizontal entre cartes — respiration premium (Apple/Airbnb/Spotify). N'affecte QUE
+ *  l'écart entre deux cartes : largeur/hauteur des cartes, marges du carrousel et peek inchangés. */
+const CARD_GAP = 32;
 
 /** Section d'accueil : titre + carrousel horizontal de cartes commerce premium. */
 export function MerchantCarousel({ title, subtitle, merchants, delay = 0 }: Props) {
