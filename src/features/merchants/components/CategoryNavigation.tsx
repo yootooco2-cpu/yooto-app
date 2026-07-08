@@ -100,18 +100,19 @@ export function CategoryNavigation({ onChange }: Props) {
                 </YText>
               </View>
             ) : null}
-            <View style={styles.grid}>
-              {panelNodes.map((node) => (
-                <Capsule
+            <ScrollView style={styles.list} showsVerticalScrollIndicator={false} nestedScrollEnabled>
+              {panelNodes.map((node, i) => (
+                <MenuRow
                   key={node.id}
                   label={node.label}
                   imageIcon={picto(node, panelRootId)}
-                  accent={node.accent}
+                  hasChildren={!!(node.children && node.children.length)}
                   active={activeLeafId === node.id}
+                  first={i === 0}
                   onPress={() => onTapSub(node)}
                 />
               ))}
-            </View>
+            </ScrollView>
           </Animated.View>
         </>
       ) : null}
@@ -168,6 +169,55 @@ function Capsule({
   );
 }
 
+/**
+ * Ligne de menu déroulant — PLEINE LARGEUR : pictogramme + libellé, chevron si sous-branche, coche
+ * si sélectionnée. Survol (web) et pression (mobile) très lisibles. Empilées verticalement.
+ */
+function MenuRow({
+  label,
+  imageIcon,
+  hasChildren = false,
+  active = false,
+  first = false,
+  onPress,
+}: {
+  label: string;
+  imageIcon?: ImageSourcePropType;
+  hasChildren?: boolean;
+  active?: boolean;
+  first?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      accessibilityLabel={label}
+      style={({ pressed, hovered }) => [
+        styles.menuRow,
+        !first && styles.menuRowBorder,
+        hovered && !active ? styles.menuRowHover : null,
+        active && styles.menuRowActive,
+        pressed && styles.menuRowPressed,
+      ]}>
+      {imageIcon ? (
+        <Image source={imageIcon} style={styles.menuPicto} contentFit="contain" />
+      ) : (
+        <View style={styles.menuPicto} />
+      )}
+      <YText variant="body" numberOfLines={1} style={[styles.menuLabel, { color: active ? ACTIVE_GREEN : glass.onDark }]}>
+        {label}
+      </YText>
+      {active ? (
+        <Feather name="check" size={18} color={ACTIVE_GREEN} />
+      ) : hasChildren ? (
+        <Feather name="chevron-right" size={18} color={glass.onDarkMuted} />
+      ) : null}
+    </Pressable>
+  );
+}
+
 // Vert principal YOOTOO (capsule active) — aligné sur la DA sombre (token fixe car verre hors thème).
 const ACTIVE_GREEN = '#6A9B63';
 
@@ -195,16 +245,31 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
-    padding: spacing.md,
-    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
   },
   panelShadow: Platform.select({
     web: { boxShadow: '0 14px 34px rgba(0,0,0,0.34)' },
     default: { shadowColor: '#000', shadowOpacity: 0.32, shadowRadius: 22, shadowOffset: { width: 0, height: 12 }, elevation: 14 },
   }),
-  panelHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  panelHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   panelTitle: { fontWeight: '700' },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  // Liste verticale : une ligne pleine largeur par sous-catégorie ; scroll interne si longue.
+  list: { alignSelf: 'stretch', maxHeight: 360 },
+  menuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: 12,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+  },
+  menuRowBorder: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)' },
+  menuRowHover: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  menuRowPressed: { backgroundColor: 'rgba(255,255,255,0.12)' },
+  menuRowActive: { backgroundColor: 'rgba(106,155,99,0.16)' },
+  menuPicto: { width: 24, height: 24 },
+  menuLabel: { flex: 1, fontWeight: '600' },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
