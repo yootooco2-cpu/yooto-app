@@ -51,12 +51,11 @@ describe('categoryFamilies', () => {
     expect(alim?.items.every((i) => i.iconId !== undefined)).toBe(true);
   });
 
-  it('Bien-être = 11 métiers, chacun avec pictogramme dédié + couleur d’accent', () => {
+  it('Bien-être = 8 métiers, chacun avec pictogramme dédié + couleur d’accent', () => {
     const be = categoryFamilyById('bienetre');
-    expect(be?.items.length).toBe(11);
+    expect(be?.items.length).toBe(8);
     expect(be?.items.map((i) => i.id)).toEqual([
-      'spa-hammam', 'fitness', 'yoga', 'pilates', 'coaching-sportif', 'sophrologie',
-      'reflexologie', 'naturopathie', 'acupuncture', 'tatoueur', 'perceur',
+      'spa-hammam', 'fitness', 'yoga', 'pilates', 'coaching-sportif', 'naturopathie', 'tatoueur', 'perceur',
     ]);
     expect(be?.items.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
     // Reconnaissance métier transversale (indépendante de la catégorie commerciale).

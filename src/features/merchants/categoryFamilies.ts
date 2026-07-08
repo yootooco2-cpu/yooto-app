@@ -183,10 +183,7 @@ const BIENETRE_METIERS: WellnessMetier[] = [
   { id: 'yoga', label: 'Yoga', accent: '#699E57', keywords: ['yoga'] },
   { id: 'pilates', label: 'Pilates', accent: '#61ACC4', keywords: ['pilates'] },
   { id: 'coaching-sportif', label: 'Coaching sportif', accent: '#DC7B11', keywords: ['coach sportif', 'coaching', 'personal trainer', 'preparateur physique'] },
-  { id: 'sophrologie', label: 'Sophrologie', accent: '#986DB4', keywords: ['sophrologue', 'sophrologie'] },
-  { id: 'reflexologie', label: 'Réflexologie', accent: '#66A783', keywords: ['reflexologie', 'reflexologue'] },
   { id: 'naturopathie', label: 'Naturopathie', accent: '#7CAF56', keywords: ['naturopathe', 'naturopathie'] },
-  { id: 'acupuncture', label: 'Acupuncture', accent: '#DA9413', keywords: ['acupuncture', 'acuponcture', 'acupuncteur'] },
   { id: 'tatoueur', label: 'Tatoueur', accent: '#7E5799', keywords: ['tatoueur', 'tatouage', 'tattoo'] },
   { id: 'perceur', label: 'Perceur', accent: '#DC648A', keywords: ['perceur', 'piercing', 'percage'] },
 ];

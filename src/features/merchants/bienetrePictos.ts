@@ -11,10 +11,7 @@ const BIENETRE_PICTOS: Record<string, ImageSourcePropType> = {
   yoga: require('@/assets/images/cryptograms/bienetre/yoga.png'),
   pilates: require('@/assets/images/cryptograms/bienetre/pilates.png'),
   'coaching-sportif': require('@/assets/images/cryptograms/bienetre/coaching-sportif.png'),
-  sophrologie: require('@/assets/images/cryptograms/bienetre/sophrologie.png'),
-  reflexologie: require('@/assets/images/cryptograms/bienetre/reflexologie.png'),
   naturopathie: require('@/assets/images/cryptograms/bienetre/naturopathie.png'),
-  acupuncture: require('@/assets/images/cryptograms/bienetre/acupuncture.png'),
   tatoueur: require('@/assets/images/cryptograms/bienetre/tatoueur.png'),
   perceur: require('@/assets/images/cryptograms/bienetre/perceur.png'),
 };
