@@ -11,6 +11,7 @@ import { glass } from '@/design/tokens/glass';
 import { spacing } from '@/design/tokens/spacing';
 import {
   ActivityCard,
+  ChatCardSkeleton,
   ChatCategoryBar,
   ChatSpaceSwitcher,
   ConversationCard,
@@ -29,6 +30,7 @@ import {
 function ChatBody() {
   const router = useRouter();
   const init = useChatStore((s) => s.init);
+  const ready = useChatStore((s) => s.ready);
   const conversations = useChatStore((s) => s.conversations);
   const participants = useChatStore((s) => s.participants);
   const messages = useChatStore((s) => s.messages);
@@ -92,7 +94,14 @@ function ChatBody() {
       {/* ZONE DE CONTENU À RÉGION FIXE (`flex: 1`) : seule la LISTE évolue à l'intérieur de son
           cadre. L'en-tête, les onglets et les sous-catégories (au-dessus) ne bougent JAMAIS —
           changer de catégorie n'est qu'un filtre, jamais une reconstruction d'écran. */}
-      {space === 'activity' ? (
+      {!ready ? (
+        <View style={[styles.list, styles.skeletonFeed]}>
+          <ChatCardSkeleton />
+          <ChatCardSkeleton />
+          <ChatCardSkeleton />
+          <ChatCardSkeleton />
+        </View>
+      ) : space === 'activity' ? (
         <FlatList
           style={styles.list}
           data={shownActivity}
@@ -155,4 +164,5 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { gap: spacing.sm, paddingBottom: spacing.lg },
   feedHead: { gap: spacing.lg, marginBottom: spacing.md },
+  skeletonFeed: { gap: spacing.sm },
 });

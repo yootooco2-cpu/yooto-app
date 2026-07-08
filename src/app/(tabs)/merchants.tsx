@@ -3,10 +3,12 @@ import { useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { MerchantCard } from '@/components/cards/MerchantCard';
+import { MerchantCardSkeleton } from '@/components/cards/MerchantCardSkeleton';
 import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { YScreen } from '@/components/ui/YScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YText } from '@/components/ui/YText';
@@ -17,6 +19,9 @@ import {
   type Merchant,
   type MerchantPredicate,
 } from '@/features/merchants';
+
+/** Placeholders de la grille pendant le chargement (skeletons). */
+const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
 
 export default function MerchantsScreen() {
   const router = useRouter();
@@ -52,9 +57,23 @@ export default function MerchantsScreen() {
         />
 
         {isLoading ? (
-          <YText variant="body" color="muted">
-            Chargement des commerces…
-          </YText>
+          <FlatList
+            key="cols-skeleton"
+            style={styles.list}
+            data={SKELETON_ROWS}
+            keyExtractor={(i) => `sk-${i}`}
+            numColumns={numColumns}
+            columnWrapperStyle={numColumns > 1 ? styles.column : undefined}
+            contentContainerStyle={styles.listContent}
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            ListHeaderComponent={<Skeleton width={92} height={13} />}
+            renderItem={() => (
+              <View style={styles.cell}>
+                <MerchantCardSkeleton />
+              </View>
+            )}
+          />
         ) : isError ? (
           <YCard variant="outline">
             <YText variant="subtitle">Impossible de charger les commerces</YText>

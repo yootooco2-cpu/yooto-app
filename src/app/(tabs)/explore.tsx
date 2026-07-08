@@ -39,6 +39,7 @@ import {
   type Merchant,
 } from '@/features/merchants';
 import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusBarStrip } from '@/components/ui/StatusBarStrip';
 import { SearchMenu } from '@/features/merchants/components/SearchMenu';
 import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
@@ -308,12 +309,10 @@ export default function MapScreen() {
               </Pressable>
             ) : null}
 
-            {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
+            {/* Chargement : chip en verre avec un skeleton discret (aucun texte « prototype »). */}
             {isLoading ? (
               <View style={[styles.counterChip, glass.panel, shadows.sm, { top: fabTop }]}>
-                <YText variant="caption" style={styles.counterText}>
-                  Chargement des commerces…
-                </YText>
+                <Skeleton width={104} height={9} radius={5} />
               </View>
             ) : null}
 

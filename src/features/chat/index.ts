@@ -59,6 +59,7 @@ export { ChatCategoryBar } from './components/ChatCategoryBar';
 export { ChatSpaceSwitcher } from './components/ChatSpaceSwitcher';
 export { ChatAvatar } from './components/ChatAvatar';
 export { ActivityCard } from './components/ActivityCard';
+export { ChatCardSkeleton } from './components/ChatCardSkeleton';
 export { ActivityActions } from './components/ActivityActions';
 export { FollowPill } from './components/FollowPill';
 export { TrendsStrip } from './components/TrendsStrip';
