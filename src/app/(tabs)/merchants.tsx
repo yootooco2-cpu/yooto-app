@@ -4,6 +4,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 
 import { MerchantCard } from '@/components/cards/MerchantCard';
 import { MerchantCardSkeleton } from '@/components/cards/MerchantCardSkeleton';
+import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
@@ -54,6 +55,7 @@ export default function MerchantsScreen() {
           query={query}
           onQueryChange={setQuery}
           onCategoryChange={(m) => setCategoryMatch(() => m)}
+          trailing={<FavoritesButton onPress={() => router.push('/explore')} />}
         />
 
         {isLoading ? (

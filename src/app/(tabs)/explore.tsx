@@ -38,6 +38,7 @@ import {
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
+import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { StatusBarStrip } from '@/components/ui/StatusBarStrip';
 import { SearchMenu } from '@/features/merchants/components/SearchMenu';
@@ -272,14 +273,7 @@ export default function MapScreen() {
               onViewportChange={handleViewport}
             />
 
-            {/* Accès rapide « Favoris » — reste visible dans les deux modes (contrôle carte). */}
-            <Pressable
-              onPress={() => setQuickAccessOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Favoris"
-              style={[styles.favFab, glass.panel, shadows.md, { top: fabTop }]}>
-              <Feather name="heart" size={18} color={glass.onDark} />
-            </Pressable>
+            {/* Accès « Favoris » déplacé dans l'en-tête (cœur du SearchMenu) → plus de FAB redondant. */}
 
             {/* Bottom sheet « Favoris » (overlay Modal, aucun impact moteur carte). */}
             <MapQuickAccessSheet
@@ -376,6 +370,7 @@ export default function MapScreen() {
                   query={query}
                   onQueryChange={setQuery}
                   onCategoryChange={(match) => setMapMatch(() => match)}
+                  trailing={<FavoritesButton onPress={() => setQuickAccessOpen(true)} />}
                 />
                 {nearbyActive && location.status === 'denied' ? (
                   <YText variant="caption" style={styles.nearbyDenied}>
