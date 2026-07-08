@@ -40,6 +40,7 @@ import {
   type Merchant,
 } from '@/features/merchants';
 import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
+import { StatusBarStrip } from '@/components/ui/StatusBarStrip';
 import { SearchMenu } from '@/features/merchants/components/SearchMenu';
 import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
@@ -376,6 +377,8 @@ export default function MapScreen() {
                 pointerEvents="none"
               />
               <View style={styles.topChromeInner} pointerEvents="box-none">
+                {/* Barre d'état façon smartphone (heure/réseau/wifi/batterie) — web uniquement. */}
+                <StatusBarStrip />
                 {/* MENU OFFICIEL PARTAGÉ (recherche + catégories). Le prédicat est enveloppé dans
                     `() => match` : sinon React interprète la fonction passée au setter comme un
                     updater et l'exécute (bug). */}
