@@ -1,8 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Platform, ScrollView, StyleSheet, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
@@ -143,30 +143,43 @@ function Capsule({
   accessibilityLabel?: string;
 }) {
   const iconColor = back ? '#8EB67B' : glass.onDark;
+
+  // Mise en valeur DISCRÈTE de la capsule active : légère élévation + micro-agrandissement, en
+  // transition douce (jamais tape-à-l'œil). L'ombre douce est portée par `chipActiveShadow`.
+  const a = useSharedValue(active ? 1 : 0);
+  useEffect(() => {
+    a.value = withTiming(active ? 1 : 0, { duration: 220 });
+  }, [active, a]);
+  const liftStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -2 * a.value }, { scale: 1 + 0.03 * a.value }],
+  }));
+
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={accessibilityLabel ?? label}
-      style={({ pressed, hovered }) => [
-        styles.chip,
-        active ? styles.chipActive : [glass.panel, styles.glassShadow],
-        back && styles.chipBack,
-        accent && (active || (hovered && !active)) ? accentGlow(accent) : null,
-        pressed && styles.chipPressed,
-      ]}>
-      {imageIcon ? (
-        <Image source={imageIcon} style={[styles.picto, !active && styles.pictoInactive]} contentFit="contain" />
-      ) : icon ? (
-        <Feather name={icon} size={16} color={iconColor} />
-      ) : null}
-      {label ? (
-        <YText variant="caption" style={[styles.label, { color: glass.onDark }]} numberOfLines={1}>
-          {label}
-        </YText>
-      ) : null}
-    </Pressable>
+    <Animated.View style={liftStyle}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityState={{ selected: active }}
+        accessibilityLabel={accessibilityLabel ?? label}
+        style={({ pressed, hovered }) => [
+          styles.chip,
+          active ? [styles.chipActive, styles.chipActiveShadow] : [glass.panel, styles.glassShadow],
+          back && styles.chipBack,
+          accent && (active || (hovered && !active)) ? accentGlow(accent) : null,
+          pressed && styles.chipPressed,
+        ]}>
+        {imageIcon ? (
+          <Image source={imageIcon} style={[styles.picto, !active && styles.pictoInactive]} contentFit="contain" />
+        ) : icon ? (
+          <Feather name={icon} size={16} color={iconColor} />
+        ) : null}
+        {label ? (
+          <YText variant="caption" style={[styles.label, { color: glass.onDark }]} numberOfLines={1}>
+            {label}
+          </YText>
+        ) : null}
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -281,7 +294,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     borderWidth: 1,
   },
-  chipActive: { backgroundColor: ACTIVE_GREEN, borderColor: ACTIVE_GREEN },
+  chipActive: { backgroundColor: ACTIVE_GREEN, borderColor: '#78AD70' },
+  // Ombre douce VERTE portée sous la capsule active (élévation subtile, cohérente DA).
+  chipActiveShadow: Platform.select({
+    web: { boxShadow: '0 6px 18px rgba(106,155,99,0.45)' },
+    default: { shadowColor: ACTIVE_GREEN, shadowOpacity: 0.5, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
+  }),
   chipBack: { paddingHorizontal: spacing.sm + 2, borderColor: 'rgba(142,182,123,0.55)' },
   chipPressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
   picto: { width: 22, height: 22 },

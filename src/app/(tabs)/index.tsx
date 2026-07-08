@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Dimensions } from 'react-native';
 import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
@@ -9,6 +10,10 @@ import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
 import { SearchMenu, useMerchants, useMerchantSearchStore, type MerchantPredicate } from '@/features/merchants';
+
+// Bande d'ambiance ≈ une hauteur d'écran : l'image d'univers se dissout TRÈS progressivement vers
+// le fond sombre (fondu du BackgroundOverlay) et se prolonge sous la 1re section → aucune rupture.
+const AMBIENT_HEIGHT = Math.round(Dimensions.get('window').height);
 
 export default function HomeScreen() {
   const { data } = useMerchants();
@@ -53,7 +58,7 @@ export default function HomeScreen() {
   // blur + voile) mais SANS aucun texte héro par-dessus. La page démarre directement par la
   // recherche → catégories → recommandations.
   return (
-    <SectionScreen section="accueil" scrollY={scrollY} height={440}>
+    <SectionScreen section="accueil" scrollY={scrollY} height={AMBIENT_HEIGHT}>
       <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
         {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories + profil). */}
         <SearchMenu
