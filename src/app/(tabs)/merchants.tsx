@@ -4,6 +4,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 
 import { MerchantCard } from '@/components/cards/MerchantCard';
 import { MerchantCardSkeleton } from '@/components/cards/MerchantCardSkeleton';
+import { MerchantPhotoCoverageDev } from '@/components/dev/MerchantPhotoCoverageDev';
 import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YButton } from '@/components/ui/YButton';
@@ -112,6 +113,7 @@ export default function MerchantsScreen() {
           />
         )}
         <SupportContactFooter />
+        {__DEV__ ? <MerchantPhotoCoverageDev /> : null}
       </YScreen>
     </SectionScreen>
   );
