@@ -67,7 +67,7 @@ export function StatusBarStrip() {
           ))}
         </View>
         <Feather name="wifi" size={15} color={color} />
-        {/* Batterie (niveau réel si disponible ; vert si en charge). */}
+        {/* Batterie (niveau réel si disponible ; vert + éclair si en charge). */}
         <View style={styles.battery}>
           <View style={[styles.batteryBody, { borderColor: color }]}>
             <View
@@ -76,6 +76,7 @@ export function StatusBarStrip() {
                 { width: `${Math.round(level * 100)}%`, backgroundColor: battery?.charging ? '#69B96C' : color },
               ]}
             />
+            {battery?.charging ? <Feather name="zap" size={9} color="#000000" style={styles.bolt} /> : null}
           </View>
           <View style={[styles.batteryCap, { backgroundColor: color }]} />
         </View>
@@ -104,7 +105,9 @@ const styles = StyleSheet.create({
   signal: { flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 14 },
   sigBar: { width: 3, borderRadius: 1 },
   battery: { flexDirection: 'row', alignItems: 'center' },
-  batteryBody: { width: 22, height: 11, borderRadius: 3, borderWidth: 1, padding: 1, justifyContent: 'center', overflow: 'hidden' },
+  batteryBody: { width: 22, height: 11, borderRadius: 3, borderWidth: 1, padding: 1, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
   batteryFill: { height: '100%', borderRadius: 1.5 },
+  // Éclair de charge centré sur la batterie (comme iOS).
+  bolt: { position: 'absolute', left: 6, top: 1 },
   batteryCap: { width: 2, height: 5, borderRadius: 1, marginLeft: 1 },
 });
