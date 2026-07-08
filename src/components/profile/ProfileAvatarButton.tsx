@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
-import { glass } from '@/design/tokens/glass';
 import { useProfileRow, useSession } from '@/features/auth';
 
 /** Initiale d'affichage (prénom ou email) pour le repli sans photo. */
@@ -32,13 +31,13 @@ export function ProfileAvatarButton() {
       accessibilityRole="button"
       accessibilityLabel={isAuthenticated ? 'Mon profil' : 'Se connecter'}
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}>
-      <View style={[styles.avatar, glass.panel, styles.avatarRing]}>
+      <View style={[styles.avatar, styles.avatarRing]}>
         {avatarUrl ? (
           <Image source={avatarUrl} style={styles.img} contentFit="cover" recyclingKey={avatarUrl} />
         ) : isAuthenticated ? (
-          <YText style={[styles.initial, { color: '#FFFFFF' }]}>{initial}</YText>
+          <YText style={[styles.initial, { color: '#17201A' }]}>{initial}</YText>
         ) : (
-          <Feather name="user" size={24} color="#FFFFFF" />
+          <Feather name="user" size={24} color="#17201A" />
         )}
       </View>
       {isAuthenticated ? <View style={styles.dot} /> : null}
@@ -57,6 +56,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    // Fond CLAIR (fini le rond noir) : la photo le recouvre ; sinon icône foncée lisible.
+    backgroundColor: '#F1ECE0',
   },
   // Anneau clair → l'avatar ressort davantage / gagne en luminosité sur le fond sombre.
   avatarRing: { borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.72)' },
