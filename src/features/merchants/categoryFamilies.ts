@@ -24,6 +24,10 @@ export interface FamilyItem {
   /** Cryptogramme YOOTOO existant (l'asset image est résolu par le composant — couche données
    *  sans require d'image, testable). Optionnel : sinon la capsule est en texte / fallback. */
   iconId?: CryptogramId;
+  /** Clé de pictogramme DÉDIÉ (registre `restaurantPictos`), résolu par le composant. */
+  pictoKey?: string;
+  /** Touche de couleur d'accent (identité de la sous-catégorie) — halo discret aux états actif/hover. */
+  accent?: string;
 }
 
 export interface CategoryFamily {
@@ -50,6 +54,8 @@ const withText = (base: MerchantPredicate, ...terms: string[]): MerchantPredicat
 };
 /** Prédicat purement TEXTUEL (indépendant de toute catégorie) — au moins un terme présent. */
 const textMatch = (...terms: string[]): MerchantPredicate => withText(() => true, ...terms);
+/** OU de deux prédicats. */
+const either = (a: MerchantPredicate, b: MerchantPredicate): MerchantPredicate => (m) => a(m) || b(m);
 
 const item = (id: string, label: string, match: MerchantPredicate): FamilyItem => ({ id, label, match });
 /**
@@ -61,6 +67,14 @@ const catItem = (id: MerchantCategoryId, label: string): FamilyItem => ({
   label,
   match: catMatch(id),
   iconId: merchantCategoryById(id)?.icon,
+});
+/** Item RESTAURANTS : pictogramme dédié (registre) + touche de couleur d'accent. */
+const rItem = (id: string, label: string, accent: string, match: MerchantPredicate): FamilyItem => ({
+  id,
+  label,
+  match,
+  pictoKey: id,
+  accent,
 });
 
 const RESTO = anyCat('restaurants', 'cafes');
@@ -170,18 +184,25 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
     ],
   },
   {
+    // Restaurants — 13 sous-catégories avec pictogrammes dédiés + touches de couleur (référence).
     id: 'restaurants',
     label: 'Restaurants',
     icon: 'coffee',
     match: RESTO,
     items: [
-      item('francaise', 'Cuisine française', withText(catMatch('restaurants'), 'francais', 'france')),
-      item('italienne', 'Italienne', withText(RESTO, 'italien', 'pizza', 'pizzeria', 'pasta')),
-      item('asiatique', 'Asiatique', withText(RESTO, 'asiat', 'japonais', 'sushi', 'chinois', 'thai', 'vietnam', 'wok')),
-      item('street', 'Street food', withText(RESTO, 'street', 'food truck', 'burger', 'kebab', 'tacos')),
-      item('brasseries', 'Brasseries', withText(RESTO, 'brasserie', 'bistrot')),
-      item('bars-cafes', 'Bars / Cafés', catMatch('cafes')),
-      item('vegetarien', 'Végétarien / Vegan', withText(RESTO, 'vegetarien', 'vegan', 'veggie')),
+      rItem('tous', 'Tous les restaurants', '#C79A3B', RESTO),
+      rItem('francaise', 'Cuisine française', '#4E6A93', withText(RESTO, 'francais', 'france')),
+      rItem('italienne', 'Cuisine italienne', '#B24A3B', withText(RESTO, 'italien', 'pizza', 'pizzeria', 'pasta', 'trattoria')),
+      rItem('asiatique', 'Cuisine asiatique', '#3E6E9C', withText(RESTO, 'asiat', 'japonais', 'sushi', 'chinois', 'thai', 'vietnam', 'wok', 'coreen', 'ramen')),
+      rItem('street', 'Street Food', '#B8863B', withText(RESTO, 'street', 'food truck', 'burger', 'kebab', 'tacos', 'snack')),
+      rItem('grill', 'Grill / Viandes', '#C4632B', withText(RESTO, 'grill', 'viande', 'barbecue', 'steak', 'rotisserie', 'grillade')),
+      rItem('vegetarien', 'Végétarien / Vegan', '#4E8A54', withText(RESTO, 'vegetarien', 'vegan', 'veggie', 'vegetal')),
+      rItem('bars-cafes', 'Bars / Cafés', '#7B4B2A', either(catMatch('cafes'), withText(RESTO, 'bar', 'pub', 'cave a vin'))),
+      rItem('brasseries', 'Brasseries / Bistrots', '#C08A2E', withText(RESTO, 'brasserie', 'bistrot', 'taverne', 'biere')),
+      rItem('fast-casual', 'Fast Casual', '#C4632B', withText(RESTO, 'fast', 'rapide', 'casual', 'comptoir')),
+      rItem('healthy', 'Healthy Bowls', '#4E8A54', withText(RESTO, 'healthy', 'bowl', 'poke', 'salade', 'detox')),
+      rItem('desserts', 'Pâtisseries / Desserts', '#6C5B8B', either(catMatch('patisseries'), withText(RESTO, 'dessert', 'glace', 'creperie'))),
+      rItem('monde', 'Cuisines du monde', '#2C4A6E', withText(RESTO, 'monde', 'world', 'libanais', 'mexicain', 'indien', 'marocain', 'turc', 'oriental', 'africain')),
     ],
   },
   {

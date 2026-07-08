@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useCallback, useState } from 'react';
-import { Pressable, Platform, ScrollView, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { Pressable, Platform, ScrollView, StyleSheet, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
@@ -9,6 +9,7 @@ import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { cryptogramAsset } from '../cryptogramAssets';
+import { restaurantPicto } from '../restaurantPictos';
 
 import {
   CATEGORY_FAMILIES,
@@ -84,7 +85,8 @@ export function CategoryNavigation({ onChange }: Props) {
               <Capsule
                 key={it.id}
                 label={it.label}
-                imageIcon={it.iconId ? cryptogramAsset(it.iconId) : undefined}
+                imageIcon={it.iconId ? cryptogramAsset(it.iconId) : it.pictoKey ? restaurantPicto(it.pictoKey) : undefined}
+                accent={it.accent}
                 active={nav.activeSubcategory === it.id}
                 onPress={() => toggleSub(family, it)}
               />
@@ -107,6 +109,7 @@ function Capsule({
   label,
   icon,
   imageIcon,
+  accent,
   active = false,
   back = false,
   onPress,
@@ -116,6 +119,8 @@ function Capsule({
   icon?: FeatherName;
   /** Pictogramme cryptogramme YOOTOO (prioritaire sur `icon`). */
   imageIcon?: ImageSourcePropType;
+  /** Touche de couleur d'accent (halo discret aux états actif/hover). */
+  accent?: string;
   active?: boolean;
   back?: boolean;
   onPress: () => void;
@@ -128,14 +133,16 @@ function Capsule({
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
       accessibilityLabel={accessibilityLabel ?? label}
-      style={({ pressed }) => [
+      style={({ pressed, hovered }) => [
         styles.chip,
         active ? styles.chipActive : [glass.panel, styles.glassShadow],
         back && styles.chipBack,
+        // Halo d'accent DISCRET : à l'état actif, ou au survol web d'une capsule inactive.
+        accent && (active || (hovered && !active)) ? accentGlow(accent) : null,
         pressed && styles.chipPressed,
       ]}>
       {imageIcon ? (
-        <Image source={imageIcon} style={styles.picto} contentFit="contain" />
+        <Image source={imageIcon} style={[styles.picto, !active && styles.pictoInactive]} contentFit="contain" />
       ) : icon ? (
         <Feather name={icon} size={16} color={iconColor} />
       ) : null}
@@ -150,6 +157,12 @@ function Capsule({
 
 // Vert principal YOOTOO (capsule active) — aligné sur la DA sombre (token fixe car verre hors thème).
 const ACTIVE_GREEN = '#6A9B63';
+
+/** Halo de couleur TRÈS DISCRET dérivé de l'accent de la sous-catégorie (states actif / hover). */
+const accentGlow = (color: string): ViewStyle =>
+  Platform.OS === 'web'
+    ? ({ boxShadow: `0 4px 18px ${color}55` } as unknown as ViewStyle)
+    : { shadowColor: color, shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 5 };
 
 const styles = StyleSheet.create({
   row: { gap: spacing.sm, paddingRight: spacing.sm, alignItems: 'center' },
@@ -167,6 +180,8 @@ const styles = StyleSheet.create({
   chipBack: { paddingHorizontal: spacing.sm + 2, borderColor: 'rgba(142,182,123,0.55)' },
   chipPressed: { opacity: 0.72, transform: [{ scale: 0.97 }] },
   picto: { width: 22, height: 22 },
+  // État inactif : pictogramme très légèrement désaturé/atténué (cohérent avec la référence).
+  pictoInactive: { opacity: 0.92 },
   label: { fontWeight: '600' },
   // Ombre extrêmement douce → capsule flottante sur la carte.
   glassShadow: Platform.select({

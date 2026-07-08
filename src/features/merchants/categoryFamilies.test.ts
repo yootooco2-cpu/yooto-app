@@ -51,6 +51,16 @@ describe('categoryFamilies', () => {
     expect(alim?.items.every((i) => i.iconId !== undefined)).toBe(true);
   });
 
+  it('Restaurants = 13 sous-catégories, chacune avec pictogramme dédié + couleur d’accent', () => {
+    const resto = categoryFamilyById('restaurants');
+    expect(resto?.items.length).toBe(13);
+    expect(resto?.items.map((i) => i.id)).toEqual([
+      'tous', 'francaise', 'italienne', 'asiatique', 'street', 'grill', 'vegetarien',
+      'bars-cafes', 'brasseries', 'fast-casual', 'healthy', 'desserts', 'monde',
+    ]);
+    expect(resto?.items.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
+  });
+
   it('Artisanat = métiers d’art (ébénistes, luthiers…) reconnus par le métier, pas les boutiques', () => {
     const art = categoryFamilyById('artisanat');
     const labels = art?.items.map((i) => i.label) ?? [];
