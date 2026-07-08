@@ -61,7 +61,7 @@ export function AuthSheet({ open, onClose }: Props) {
     // Web : redirection en cours (rien à faire). Natif succès → on referme.
     if (res.ok && !res.pendingRedirect) onClose();
     else if (!res.ok && res.error !== 'cancelled') {
-      setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Connexion impossible, réessayez.');
+      setError(res.error === 'not-configured' ? 'Connexion momentanément indisponible.' : 'Connexion impossible, réessayez.');
     }
   };
 
@@ -72,7 +72,7 @@ export function AuthSheet({ open, onClose }: Props) {
     const res = await signInWithEmailLink(email);
     setBusy(null);
     if (res.ok) setSent(true);
-    else setError(res.error === 'not-configured' ? 'Connexion bientôt disponible.' : 'Envoi impossible, vérifiez l’email.');
+    else setError(res.error === 'not-configured' ? 'Connexion momentanément indisponible.' : 'Envoi impossible, vérifiez l’email.');
   };
 
   const title = 'Rejoignez YOOTOO';

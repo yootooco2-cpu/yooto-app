@@ -80,8 +80,8 @@ function QuickCard({
   onPress?: () => void;
   styles: ReturnType<typeof makeStyles>;
 }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
+  const inner = (
+    <>
       <View style={[styles.quickIcon, { backgroundColor: `${tint}1A` }]}>
         {icon.set === 'feather' ? <Feather name={icon.name} size={18} color={tint} /> : <MaterialCommunityIcons name={icon.name} size={18} color={tint} />}
       </View>
@@ -91,6 +91,13 @@ function QuickCard({
       <YText style={styles.quickSub} numberOfLines={1}>
         {subtitle}
       </YText>
+    </>
+  );
+  // Sans action : tuile INFORMATIVE (pas de faux bouton cliquable sans effet).
+  if (!onPress) return <View style={styles.quickCard}>{inner}</View>;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
+      {inner}
     </Pressable>
   );
 }
@@ -156,7 +163,7 @@ export default function ProfileScreen() {
     { key: 'reviews', icon: { set: 'feather', name: 'star' }, tint: P.gold, title: 'Mes avis', subtitle: `${reviewsCount} avis laissé${reviewsCount > 1 ? 's' : ''}` },
     { key: 'visited', icon: { set: 'feather', name: 'map-pin' }, tint: P.green, title: 'Lieux visités', subtitle: `${visitedCount} découverte${visitedCount > 1 ? 's' : ''}` },
     { key: 'prefs', icon: { set: 'feather', name: 'sliders' }, tint: P.green, title: 'Mes préférences', subtitle: 'Vos goûts' },
-    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: P.blue, title: 'Notifications', subtitle: 'Bientôt', onPress: () => router.push('/settings') },
+    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: P.blue, title: 'Notifications', subtitle: 'Alertes et préférences', onPress: () => router.push('/settings') },
     { key: 'help', icon: { set: 'feather', name: 'help-circle' }, tint: P.green, title: 'Aide & Contact', subtitle: SUPPORT_EMAIL, onPress: mailSupport },
   ];
 

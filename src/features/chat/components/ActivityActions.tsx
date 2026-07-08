@@ -10,7 +10,6 @@ import { spacing } from '@/design/tokens/spacing';
 
 import { avatarUri } from '../logic';
 import { REACTIONS } from '../reactions';
-import { shareService } from '../share';
 import { useChatStore } from '../store';
 import { formatChatTime } from '../time';
 import type { ActivityComment, ActivityItem } from '../types';
@@ -79,7 +78,6 @@ export function ActivityActions({ item }: { item: ActivityItem }) {
           <ActionBtn icon="smile" label="Réagir" color={reactColor} onPress={() => setPicker((p) => !p)} />
           <ActionBtn icon="message-circle" label={comments.length > 0 ? String(comments.length) : 'Répondre'} color={open ? section.accent : colors.mutedText} onPress={() => setOpen((o) => !o)} accessibilityLabel="Répondre" />
           <ActionBtn icon="star" color={saved ? colors.accent : colors.mutedText} onPress={() => void toggleSave(item.id)} accessibilityLabel={saved ? 'Enregistré' : 'Enregistrer'} />
-          <ActionBtn icon="share-2" color={colors.mutedText} onPress={() => void shareService.share({ type: 'activity', id: item.id }, 'link')} accessibilityLabel="Partager" />
         </View>
       </View>
 
