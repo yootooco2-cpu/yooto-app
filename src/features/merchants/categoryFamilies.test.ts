@@ -51,17 +51,17 @@ describe('categoryFamilies', () => {
     expect(alim?.items.every((i) => i.iconId !== undefined)).toBe(true);
   });
 
-  it('Bien-être = 14 métiers, chacun avec pictogramme dédié + couleur d’accent', () => {
+  it('Bien-être = 11 métiers, chacun avec pictogramme dédié + couleur d’accent', () => {
     const be = categoryFamilyById('bienetre');
-    expect(be?.items.length).toBe(14);
+    expect(be?.items.length).toBe(11);
     expect(be?.items.map((i) => i.id)).toEqual([
-      'spa-hammam', 'fitness', 'yoga', 'pilates', 'coaching-sportif', 'osteopathe', 'chiropracteur',
-      'kinesitherapeute', 'sophrologie', 'reflexologie', 'naturopathie', 'acupuncture', 'tatoueur', 'perceur',
+      'spa-hammam', 'fitness', 'yoga', 'pilates', 'coaching-sportif', 'sophrologie',
+      'reflexologie', 'naturopathie', 'acupuncture', 'tatoueur', 'perceur',
     ]);
     expect(be?.items.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
     // Reconnaissance métier transversale (indépendante de la catégorie commerciale).
-    const osteo = be?.items.find((i) => i.id === 'osteopathe');
-    expect(osteo?.match(merchant({ name: 'Cabinet d’ostéopathie Sainte-Anne' }))).toBe(true);
+    const naturo = be?.items.find((i) => i.id === 'naturopathie');
+    expect(naturo?.match(merchant({ name: 'Cabinet de naturopathie Sainte-Anne' }))).toBe(true);
   });
 
   it('Restaurants = 13 sous-catégories, chacune avec pictogramme dédié + couleur d’accent', () => {
