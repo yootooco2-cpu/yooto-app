@@ -59,8 +59,8 @@ const styles = StyleSheet.create({
     // Fond CLAIR (fini le rond noir) : la photo le recouvre ; sinon icône foncée lisible.
     backgroundColor: '#F1ECE0',
   },
-  // Anneau clair → l'avatar ressort davantage / gagne en luminosité sur le fond sombre.
-  avatarRing: { borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.72)' },
+  // Anneau IDENTIQUE à la barre de recherche (bordure du verre) → chrome homogène.
+  avatarRing: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)' },
   img: { width: '100%', height: '100%' },
   initial: { fontSize: 22, fontWeight: '800' },
   // Pastille de présence : vert connecté, bord sombre pour se détacher de la photo.
