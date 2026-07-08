@@ -76,7 +76,11 @@ export function StatusBarStrip() {
                 { width: `${Math.round(level * 100)}%`, backgroundColor: battery?.charging ? '#69B96C' : color },
               ]}
             />
-            {battery?.charging ? <Feather name="zap" size={12} color="#000000" style={styles.bolt} /> : null}
+            {battery?.charging ? (
+              <View style={styles.boltWrap} pointerEvents="none">
+                <Feather name="zap" size={11} color="#000000" />
+              </View>
+            ) : null}
           </View>
           <View style={[styles.batteryCap, { backgroundColor: color }]} />
         </View>
@@ -107,7 +111,7 @@ const styles = StyleSheet.create({
   battery: { flexDirection: 'row', alignItems: 'center' },
   batteryBody: { width: 29, height: 15, borderRadius: 4, borderWidth: 1.5, padding: 1.5, flexDirection: 'row', alignItems: 'stretch', overflow: 'hidden' },
   batteryFill: { height: '100%', borderRadius: 2 },
-  // Éclair de charge centré sur la batterie (comme iOS).
-  bolt: { position: 'absolute', left: 8.5, top: 1.5 },
+  // Éclair de charge PARFAITEMENT centré sur la batterie (calque centré, comme iOS).
+  boltWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   batteryCap: { width: 3, height: 6, borderRadius: 1.5, marginLeft: 1.5 },
 });

@@ -32,13 +32,13 @@ export function ProfileAvatarButton() {
       accessibilityRole="button"
       accessibilityLabel={isAuthenticated ? 'Mon profil' : 'Se connecter'}
       style={({ pressed }) => [styles.wrap, pressed && styles.pressed]}>
-      <View style={[styles.avatar, glass.panel]}>
+      <View style={[styles.avatar, glass.panel, styles.avatarRing]}>
         {avatarUrl ? (
           <Image source={avatarUrl} style={styles.img} contentFit="cover" recyclingKey={avatarUrl} />
         ) : isAuthenticated ? (
-          <YText style={[styles.initial, { color: glass.onDark }]}>{initial}</YText>
+          <YText style={[styles.initial, { color: '#FFFFFF' }]}>{initial}</YText>
         ) : (
-          <Feather name="user" size={24} color={glass.onDark} />
+          <Feather name="user" size={24} color="#FFFFFF" />
         )}
       </View>
       {isAuthenticated ? <View style={styles.dot} /> : null}
@@ -58,6 +58,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // Anneau clair → l'avatar ressort davantage / gagne en luminosité sur le fond sombre.
+  avatarRing: { borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.72)' },
   img: { width: '100%', height: '100%' },
   initial: { fontSize: 22, fontWeight: '800' },
   // Pastille de présence : vert connecté, bord sombre pour se détacher de la photo.
