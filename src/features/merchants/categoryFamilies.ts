@@ -264,6 +264,25 @@ const CULTURE_KEYWORDS: string[] = CULTURE_METIERS.flatMap((m) => m.keywords);
 const cultureMatch: MerchantPredicate = either(CULTURE, textMatch(...CULTURE_KEYWORDS));
 
 /**
+ * MOBILITÉ douce — 9 sous-catégories avec pictogramme dédié + couleur d'accent (référence
+ * validée). Marche à pied / Autopartage / Itinéraires retirés. Reconnaissance TEXTE transversale
+ * + catégories mobilité/transports existantes.
+ */
+const MOBILITE_METIERS: { id: string; label: string; accent: string; keywords: string[] }[] = [
+  { id: 'velos', label: 'Vélos', accent: '#666633', keywords: ['velo', 'cycle', 'bike', 'cyclable', 'reparation de velo'] },
+  { id: 'trottinettes', label: 'Trottinettes', accent: '#2D6563', keywords: ['trottinette', 'scooter electrique'] },
+  { id: 'skate-rollers', label: 'Skate & Rollers', accent: '#AC541E', keywords: ['skate', 'skateboard', 'roller', 'longboard'] },
+  { id: 'poussettes', label: 'Poussettes', accent: '#6F4568', keywords: ['poussette', 'puericulture'] },
+  { id: 'velos-cargo', label: 'Vélos cargo', accent: '#797844', keywords: ['velo cargo', 'triporteur', 'biporteur', 'cargo bike'] },
+  { id: 'mobilite-pmr', label: 'Mobilité PMR', accent: '#C27D1C', keywords: ['pmr', 'fauteuil roulant', 'mobilite reduite', 'materiel medical', 'handicap'] },
+  { id: 'covoiturage', label: 'Covoiturage', accent: '#2C5A77', keywords: ['covoiturage', 'covoiturer'] },
+  { id: 'bus', label: 'Bus', accent: '#2E6970', keywords: ['bus', 'autobus', 'autocar', 'navette'] },
+  { id: 'tramway', label: 'Tramway', accent: '#A94621', keywords: ['tramway', 'tram'] },
+];
+const MOBILITE_KEYWORDS: string[] = MOBILITE_METIERS.flatMap((m) => m.keywords);
+const mobiliteMatch: MerchantPredicate = either(MOBILITE, textMatch(...MOBILITE_KEYWORDS));
+
+/**
  * Grandes familles (Niveau 1) + « Tous » géré à part par le composant. Chaque famille est une
  * BRANCHE (`children`). « Plus » regroupe les catégories restantes (nature / autres).
  */
@@ -335,18 +354,13 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     children: CULTURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
+    // Mobilité douce — 9 sous-catégories avec pictogrammes dédiés (référence). Marche à pied /
+    // Autopartage / Itinéraires retirés.
     id: 'mobilite',
     label: 'Mobilité',
     icon: 'navigation',
-    match: MOBILITE,
-    children: [
-      item('velo', 'Vélo', withText(MOBILITE, 'velo', 'cycle', 'bike')),
-      item('transports', 'Transports', catMatch('transports')),
-      item('parking', 'Parking', withText(MOBILITE, 'parking', 'stationnement')),
-      item('recharge', 'Recharge électrique', withText(MOBILITE, 'recharge', 'borne', 'electrique', 'charge')),
-      item('autopartage', 'Auto-partage', withText(MOBILITE, 'partage', 'location', 'autopartage')),
-      item('mobilite', 'Mobilité douce', catMatch('mobilite')),
-    ],
+    match: mobiliteMatch,
+    children: MOBILITE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
     id: 'plus',

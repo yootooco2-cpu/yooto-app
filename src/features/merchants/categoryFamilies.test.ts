@@ -84,6 +84,25 @@ describe('categoryFamilies', () => {
     expect(musees?.match?.(merchant({ name: 'Musée Fabre' }))).toBe(true);
   });
 
+  it('Mobilité = 9 sous-catégories (picto + accent) ; Bus & Tramway présents, anciennes retirées', () => {
+    const mob = categoryFamilyById('mobilite');
+    expect(mob?.children?.length).toBe(9);
+    expect(mob?.children?.map((i) => i.id)).toEqual([
+      'velos', 'trottinettes', 'skate-rollers', 'poussettes', 'velos-cargo',
+      'mobilite-pmr', 'covoiturage', 'bus', 'tramway',
+    ]);
+    expect(mob?.children?.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
+    const ids = mob?.children?.map((i) => i.id) ?? [];
+    expect(ids).toContain('bus');
+    expect(ids).toContain('tramway');
+    // Anciennes sous-catégories retirées.
+    ['parking', 'recharge', 'autopartage', 'transports', 'itineraires', 'marche'].forEach((old) =>
+      expect(ids).not.toContain(old),
+    );
+    const bus = mob?.children?.find((i) => i.id === 'bus');
+    expect(bus?.match?.(merchant({ name: 'Réseau de bus TaM' }))).toBe(true);
+  });
+
   it('Artisanat = navigation à 3 niveaux : 11 familles (badge + accent) → métiers', () => {
     const art = categoryFamilyById('artisanat');
     // Niveau 2 : 11 familles, chacune avec pictogramme dédié + accent + enfants (métiers).
