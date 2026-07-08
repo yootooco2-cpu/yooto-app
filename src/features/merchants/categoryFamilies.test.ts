@@ -32,59 +32,60 @@ describe('categoryFamilies', () => {
 
   it('regroupe les catégories existantes (union de match) — un producteur ∈ Alimentation', () => {
     const alim = categoryFamilyById('alimentation');
-    expect(alim?.match(merchant({ isProducer: true, category: 'producer' }))).toBe(true);
+    expect(alim?.match?.(merchant({ isProducer: true, category: 'producer' }))).toBe(true);
   });
 
   it('réutilise le match d’une catégorie existante pour la sous-catégorie (aucune duplication)', () => {
     const alim = categoryFamilyById('alimentation');
-    const producteurs = alim?.items.find((i) => i.id === 'producteurs');
-    expect(producteurs?.match(merchant({ isProducer: true }))).toBe(true);
+    const producteurs = alim?.children?.find((i) => i.id === 'producteurs');
+    expect(producteurs?.match?.(merchant({ isProducer: true }))).toBe(true);
   });
 
-  it('chaque famille a au moins une sous-catégorie', () => {
-    expect(CATEGORY_FAMILIES.every((f) => f.items.length > 0)).toBe(true);
+  it('chaque grande famille est une branche (a des enfants)', () => {
+    expect(CATEGORY_FAMILIES.every((f) => (f.children?.length ?? 0) > 0)).toBe(true);
   });
 
   it('les sous-catégories Alimentation portent leur pictogramme (cryptogramme existant)', () => {
     const alim = categoryFamilyById('alimentation');
-    expect(alim?.items.length).toBe(11);
-    expect(alim?.items.every((i) => i.iconId !== undefined)).toBe(true);
+    expect(alim?.children?.length).toBe(11);
+    expect(alim?.children?.every((i) => i.iconId !== undefined)).toBe(true);
   });
 
   it('Bien-être = 8 métiers, chacun avec pictogramme dédié + couleur d’accent', () => {
     const be = categoryFamilyById('bienetre');
-    expect(be?.items.length).toBe(8);
-    expect(be?.items.map((i) => i.id)).toEqual([
+    expect(be?.children?.length).toBe(8);
+    expect(be?.children?.map((i) => i.id)).toEqual([
       'spa-hammam', 'fitness', 'yoga', 'pilates', 'coaching-sportif', 'naturopathie', 'tatoueur', 'perceur',
     ]);
-    expect(be?.items.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
-    // Reconnaissance métier transversale (indépendante de la catégorie commerciale).
-    const naturo = be?.items.find((i) => i.id === 'naturopathie');
-    expect(naturo?.match(merchant({ name: 'Cabinet de naturopathie Sainte-Anne' }))).toBe(true);
+    expect(be?.children?.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
+    const naturo = be?.children?.find((i) => i.id === 'naturopathie');
+    expect(naturo?.match?.(merchant({ name: 'Cabinet de naturopathie Sainte-Anne' }))).toBe(true);
   });
 
   it('Restaurants = 13 sous-catégories, chacune avec pictogramme dédié + couleur d’accent', () => {
     const resto = categoryFamilyById('restaurants');
-    expect(resto?.items.length).toBe(13);
-    expect(resto?.items.map((i) => i.id)).toEqual([
-      'tous', 'francaise', 'italienne', 'asiatique', 'street', 'grill', 'vegetarien',
-      'bars-cafes', 'brasseries', 'fast-casual', 'healthy', 'desserts', 'monde',
-    ]);
-    expect(resto?.items.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
+    expect(resto?.children?.length).toBe(13);
+    expect(resto?.children?.every((i) => i.pictoKey && /^#[0-9A-F]{6}$/i.test(i.accent ?? ''))).toBe(true);
   });
 
-  it('Artisanat = métiers d’art (ébénistes, luthiers…) reconnus par le métier, pas les boutiques', () => {
+  it('Artisanat = navigation à 3 niveaux : 11 familles (badge + accent) → métiers', () => {
     const art = categoryFamilyById('artisanat');
-    const labels = art?.items.map((i) => i.label) ?? [];
-    expect(labels).toContain('Ébénistes');
-    expect(labels).toContain('Luthiers');
-    expect(labels).toContain('Souffleurs de verre');
-    expect(labels.length).toBeGreaterThanOrEqual(40);
+    // Niveau 2 : 11 familles, chacune avec pictogramme dédié + accent + enfants (métiers).
+    expect(art?.children?.length).toBe(11);
+    expect(art?.children?.map((f) => f.label)).toEqual([
+      'Art du bois', 'Art du métal', 'Art de la pierre', 'Terre & Céramique', 'Textile & Cuir',
+      'Bijouterie & Joaillerie', 'Verre & Vitrail', 'Arts décoratifs', 'Restauration & Patrimoine',
+      'Art de la table', 'Créations artisanales',
+    ]);
+    expect(art?.children?.every((f) => f.pictoKey && /^#[0-9A-F]{6}$/i.test(f.accent ?? '') && (f.children?.length ?? 0) > 0)).toBe(true);
 
-    const ebenistes = art?.items.find((i) => i.id === 'ebenistes');
-    expect(ebenistes?.match(merchant({ name: 'Atelier d’ébénisterie du Peyrou' }))).toBe(true);
-    expect(art?.match(merchant({ name: 'Luthier — guitares & violons' }))).toBe(true);
-    // Un commerce classique n'est PAS un métier d'art.
-    expect(art?.match(merchant({ name: 'Supermarché Casino', rawCategory: 'supermarket' }))).toBe(false);
+    // Niveau 3 : métiers de « Art du bois » incluent Ébéniste, qui reconnaît un ébéniste.
+    const bois = art?.children?.find((f) => f.id === 'art-du-bois');
+    const ebeniste = bois?.children?.find((m) => m.id === 'ebeniste');
+    expect(ebeniste?.match?.(merchant({ name: 'Atelier d’ébénisterie du Peyrou' }))).toBe(true);
+    // Union famille : un luthier ∈ Art du bois.
+    expect(bois?.match?.(merchant({ name: 'Luthier — guitares & violons' }))).toBe(true);
+    // Un commerce classique n'est PAS un artisan.
+    expect(art?.match?.(merchant({ name: 'Supermarché Casino', rawCategory: 'supermarket' }))).toBe(false);
   });
 });

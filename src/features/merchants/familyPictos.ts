@@ -1,5 +1,6 @@
 import { type ImageSourcePropType } from 'react-native';
 
+import { artisanatPicto } from './artisanatPictos';
 import { bienetrePicto } from './bienetrePictos';
 import { restaurantPicto } from './restaurantPictos';
 
@@ -15,6 +16,8 @@ export function familyPicto(familyId: string, itemId: string): ImageSourcePropTy
       return restaurantPicto(itemId);
     case 'bienetre':
       return bienetrePicto(itemId);
+    case 'artisanat':
+      return artisanatPicto(itemId);
     default:
       return undefined;
   }

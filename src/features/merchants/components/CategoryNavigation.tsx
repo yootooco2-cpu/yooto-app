@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, Platform, ScrollView, StyleSheet, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -8,27 +8,10 @@ import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
+
+import { CATEGORY_FAMILIES, type CategoryNode, type FeatherName, type MerchantPredicate } from '../categoryFamilies';
 import { cryptogramAsset } from '../cryptogramAssets';
 import { familyPicto } from '../familyPictos';
-
-import {
-  CATEGORY_FAMILIES,
-  categoryFamilyById,
-  type FamilyItem,
-  type CategoryFamily,
-  type FeatherName,
-  type MerchantPredicate,
-} from '../categoryFamilies';
-
-/** State machine simple de la navigation catégories (Niveau 1 familles ↔ Niveau 2 sous-catégories). */
-type CategoryLevel = 'family' | 'subcategory';
-interface CategoryNavigationState {
-  level: CategoryLevel;
-  activeFamily: string | null;
-  activeSubcategory: string | null;
-}
-
-const INITIAL: CategoryNavigationState = { level: 'family', activeFamily: null, activeSubcategory: null };
 
 interface Props {
   /** Émet le prédicat de filtrage résolu (null = « Tous »). La carte l'applique sans recharger. */
@@ -36,70 +19,74 @@ interface Props {
 }
 
 /**
- * CategoryNavigation — navigation catégories à DEUX niveaux, façon référence YOOTOO.
- *  • level 'family'      : grandes familles (Tous + 7 familles).
- *  • level 'subcategory' : la barre est remplacée par les sous-catégories de `activeFamily`,
- *    précédées d'un retour « ‹ » qui revient au Niveau 1.
- * Capsules verre premium, capsule active en vert, fondu au changement de niveau. Le composant ne
- * remonte qu'un PRÉDICAT (`onChange`) : la carte filtre réellement marqueurs + liste. Aucune donnée
- * dupliquée (prédicats issus de `categoryFamilies`). Discovery Engine non touché.
+ * CategoryNavigation — navigateur catégories HIÉRARCHIQUE GÉNÉRIQUE (N niveaux), piloté par un
+ * arbre `CategoryNode`. Fonctionne pour 2 niveaux (Alimentation → sous-catégories) comme pour 3+
+ * (Artisanat → familles → métiers), et se réutilise pour toute future famille multi-niveaux.
+ *
+ * Une pile de navigation (`path`) mémorise la descente : on affiche les enfants du dernier nœud
+ * (ou les grandes familles à la racine). Un nœud BRANCHE (`children`) → on descend d'un niveau ;
+ * un nœud FEUILLE → filtre la carte. Retour « ‹ » = on remonte. Capsules verre premium, capsule
+ * active en vert, halo d'accent, fondu au changement de niveau — mêmes composants/animations
+ * partout. Le composant ne remonte qu'un PRÉDICAT ; aucune donnée dupliquée ; Discovery non touché.
  */
 export function CategoryNavigation({ onChange }: Props) {
-  const [nav, setNav] = useState<CategoryNavigationState>(INITIAL);
-  const family = categoryFamilyById(nav.activeFamily);
+  // Pile de descente : [] = racine (grandes familles). Dernier nœud = niveau courant.
+  const [path, setPath] = useState<CategoryNode[]>([]);
+  const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
 
-  const selectTous = useCallback(() => {
-    setNav(INITIAL);
+  const current = path.length ? path[path.length - 1] : null;
+  const nodes = current ? current.children ?? [] : CATEGORY_FAMILIES;
+  const rootFamilyId = path.length ? path[0].id : '';
+
+  const selectTous = () => {
+    setPath([]);
+    setActiveLeafId(null);
     onChange(null);
-  }, [onChange]);
+  };
 
-  const openFamily = useCallback(
-    (fam: CategoryFamily) => {
-      setNav({ level: 'subcategory', activeFamily: fam.id, activeSubcategory: null });
-      onChange(fam.match); // ouverture famille → carte filtrée sur toute la famille
-    },
-    [onChange],
-  );
+  const drill = (node: CategoryNode) => {
+    setPath([...path, node]);
+    setActiveLeafId(null);
+    onChange(node.match ?? null); // ouverture branche → filtre = union de la branche
+  };
 
-  const back = useCallback(() => {
-    setNav(INITIAL);
-    onChange(null);
-  }, [onChange]);
+  const back = () => {
+    const next = path.slice(0, -1);
+    setPath(next);
+    setActiveLeafId(null);
+    onChange(next.length ? next[next.length - 1].match ?? null : null); // remonte au filtre parent
+  };
 
-  const toggleSub = useCallback(
-    (fam: CategoryFamily, it: FamilyItem) => {
-      setNav((s) => ({ ...s, activeSubcategory: s.activeSubcategory === it.id ? null : it.id }));
-      // Sélection → filtre sous-catégorie ; désélection → retour au filtre famille.
-      onChange(nav.activeSubcategory === it.id ? fam.match : it.match);
-    },
-    [nav.activeSubcategory, onChange],
-  );
+  const selectLeaf = (node: CategoryNode) => {
+    const isActive = activeLeafId === node.id;
+    setActiveLeafId(isActive ? null : node.id);
+    onChange(isActive ? current?.match ?? null : node.match ?? null); // désélection → filtre parent
+  };
+
+  const onTap = (node: CategoryNode) => (node.children && node.children.length ? drill(node) : selectLeaf(node));
+
+  const picto = (node: CategoryNode): ImageSourcePropType | undefined =>
+    node.iconId ? cryptogramAsset(node.iconId) : node.pictoKey ? familyPicto(rootFamilyId, node.pictoKey) : undefined;
 
   return (
-    <Animated.View key={nav.activeFamily ?? 'root'} entering={FadeIn.duration(190)}>
+    <Animated.View key={path.map((p) => p.id).join('/') || 'root'} entering={FadeIn.duration(190)}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-        {nav.level === 'subcategory' && family ? (
-          <>
-            <Capsule icon="chevron-left" onPress={back} accessibilityLabel="Retour aux familles" back />
-            {family.items.map((it) => (
-              <Capsule
-                key={it.id}
-                label={it.label}
-                imageIcon={it.iconId ? cryptogramAsset(it.iconId) : it.pictoKey ? familyPicto(family.id, it.pictoKey) : undefined}
-                accent={it.accent}
-                active={nav.activeSubcategory === it.id}
-                onPress={() => toggleSub(family, it)}
-              />
-            ))}
-          </>
+        {path.length ? (
+          <Capsule icon="chevron-left" onPress={back} accessibilityLabel="Retour" back />
         ) : (
-          <>
-            <Capsule icon="crosshair" label="Tous" active onPress={selectTous} />
-            {CATEGORY_FAMILIES.map((fam) => (
-              <Capsule key={fam.id} icon={fam.icon} label={fam.label} onPress={() => openFamily(fam)} />
-            ))}
-          </>
+          <Capsule icon="crosshair" label="Tous" active onPress={selectTous} />
         )}
+        {nodes.map((node) => (
+          <Capsule
+            key={node.id}
+            label={node.label}
+            icon={node.icon}
+            imageIcon={picto(node)}
+            accent={node.accent}
+            active={activeLeafId === node.id}
+            onPress={() => onTap(node)}
+          />
+        ))}
       </ScrollView>
     </Animated.View>
   );
@@ -137,7 +124,6 @@ function Capsule({
         styles.chip,
         active ? styles.chipActive : [glass.panel, styles.glassShadow],
         back && styles.chipBack,
-        // Halo d'accent DISCRET : à l'état actif, ou au survol web d'une capsule inactive.
         accent && (active || (hovered && !active)) ? accentGlow(accent) : null,
         pressed && styles.chipPressed,
       ]}>

@@ -6,38 +6,33 @@ import { merchantCategoryById, type MerchantCategoryId } from './merchantCategor
 import type { Merchant } from './types';
 
 /**
- * Navigation à DEUX niveaux (Niveau 1 = grandes familles, Niveau 2 = sous-catégories).
+ * Modèle de navigation catégories en ARBRE (N niveaux). Un `CategoryNode` est soit une BRANCHE
+ * (a des `children` → on descend d'un niveau), soit une FEUILLE (a un `match` → filtre les
+ * commerces). Un nœud peut avoir les deux : `match` = union de la branche (filtre appliqué quand
+ * on l'ouvre). Aucune donnée dupliquée : les prédicats regroupent des catégories existantes ou un
+ * filtre texte transversal. Le Discovery Engine n'est jamais touché : on POST-filtre uniquement.
  *
- * Aucune donnée dupliquée : chaque famille REGROUPE des catégories existantes
- * (`MerchantCategoryId`) via l'union de leurs prédicats `match`. Les sous-catégories réutilisent
- * soit le `match` d'une catégorie existante, soit ce `match` affiné par un filtre texte (mêmes
- * champs que la recherche : nom, description, catégorie brute, tags). Le Discovery Engine n'est
- * jamais touché : on ne fait que POST-filtrer les commerces déjà chargés.
+ * Structure générique et réutilisable pour toute famille à plusieurs niveaux (Artisanat →
+ * familles → métiers ; extensible demain à Culture, Bien-être, Mobilité…).
  */
 export type FeatherName = ComponentProps<typeof Feather>['name'];
 export type MerchantPredicate = (merchant: Merchant) => boolean;
 
-export interface FamilyItem {
+export interface CategoryNode {
   id: string;
   label: string;
-  match: MerchantPredicate;
-  /** Cryptogramme YOOTOO existant (l'asset image est résolu par le composant — couche données
-   *  sans require d'image, testable). Optionnel : sinon la capsule est en texte / fallback. */
+  /** Icône Feather (nœuds de 1er niveau — grandes familles). */
+  icon?: FeatherName;
+  /** Cryptogramme YOOTOO existant (asset résolu par le composant — couche données sans image). */
   iconId?: CryptogramId;
-  /** Clé de pictogramme DÉDIÉ (registre `restaurantPictos`), résolu par le composant. */
+  /** Clé de pictogramme dédié (registres restaurants/bienetre/artisanat), résolu par le composant. */
   pictoKey?: string;
-  /** Touche de couleur d'accent (identité de la sous-catégorie) — halo discret aux états actif/hover. */
+  /** Touche de couleur d'accent (halo discret aux états actif/hover). */
   accent?: string;
-}
-
-export interface CategoryFamily {
-  id: string;
-  label: string;
-  icon: FeatherName;
-  /** Union des catégories membres → filtre carte quand la famille est ouverte (sans sous-cat). */
-  match: MerchantPredicate;
-  /** Sous-catégories affichées au Niveau 2. */
-  items: FamilyItem[];
+  /** Prédicat de filtrage (feuille = spécifique ; branche = union appliquée à l'ouverture). */
+  match?: MerchantPredicate;
+  /** Sous-niveau (branche). Absent = feuille. */
+  children?: CategoryNode[];
 }
 
 const FALSE: MerchantPredicate = () => false;
@@ -57,27 +52,24 @@ const textMatch = (...terms: string[]): MerchantPredicate => withText(() => true
 /** OU de deux prédicats. */
 const either = (a: MerchantPredicate, b: MerchantPredicate): MerchantPredicate => (m) => a(m) || b(m);
 
-const item = (id: string, label: string, match: MerchantPredicate): FamilyItem => ({ id, label, match });
-/**
- * Item de sous-catégorie ADOSSÉ à une catégorie existante : réutilise son prédicat `match` ET son
- * pictogramme (cryptogramme YOOTOO déjà créé). Aucun nouvel asset. `id` = id catégorie (unique).
- */
-const catItem = (id: MerchantCategoryId, label: string): FamilyItem => ({
+const item = (id: string, label: string, match: MerchantPredicate): CategoryNode => ({ id, label, match });
+/** Feuille ADOSSÉE à une catégorie existante : réutilise son `match` ET son cryptogramme. */
+const catItem = (id: MerchantCategoryId, label: string): CategoryNode => ({
   id,
   label,
   match: catMatch(id),
   iconId: merchantCategoryById(id)?.icon,
 });
-/** Item RESTAURANTS : pictogramme dédié (registre) + touche de couleur d'accent. */
-const rItem = (id: string, label: string, accent: string, match: MerchantPredicate): FamilyItem => ({
+/** Feuille avec pictogramme dédié (registre) + accent, prédicat fourni. */
+const pItem = (id: string, label: string, accent: string, match: MerchantPredicate): CategoryNode => ({
   id,
   label,
   match,
   pictoKey: id,
   accent,
 });
-/** Item BIEN-ÊTRE : pictogramme dédié + accent + prédicat TEXTE (métier transversal). */
-const beItem = (id: string, label: string, accent: string, keywords: string[]): FamilyItem => ({
+/** Feuille avec pictogramme dédié + accent + prédicat TEXTE (métier transversal). */
+const kItem = (id: string, label: string, accent: string, keywords: string[]): CategoryNode => ({
   id,
   label,
   match: textMatch(...keywords),
@@ -91,84 +83,9 @@ const CULTURE = anyCat('culture', 'librairies');
 const MOBILITE = anyCat('mobilite', 'transports');
 
 /**
- * MÉTIERS D'ART — patrimoine vivant français. Structure VOLONTAIREMENT PLATE et extensible :
- * pour ajouter un métier, il suffit d'ajouter une entrée ici (id, label, mots-clés) — aucune autre
- * modification. Chaque métier est reconnu par recherche TEXTE transversale (nom / catégorie brute /
- * tags), indépendamment de la catégorie commerciale : un chocolatier ou un brasseur artisanal
- * remonte donc bien dans l'Artisanat, jamais confondu avec un commerce classique grâce à des
- * mots-clés métier précis. Critères YOOTOO : savoir-faire manuel, fabrication locale, création,
- * transmission, indépendants / TPE.
- */
-export interface ArtisanMetier {
-  id: string;
-  label: string;
-  /** Mots-clés (racines) reconnus dans le nom / la catégorie brute / les tags du commerce. */
-  keywords: string[];
-}
-
-export const ARTISAN_METIERS: ArtisanMetier[] = [
-  // Bois
-  { id: 'ebenistes', label: 'Ébénistes', keywords: ['ebenist'] },
-  { id: 'menuisiers', label: 'Menuisiers', keywords: ['menuisier', 'menuiserie'] },
-  { id: 'charpentiers', label: 'Charpentiers', keywords: ['charpentier', 'charpente'] },
-  { id: 'restaurateurs-meubles', label: 'Restaurateurs de meubles', keywords: ['restauration de meuble', 'restaurateur de meuble', 'renovation de meuble'] },
-  { id: 'createurs-mobilier', label: 'Créateurs de mobilier', keywords: ['createur de mobilier', 'mobilier sur mesure', 'mobilier d art'] },
-  { id: 'vanniers', label: 'Vanniers', keywords: ['vannier', 'vannerie'] },
-  { id: 'rempailleurs', label: 'Rempailleurs', keywords: ['rempailleur', 'rempaillage', 'cannage'] },
-  // Métal
-  { id: 'ferronniers', label: "Ferronniers d'art", keywords: ['ferronnier', 'ferronnerie'] },
-  { id: 'forgerons', label: 'Forgerons', keywords: ['forgeron', 'forge'] },
-  { id: 'couteliers', label: 'Couteliers', keywords: ['coutelier', 'coutellerie'] },
-  { id: 'orfevres', label: 'Orfèvres', keywords: ['orfevre', 'orfevrerie'] },
-  // Terre & feu
-  { id: 'ceramistes', label: 'Céramistes', keywords: ['ceramiste', 'ceramique'] },
-  { id: 'potiers', label: 'Potiers', keywords: ['potier', 'poterie'] },
-  { id: 'verriers', label: 'Verriers', keywords: ['verrier', 'verrerie'] },
-  { id: 'souffleurs-verre', label: 'Souffleurs de verre', keywords: ['souffleur de verre', 'verre souffle'] },
-  { id: 'mosaistes', label: 'Mosaïstes', keywords: ['mosaiste', 'mosaique'] },
-  // Arts visuels
-  { id: 'sculpteurs', label: 'Sculpteurs', keywords: ['sculpteur', 'sculpture'] },
-  { id: 'peintres-art', label: "Peintres d'art", keywords: ["peintre d art", 'peintre-artiste', 'atelier de peinture'] },
-  { id: 'illustrateurs', label: 'Illustrateurs', keywords: ['illustrateur', 'illustration'] },
-  { id: 'photographes', label: 'Photographes', keywords: ['photographe', 'photographie'] },
-  { id: 'encadreurs', label: 'Encadreurs', keywords: ['encadreur', 'encadrement'] },
-  { id: 'restaurateurs-oeuvres', label: "Restaurateurs d'œuvres d'art", keywords: ["restauration d oeuvre", "restaurateur d art", 'restauration de tableau'] },
-  // Textile & cuir
-  { id: 'tapissiers', label: 'Tapissiers', keywords: ['tapissier', 'tapisserie'] },
-  { id: 'selliers', label: 'Selliers', keywords: ['sellier', 'sellerie'] },
-  { id: 'maroquiniers', label: 'Maroquiniers', keywords: ['maroquinier', 'maroquinerie'] },
-  { id: 'tisserands', label: 'Tisserands', keywords: ['tisserand', 'tissage'] },
-  { id: 'tailleurs', label: 'Tailleurs', keywords: ['tailleur de costume', 'tailleur sur mesure'] },
-  { id: 'couturiers', label: 'Couturiers', keywords: ['couturier', 'couture', 'atelier de couture'] },
-  { id: 'modistes', label: 'Modistes', keywords: ['modiste', 'chapelier', 'chapellerie'] },
-  { id: 'brodeurs', label: 'Brodeurs', keywords: ['brodeur', 'broderie'] },
-  // Précision
-  { id: 'luthiers', label: 'Luthiers', keywords: ['luthier', 'lutherie'] },
-  { id: 'facteurs-instruments', label: "Facteurs d'instruments", keywords: ['facteur d instrument', "facteur d orgue", 'manufacture d instrument'] },
-  { id: 'bijoutiers-artisans', label: 'Bijoutiers artisans', keywords: ['bijoutier', 'joaillier', 'joaillerie', 'bijou artisanal'] },
-  { id: 'horlogers', label: 'Horlogers', keywords: ['horloger', 'horlogerie'] },
-  // Senteurs & goût artisanal
-  { id: 'savonniers', label: 'Savonniers', keywords: ['savonnier', 'savonnerie', 'savon artisanal'] },
-  { id: 'parfumeurs-artisans', label: 'Parfumeurs artisans', keywords: ['parfumeur', 'parfum artisanal', 'parfumerie artisanale'] },
-  { id: 'bougies-artisanales', label: 'Bougies artisanales', keywords: ['bougie artisanale', 'cirier', 'fabrique de bougie'] },
-  { id: 'chocolatiers-artisans', label: 'Chocolatiers artisans', keywords: ['chocolatier', 'chocolaterie'] },
-  { id: 'torrefacteurs', label: 'Torréfacteurs', keywords: ['torrefacteur', 'torrefaction'] },
-  { id: 'brasseurs-artisanaux', label: 'Brasseurs artisanaux', keywords: ['brasseur', 'microbrasserie', 'brasserie artisanale'] },
-  { id: 'distillateurs', label: 'Distillateurs', keywords: ['distillateur', 'distillerie'] },
-  { id: 'apiculteurs', label: 'Apiculteurs', keywords: ['apiculteur', 'apiculture', 'miel'] },
-  // Lumière
-  { id: 'createurs-luminaires', label: 'Créateurs de luminaires', keywords: ['createur de luminaire', 'luminaire d art', 'luminaire artisanal'] },
-];
-
-/** Un commerce est « artisan » s'il porte un mot-clé métier OU relève de la catégorie artisanat. */
-const ARTISAN_KEYWORDS: string[] = ARTISAN_METIERS.flatMap((m) => m.keywords);
-const artisanMatch: MerchantPredicate = (m) => catMatch('artisanat')(m) || textMatch(...ARTISAN_KEYWORDS)(m);
-
-/**
- * MÉTIERS DU BIEN-ÊTRE — soin, mouvement, santé douce & modification corporelle. Structure plate
- * et extensible (id = nom du pictogramme, label, accent = couleur du badge, mots-clés métier).
- * Reconnaissance TEXTE transversale (indépendante de la catégorie commerciale) : un ostéopathe,
- * un tatoueur ou un naturopathe remonte bien, quelle que soit sa catégorie Google.
+ * BIEN-ÊTRE — métiers (soin, mouvement, santé douce, modification corporelle). Structure plate
+ * extensible (id = pictogramme, label, accent = couleur du badge, mots-clés). Reconnaissance TEXTE
+ * transversale (indépendante de la catégorie commerciale).
  */
 interface WellnessMetier {
   id: string;
@@ -187,16 +104,151 @@ const BIENETRE_METIERS: WellnessMetier[] = [
   { id: 'tatoueur', label: 'Tatoueur', accent: '#7E5799', keywords: ['tatoueur', 'tatouage', 'tattoo'] },
   { id: 'perceur', label: 'Perceur', accent: '#DC648A', keywords: ['perceur', 'piercing', 'percage'] },
 ];
-
-/** Famille Bien-être = catégories bien-être/sport OU un métier du bien-être (union de mots-clés). */
 const BIENETRE_KEYWORDS: string[] = BIENETRE_METIERS.flatMap((m) => m.keywords);
 const bienetreMatch: MerchantPredicate = either(BIENETRE, textMatch(...BIENETRE_KEYWORDS));
 
 /**
- * Les 7 familles (Niveau 1) + « Tous » géré à part par le composant. « Plus » regroupe les
- * catégories restantes (nature / autres) qui n'entrent pas dans les familles principales.
+ * ARTISANAT — navigation à 3 niveaux : Artisanat → FAMILLES (11, avec cryptogramme dédié) →
+ * MÉTIERS. Structure plate et extensible : ajouter une famille = une entrée ; ajouter un métier =
+ * une ligne. Chaque famille regroupe ses métiers (union de mots-clés) ; reconnaissance TEXTE
+ * transversale (un artisan remonte quelle que soit sa catégorie Google).
  */
-export const CATEGORY_FAMILIES: CategoryFamily[] = [
+type MetierDef = [id: string, label: string, keywords: string[]];
+interface ArtisanatFamilyDef {
+  id: string;
+  label: string;
+  accent: string;
+  metiers: MetierDef[];
+}
+
+const ARTISANAT_FAMILIES: ArtisanatFamilyDef[] = [
+  {
+    id: 'art-du-bois', label: 'Art du bois', accent: '#AA6427',
+    metiers: [
+      ['ebeniste', 'Ébéniste', ['ebenist']],
+      ['menuisier', 'Menuisier', ['menuisier', 'menuiserie']],
+      ['charpentier', 'Charpentier', ['charpentier', 'charpente']],
+      ['tourneur-bois', 'Tourneur sur bois', ['tourneur sur bois', 'tournage sur bois']],
+      ['sculpteur-bois', 'Sculpteur sur bois', ['sculpteur sur bois', 'sculpture sur bois']],
+      ['luthier', 'Luthier', ['luthier', 'lutherie']],
+      ['encadreur', 'Encadreur', ['encadreur', 'encadrement']],
+    ],
+  },
+  {
+    id: 'art-du-metal', label: 'Art du métal', accent: '#6F7882',
+    metiers: [
+      ['ferronnier', "Ferronnier d'art", ['ferronnier', 'ferronnerie']],
+      ['forgeron', 'Forgeron', ['forgeron', 'forge']],
+      ['coutelier', 'Coutelier', ['coutelier', 'coutellerie']],
+      ['chaudronnier', "Chaudronnier d'art", ['chaudronnier', 'chaudronnerie']],
+      ['serrurier-art', "Serrurier d'art", ['serrurier d art', 'serrurerie d art']],
+      ['dinandier', 'Dinandier', ['dinandier', 'dinanderie']],
+    ],
+  },
+  {
+    id: 'art-de-la-pierre', label: 'Art de la pierre', accent: '#9D8366',
+    metiers: [
+      ['tailleur-pierre', 'Tailleur de pierre', ['tailleur de pierre', 'taille de pierre']],
+      ['marbrier', 'Marbrier', ['marbrier', 'marbrerie']],
+      ['sculpteur-pierre', 'Sculpteur sur pierre', ['sculpteur sur pierre', 'sculpture sur pierre']],
+      ['graveur-pierre', 'Graveur', ['graveur', 'gravure']],
+    ],
+  },
+  {
+    id: 'terre-ceramique', label: 'Terre & Céramique', accent: '#BF693A',
+    metiers: [
+      ['potier', 'Potier', ['potier', 'poterie']],
+      ['ceramiste', 'Céramiste', ['ceramiste', 'ceramique']],
+      ['faiencier', 'Faïencier', ['faiencier', 'faience']],
+      ['porcelainier', 'Porcelainier', ['porcelainier', 'porcelaine']],
+    ],
+  },
+  {
+    id: 'textile-cuir', label: 'Textile & Cuir', accent: '#873629',
+    metiers: [
+      ['tapissier', 'Tapissier', ['tapissier', 'tapisserie']],
+      ['sellier', 'Sellier', ['sellier', 'sellerie']],
+      ['maroquinier', 'Maroquinier', ['maroquinier', 'maroquinerie']],
+      ['tisserand', 'Tisserand', ['tisserand', 'tissage']],
+      ['brodeur', 'Brodeur', ['brodeur', 'broderie']],
+      ['couturier-art', "Couturier d'art", ['couturier', 'couture', 'atelier de couture']],
+      ['modiste', 'Modiste', ['modiste', 'chapelier', 'chapellerie']],
+    ],
+  },
+  {
+    id: 'bijouterie-joaillerie', label: 'Bijouterie & Joaillerie', accent: '#D7992D',
+    metiers: [
+      ['bijoutier', 'Bijoutier', ['bijoutier', 'bijouterie']],
+      ['joaillier', 'Joaillier', ['joaillier', 'joaillerie']],
+      ['horloger', 'Horloger', ['horloger', 'horlogerie']],
+      ['orfevre', 'Orfèvre', ['orfevre', 'orfevrerie']],
+      ['graveur-precieux', 'Graveur sur métaux précieux', ['graveur sur metaux', 'glyptique']],
+    ],
+  },
+  {
+    id: 'verre-vitrail', label: 'Verre & Vitrail', accent: '#386198',
+    metiers: [
+      ['souffleur-verre', 'Souffleur de verre', ['souffleur de verre', 'verre souffle']],
+      ['verrier', 'Verrier', ['verrier', 'verrerie']],
+      ['maitre-verrier', 'Maître verrier', ['maitre verrier']],
+      ['vitrailliste', 'Vitrailliste', ['vitrailliste', 'vitrail']],
+    ],
+  },
+  {
+    id: 'arts-decoratifs', label: 'Arts décoratifs', accent: '#754489',
+    metiers: [
+      ['peintre-decorateur', 'Peintre décorateur', ['peintre decorateur', 'decor peint']],
+      ['doreur', 'Doreur', ['doreur', 'dorure']],
+      ['mosaiste', 'Mosaïste', ['mosaiste', 'mosaique']],
+      ['fresquiste', 'Fresquiste', ['fresquiste', 'fresque']],
+    ],
+  },
+  {
+    id: 'restauration-patrimoine', label: 'Restauration & Patrimoine', accent: '#AB8456',
+    metiers: [
+      ['restaurateur-meubles', 'Restaurateur de meubles', ['restauration de meuble', 'restaurateur de meuble']],
+      ['restaurateur-oeuvres', "Restaurateur d'œuvres d'art", ['restauration d oeuvre', "restaurateur d art"]],
+      ['relieur', 'Relieur', ['relieur', 'reliure']],
+      ['conservateur', 'Conservateur-restaurateur', ['conservateur', 'conservation restauration']],
+    ],
+  },
+  {
+    id: 'art-de-la-table', label: 'Art de la table', accent: '#C26221',
+    metiers: [
+      ['coutelier-table', 'Coutelier artisanal', ['coutelier', 'coutellerie']],
+      ['fabricant-ustensiles', "Fabricant d'ustensiles", ['ustensile', 'fabricant d ustensile']],
+      ['tourneur-objets', "Tourneur d'objets", ['tourneur sur metal', 'tournage d objet']],
+      ['createur-table', "Créateur d'arts de la table", ['arts de la table', 'art de la table']],
+    ],
+  },
+  {
+    id: 'creations-artisanales', label: 'Créations artisanales', accent: '#CD7E13',
+    metiers: [
+      ['savonnier', 'Savonnier', ['savonnier', 'savonnerie', 'savon artisanal']],
+      ['cirier', 'Cirier', ['cirier', 'cire']],
+      ['fabricant-bougies', 'Fabricant de bougies', ['bougie', 'fabrique de bougie']],
+      ['parfumeur', 'Parfumeur artisanal', ['parfumeur', 'parfum artisanal']],
+    ],
+  },
+];
+
+/** Nœuds FAMILLES d'artisanat (Niveau 2) : cryptogramme dédié + accent + enfants (métiers). */
+const artisanatChildren: CategoryNode[] = ARTISANAT_FAMILIES.map((f) => ({
+  id: f.id,
+  label: f.label,
+  pictoKey: f.id,
+  accent: f.accent,
+  match: textMatch(...f.metiers.flatMap((mt) => mt[2])),
+  children: f.metiers.map(([id, label, kw]) => item(id, label, textMatch(...kw))),
+}));
+const ARTISANAT_KEYWORDS: string[] = ARTISANAT_FAMILIES.flatMap((f) => f.metiers.flatMap((mt) => mt[2]));
+const artisanatMatch: MerchantPredicate = either(catMatch('artisanat'), textMatch(...ARTISANAT_KEYWORDS));
+
+/**
+ * Grandes familles (Niveau 1) + « Tous » géré à part par le composant. Chaque famille est une
+ * BRANCHE (`children`). « Plus » regroupe les catégories restantes (nature / autres).
+ */
+export const CATEGORY_FAMILIES: CategoryNode[] = [
   {
     id: 'alimentation',
     label: 'Alimentation',
@@ -205,7 +257,7 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
       'producteurs', 'boulangeries', 'primeurs', 'fromageries', 'boucheries', 'poissonneries',
       'epiceries', 'traiteurs', 'patisseries', 'marches', 'cavistes', 'cooperatives',
     ),
-    items: [
+    children: [
       catItem('producteurs', 'Producteurs'),
       catItem('boulangeries', 'Boulangeries'),
       catItem('primeurs', 'Primeurs'),
@@ -220,51 +272,47 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
     ],
   },
   {
-    // Restaurants — 13 sous-catégories avec pictogrammes dédiés + touches de couleur (référence).
     id: 'restaurants',
     label: 'Restaurants',
     icon: 'coffee',
     match: RESTO,
-    items: [
-      rItem('tous', 'Tous les restaurants', '#C79A3B', RESTO),
-      rItem('francaise', 'Cuisine française', '#4E6A93', withText(RESTO, 'francais', 'france')),
-      rItem('italienne', 'Cuisine italienne', '#B24A3B', withText(RESTO, 'italien', 'pizza', 'pizzeria', 'pasta', 'trattoria')),
-      rItem('asiatique', 'Cuisine asiatique', '#3E6E9C', withText(RESTO, 'asiat', 'japonais', 'sushi', 'chinois', 'thai', 'vietnam', 'wok', 'coreen', 'ramen')),
-      rItem('street', 'Street Food', '#B8863B', withText(RESTO, 'street', 'food truck', 'burger', 'kebab', 'tacos', 'snack')),
-      rItem('grill', 'Grill / Viandes', '#C4632B', withText(RESTO, 'grill', 'viande', 'barbecue', 'steak', 'rotisserie', 'grillade')),
-      rItem('vegetarien', 'Végétarien / Vegan', '#4E8A54', withText(RESTO, 'vegetarien', 'vegan', 'veggie', 'vegetal')),
-      rItem('bars-cafes', 'Bars / Cafés', '#7B4B2A', either(catMatch('cafes'), withText(RESTO, 'bar', 'pub', 'cave a vin'))),
-      rItem('brasseries', 'Brasseries / Bistrots', '#C08A2E', withText(RESTO, 'brasserie', 'bistrot', 'taverne', 'biere')),
-      rItem('fast-casual', 'Fast Casual', '#C4632B', withText(RESTO, 'fast', 'rapide', 'casual', 'comptoir')),
-      rItem('healthy', 'Healthy Bowls', '#4E8A54', withText(RESTO, 'healthy', 'bowl', 'poke', 'salade', 'detox')),
-      rItem('desserts', 'Pâtisseries / Desserts', '#6C5B8B', either(catMatch('patisseries'), withText(RESTO, 'dessert', 'glace', 'creperie'))),
-      rItem('monde', 'Cuisines du monde', '#2C4A6E', withText(RESTO, 'monde', 'world', 'libanais', 'mexicain', 'indien', 'marocain', 'turc', 'oriental', 'africain')),
+    children: [
+      pItem('tous', 'Tous les restaurants', '#C79A3B', RESTO),
+      pItem('francaise', 'Cuisine française', '#4E6A93', withText(RESTO, 'francais', 'france')),
+      pItem('italienne', 'Cuisine italienne', '#B24A3B', withText(RESTO, 'italien', 'pizza', 'pizzeria', 'pasta', 'trattoria')),
+      pItem('asiatique', 'Cuisine asiatique', '#3E6E9C', withText(RESTO, 'asiat', 'japonais', 'sushi', 'chinois', 'thai', 'vietnam', 'wok', 'coreen', 'ramen')),
+      pItem('street', 'Street Food', '#B8863B', withText(RESTO, 'street', 'food truck', 'burger', 'kebab', 'tacos', 'snack')),
+      pItem('grill', 'Grill / Viandes', '#C4632B', withText(RESTO, 'grill', 'viande', 'barbecue', 'steak', 'rotisserie', 'grillade')),
+      pItem('vegetarien', 'Végétarien / Vegan', '#4E8A54', withText(RESTO, 'vegetarien', 'vegan', 'veggie', 'vegetal')),
+      pItem('bars-cafes', 'Bars / Cafés', '#7B4B2A', either(catMatch('cafes'), withText(RESTO, 'bar', 'pub', 'cave a vin'))),
+      pItem('brasseries', 'Brasseries / Bistrots', '#C08A2E', withText(RESTO, 'brasserie', 'bistrot', 'taverne', 'biere')),
+      pItem('fast-casual', 'Fast Casual', '#C4632B', withText(RESTO, 'fast', 'rapide', 'casual', 'comptoir')),
+      pItem('healthy', 'Healthy Bowls', '#4E8A54', withText(RESTO, 'healthy', 'bowl', 'poke', 'salade', 'detox')),
+      pItem('desserts', 'Pâtisseries / Desserts', '#6C5B8B', either(catMatch('patisseries'), withText(RESTO, 'dessert', 'glace', 'creperie'))),
+      pItem('monde', 'Cuisines du monde', '#2C4A6E', withText(RESTO, 'monde', 'world', 'libanais', 'mexicain', 'indien', 'marocain', 'turc', 'oriental', 'africain')),
     ],
   },
   {
-    // Bien-être — 14 métiers (soin, mouvement, santé douce, modification corporelle) avec
-    // pictogrammes dédiés + touches de couleur. Sous-catégories générées depuis BIENETRE_METIERS.
     id: 'bienetre',
     label: 'Bien-être',
     icon: 'heart',
     match: bienetreMatch,
-    items: BIENETRE_METIERS.map((m) => beItem(m.id, m.label, m.accent, m.keywords)),
+    children: BIENETRE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
-    // Artisanat = MÉTIERS D'ART (patrimoine vivant français), pas des boutiques. Sous-catégories
-    // générées depuis `ARTISAN_METIERS` → ajouter un métier = ajouter une entrée, rien d'autre.
+    // Artisanat = 3 niveaux (familles → métiers). Cryptogrammes de familles dédiés.
     id: 'artisanat',
     label: 'Artisanat',
     icon: 'tool',
-    match: artisanMatch,
-    items: ARTISAN_METIERS.map((me) => item(me.id, me.label, textMatch(...me.keywords))),
+    match: artisanatMatch,
+    children: artisanatChildren,
   },
   {
     id: 'culture',
     label: 'Culture',
     icon: 'book-open',
     match: CULTURE,
-    items: [
+    children: [
       item('librairies', 'Librairies', catMatch('librairies')),
       item('musees', 'Musées', withText(catMatch('culture'), 'musee', 'museum')),
       item('galeries', 'Galeries', withText(catMatch('culture'), 'galerie', 'exposition', 'expo')),
@@ -277,7 +325,7 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
     label: 'Mobilité',
     icon: 'navigation',
     match: MOBILITE,
-    items: [
+    children: [
       item('velo', 'Vélo', withText(MOBILITE, 'velo', 'cycle', 'bike')),
       item('transports', 'Transports', catMatch('transports')),
       item('parking', 'Parking', withText(MOBILITE, 'parking', 'stationnement')),
@@ -291,14 +339,14 @@ export const CATEGORY_FAMILIES: CategoryFamily[] = [
     label: 'Plus',
     icon: 'more-horizontal',
     match: anyCat('nature', 'autres'),
-    items: [
+    children: [
       item('nature', 'Nature', catMatch('nature')),
       item('autres', 'Autres', catMatch('autres')),
     ],
   },
 ];
 
-export function categoryFamilyById(id: string | null): CategoryFamily | null {
+export function categoryFamilyById(id: string | null): CategoryNode | null {
   if (!id) return null;
   return CATEGORY_FAMILIES.find((f) => f.id === id) ?? null;
 }
