@@ -16,9 +16,7 @@ import {
   ChatCategoryBar,
   ChatSpaceSwitcher,
   ConversationCard,
-  HighlightCard,
   TrendsStrip,
-  highlightActivity,
   selectDiscussions,
   selectPrivateMessages,
   toConversationView,
@@ -88,7 +86,6 @@ function ChatBody() {
   const shownActivity = q
     ? activity.filter((a) => `${participants[a.authorId]?.name ?? ''} ${a.title} ${a.body ?? ''}`.toLowerCase().includes(q))
     : activity;
-  const highlight = highlightActivity(activity, now);
 
   return (
     <YScreen transparent gap="sm" padding="lg">
@@ -137,7 +134,6 @@ function ChatBody() {
             q ? null : (
               <View style={styles.feedHead}>
                 <TrendsStrip trends={trends} />
-                {highlight ? <HighlightCard item={highlight} author={participants[highlight.authorId]} now={now} /> : null}
               </View>
             )
           }
