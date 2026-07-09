@@ -99,15 +99,20 @@ export default function MapScreen() {
   const favoriteIds = useFavoriteIds();
   const { settings } = useSettings();
   const mapPrefs = settings.map;
-  const { status: sessionStatus } = useSession();
+  const { status: sessionStatus, loading: isLoadingSession } = useSession();
   const [authSheetOpen, setAuthSheetOpen] = useState(false);
   const authPromptedRef = useRef(false);
   useEffect(() => {
+    // Ne JAMAIS inviter à s'inscrire tant que la session n'est pas hydratée : au montage,
+    // `status` vaut transitoirement 'signed-out' (état initial) même pour un utilisateur connecté
+    // → sans cette garde, la sheet flasherait pour un compte email/Google déjà authentifié.
+    // Seuls 'signed-out' et 'anonymous' (invité) peuvent la voir, une fois la session résolue.
+    if (isLoadingSession) return;
     if (favoriteIds.length > 0 && sessionStatus !== 'authenticated' && !authPromptedRef.current) {
       authPromptedRef.current = true;
       setAuthSheetOpen(true);
     }
-  }, [favoriteIds.length, sessionStatus]);
+  }, [favoriteIds.length, sessionStatus, isLoadingSession]);
 
   // Persistance session : viewport à restaurer (lu UNE fois au montage) + setter.
   const setLastViewport = useMapViewportStore((s) => s.setLastViewport);
@@ -285,7 +290,7 @@ export default function MapScreen() {
 
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet
-              open={authSheetOpen}
+              open={authSheetOpen && !isLoadingSession && sessionStatus !== 'authenticated'}
               onClose={() => setAuthSheetOpen(false)}
               favoritesCount={favoriteIds.length}
             />
