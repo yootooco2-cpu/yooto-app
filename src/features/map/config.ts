@@ -27,15 +27,15 @@ const DEFAULT_REGION: MapRegion = {
   bearing: 0,
 };
 
-// Style de TRAVAIL versionné (le « laboratoire » S1) — construit couche par couche dans le dépôt.
-// C'est désormais le style par défaut : l'app itère sur le rendu réel sans manipulation manuelle.
-// Plus tard, il sera reproduit/exporté dans Mapbox Studio. → docs/map/STYLE_S1_STUDIO.md.
-import yootooS1Style from './style/yootoo-s1.json';
+// RESET DA — base officielle : Mapbox Standard, sans aucune personnalisation graphique.
+// L'ancien laboratoire S1 (`./style/yootoo-s1.json`) reste versionné dans le dépôt à titre
+// d'archive DA (toits T1, lumière T2…) : voir commits 9b59486 / 9651e02 pour le restaurer.
+const MAPBOX_STANDARD_STYLE = 'mapbox://styles/mapbox/standard';
 
 export interface MapConfig {
   /** Token public `pk.` ou `null` si non configuré → fallback placeholder. */
   token: string | null;
-  /** URL de style (surcharge `EXPO_PUBLIC_MAPBOX_STYLE_URL`) OU objet style de travail versionné. */
+  /** URL de style (surcharge `EXPO_PUBLIC_MAPBOX_STYLE_URL`) OU style officiel Standard. */
   mapStyle: string | object;
   defaultRegion: MapRegion;
 }
@@ -44,9 +44,9 @@ export function getMapConfig(): MapConfig {
   const rawToken = process.env.EXPO_PUBLIC_MAPBOX_TOKEN;
   const token = rawToken && rawToken.length > 0 ? rawToken : null;
 
-  // L'env garde la priorité (permet de pointer un style Studio hébergé) ; sinon → style de travail.
+  // L'env garde la priorité (permet de pointer un style Studio hébergé) ; sinon → Standard officiel.
   const envStyle = process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL;
-  const mapStyle = envStyle && envStyle.length > 0 ? envStyle : (yootooS1Style as object);
+  const mapStyle = envStyle && envStyle.length > 0 ? envStyle : MAPBOX_STANDARD_STYLE;
 
   return { token, mapStyle, defaultRegion: DEFAULT_REGION };
 }

@@ -10,7 +10,6 @@ import { colors } from '@/design/tokens/colors';
 import { radii } from '@/design/tokens/radii';
 import { getMapConfig } from '@/features/map';
 import type { MapEngineProps } from '@/features/map';
-import { installVegetationScatter } from '@/features/map/prototype/vegetationScatter';
 import {
   CameraScheduler,
   resolveCameraPlan,
@@ -32,7 +31,7 @@ const MAP_STYLE_SOURCE =
   typeof process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL === 'string' &&
   process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL.length > 0
     ? process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL
-    : 'local:src/features/map/style/yootoo-s1.json';
+    : 'mapbox://styles/mapbox/standard';
 
 /** Horloge réelle injectée dans le Scheduler (coalescing). */
 const realTimer: SchedulerTimer = {
@@ -120,6 +119,13 @@ export function MapEngine({
           zoom,
           pitch,
           bearing,
+          // POI natifs Mapbox désactivés : les commerces YOOTOO restent les seuls héros
+          // de la carte (aucun doublon générique restaurant/boutique du basemap Standard).
+          config: {
+            basemap: {
+              showPointOfInterestLabels: false,
+            },
+          },
         });
         mapRef.current = map;
 
@@ -169,15 +175,9 @@ export function MapEngine({
             // eslint-disable-next-line no-console
             console.info('[YOOTOO/map] style runtime ' + JSON.stringify(debugStyle));
           }
-          // PROTOTYPE (réversible, web-only) — végétation NATIONALE : arbres 2.5D dérivés au
-          // runtime des polygones de végétation réels des tuiles (France entière), jamais hors
-          // zones vertes. Installé AVANT le contrôleur → marqueurs commerces au-dessus. Non bloquant.
-          try {
-            installVegetationScatter(map);
-          } catch (err) {
-            // eslint-disable-next-line no-console
-            console.error('[YOOTOO/map] error (veg scatter proto)', err);
-          }
+          // RESET DA — prototype végétation DÉSACTIVÉ (dépendait des couches du style custom
+          // S1 : landcover/landuse/road-simple, absentes de Mapbox Standard). Code conservé
+          // dans src/features/map/prototype/ pour une future réintroduction via slots.
           try {
             controllerRef.current = new MapClusterController(
               map,
