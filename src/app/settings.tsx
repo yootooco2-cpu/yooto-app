@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BrandIcon } from '@/components/settings/BrandIcon';
@@ -44,10 +44,9 @@ export default function SettingsScreen() {
 
   const name = isAuthenticated ? identity?.displayName ?? 'Membre YOOTOO' : 'Invité';
   const email = isAuthenticated ? identity?.email ?? profileRow.email : null;
-  const hasEmailLogin = linked.has('email');
 
   const mail = (subject: string) => void Linking.openURL(`${supportMailtoUrl()}?subject=${encodeURIComponent(subject)}`);
-  const todo = () => {};
+  const openOsSettings = () => void Linking.openSettings();
 
   const onSignOut = async () => {
     if (signingOut) return;
@@ -87,9 +86,6 @@ export default function SettingsScreen() {
             <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label="Mode invité" subtitle="Connectez-vous pour synchroniser votre compte" onPress={() => setAuthOpen(true)} />
           )}
           {isAuthenticated ? <SettingsNavigationRow icon={{ set: 'feather', name: 'edit-3' }} label="Modifier le profil" onPress={() => router.push('/edit-profile')} /> : null}
-          {isAuthenticated && hasEmailLogin ? (
-            <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Changer le mot de passe" onPress={todo} />
-          ) : null}
         </SettingsSection>
 
         {/* ---------- COMPTES CONNECTÉS ---------- */}
@@ -138,22 +134,19 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* ---------- CONFIDENTIALITÉ ---------- */}
-        <SettingsSection title="Confidentialité">
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'database' }} label="Gestion des données" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'shield' }} label="Autorisations" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'map-pin' }} label="Localisation" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'download' }} label="Exporter mes données" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'trash-2' }} iconTint={colors.danger} label="Supprimer mon compte" onPress={todo} />
+        <SettingsSection title="Confidentialité" footer="Vos demandes sont traitées par l’équipe YOOTOO sous 30 jours.">
+          {Platform.OS !== 'web' ? (
+            <SettingsNavigationRow icon={{ set: 'feather', name: 'shield' }} label="Autorisations de l’application" subtitle="Localisation, notifications…" onPress={openOsSettings} />
+          ) : null}
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'download' }} label="Exporter mes données" onPress={() => mail('Export de mes données — YOOTOO')} />
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'trash-2' }} iconTint={colors.danger} label="Supprimer mon compte" onPress={() => mail('Suppression de mon compte — YOOTOO')} />
         </SettingsSection>
 
-        {/* ---------- AIDE ---------- */}
-        <SettingsSection title="Aide">
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'help-circle' }} label="FAQ" onPress={todo} />
+        {/* ---------- AIDE & CONTACT ---------- */}
+        <SettingsSection title="Aide & contact">
           <SettingsNavigationRow icon={{ set: 'feather', name: 'mail' }} label="Nous contacter" value={SUPPORT_EMAIL} onPress={() => mail('Contact — YOOTOO')} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'alert-triangle' }} label="Signaler un bug" onPress={() => mail('Signalement de bug — YOOTOO')} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'message-square' }} label="Suggestions" onPress={() => mail('Suggestion — YOOTOO')} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'file-text' }} label="Conditions générales" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Politique de confidentialité" onPress={todo} />
         </SettingsSection>
 
         {/* ---------- À PROPOS ---------- */}
@@ -161,8 +154,6 @@ export default function SettingsScreen() {
           <SettingsNavigationRow icon={{ set: 'mci', name: 'leaf' }} iconTint={colors.primary} label={APP_NAME} subtitle="Application mobile" />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'tag' }} label="Version" value={APP_VERSION} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'hash' }} label="Numéro de build" value={APP_BUILD} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'file' }} label="Mentions légales" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'code' }} label="Licences Open Source" onPress={todo} />
         </SettingsSection>
 
         {/* ---------- SIMULATION GPS (DEV UNIQUEMENT) ---------- */}
