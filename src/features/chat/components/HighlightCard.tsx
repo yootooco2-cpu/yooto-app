@@ -11,6 +11,7 @@ import { spacing } from '@/design/tokens/spacing';
 import { chatCategoryById } from '../categories';
 import { isLiveNow } from '../logic';
 import type { ActivityItem, ChatParticipant } from '../types';
+import { PublicationTypeChip } from './PublicationTypeChip';
 
 function startsLabel(startsAt: string, now: number): string {
   const d = Date.parse(startsAt) - now;
@@ -36,10 +37,9 @@ export function HighlightCard({ item, author, now }: { item: ActivityItem; autho
         <YText style={[styles.headLabel, { color: glass.onDark }]}>À ne pas manquer</YText>
       </View>
       <View style={[styles.card, { backgroundColor: colors.surface, borderColor: accent }]}>
-        <View style={[styles.emojiWrap, { backgroundColor: `${accent}22` }]}>
-          <YText style={styles.emoji}>{item.emoji}</YText>
-        </View>
         <View style={styles.body}>
+          {/* Chip de type (Nouveauté, Dégustation…) à la place du gros emoji : plus sobre, premium. */}
+          <PublicationTypeChip kind={item.kind} accent={accent} />
           <YText numberOfLines={2} style={[styles.title, { color: colors.text }]}>{item.title}</YText>
           <View style={styles.meta}>
             {live ? (
@@ -67,10 +67,8 @@ const styles = StyleSheet.create({
   wrap: { gap: spacing.sm },
   head: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: spacing.xs },
   headLabel: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.md, borderRadius: radii.xl, borderWidth: 1 },
-  emojiWrap: { width: 52, height: 52, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
-  emoji: { fontSize: 28 },
-  body: { flex: 1, gap: 5 },
+  card: { gap: spacing.sm, padding: spacing.md, borderRadius: radii.xl, borderWidth: 1 },
+  body: { gap: 6 },
   title: { fontSize: 15, fontWeight: '800', lineHeight: 20, letterSpacing: -0.2 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   live: { flexDirection: 'row', alignItems: 'center', gap: 5 },
