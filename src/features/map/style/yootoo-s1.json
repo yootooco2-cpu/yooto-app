@@ -1,5 +1,5 @@
 {
-  "name": "YOOTOO S1 (working)",
+  "name": "YOOTOO S1",
   "sprite": "mapbox://sprites/mapbox/light-v11",
   "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
   "center": [
@@ -5810,8 +5810,8 @@
   },
   "created": "1970-01-01T00:00:00.000Z",
   "modified": "1970-01-01T00:00:00.000Z",
-  "owner": "mapbox",
-  "id": "light-v11",
+  "owner": "yootoo",
+  "id": "yootoo-s1",
   "draft": false,
   "lights": [
     {
