@@ -4,6 +4,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Map as MapboxMap } from 'mapbox-gl';
 
 import { MapboxCameraBridge } from '@/components/map/camera/mapboxCameraBridge';
+import {
+  LIGHT_LAB_DEFAULTS,
+  installLightPresetLab,
+  readLightLabFromUrl,
+} from '@/features/map/dev/lightPresetLab';
 import { MapClusterController } from '@/components/map/cluster/clusterController';
 import { MapPlaceholder } from '@/components/map/MapPlaceholder';
 import { colors } from '@/design/tokens/colors';
@@ -112,6 +117,9 @@ export function MapEngine({
         const mapboxgl = (await import('mapbox-gl')).default;
         if (cancelled || !containerRef.current) return;
         mapboxgl.accessToken = token;
+        // LIGHT LAB (dev-only) : ambiance initiale depuis l'URL, défauts officiels sinon.
+        const lightLab =
+          process.env.NODE_ENV !== 'production' ? readLightLabFromUrl() : { ...LIGHT_LAB_DEFAULTS };
         const map = new mapboxgl.Map({
           container: containerRef.current,
           style: mapStyle as string,
@@ -124,6 +132,8 @@ export function MapEngine({
           config: {
             basemap: {
               showPointOfInterestLabels: false,
+              lightPreset: lightLab.lightPreset,
+              theme: lightLab.theme,
             },
           },
         });
@@ -174,6 +184,13 @@ export function MapEngine({
             ).__YOOTOO_MAP_STYLE_RUNTIME__ = debugStyle;
             // eslint-disable-next-line no-console
             console.info('[YOOTOO/map] style runtime ' + JSON.stringify(debugStyle));
+            // LIGHT LAB : comparateur live des 8 ambiances Standard (L = preset, T = faded).
+            try {
+              installLightPresetLab(map, lightLab);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[YOOTOO/map] error (light lab)', err);
+            }
           }
           // RESET DA — prototype végétation DÉSACTIVÉ (dépendait des couches du style custom
           // S1 : landcover/landuse/road-simple, absentes de Mapbox Standard). Code conservé
