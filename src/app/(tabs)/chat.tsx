@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
-import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
+import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { getMerchantCoverPhoto, useMerchants } from '@/features/merchants';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { YScreen } from '@/components/ui/YScreen';
@@ -92,22 +92,26 @@ function ChatBody() {
 
   return (
     <YScreen transparent gap="sm" padding="lg">
-      {/* LIGNE 1 — titre à gauche, avatar (seul élément d'action) à droite. En-tête épuré. */}
-      <View style={styles.header}>
-        <View style={styles.titleCol}>
-          <YText style={[styles.title, { color: glass.onDark }]}>Chat</YText>
-          <YText numberOfLines={1} style={[styles.subtitle, { color: glass.onDarkMuted }]}>Échangez avec votre communauté locale</YText>
-        </View>
-        <ProfileAvatarButton size={48} />
+      {/* EN-TÊTE COMPACT — même univers que la Carte : identité discrète, impact visuel réduit. */}
+      <View style={styles.titleCol}>
+        <YText style={[styles.title, { color: glass.onDark }]}>Chat</YText>
+        <YText numberOfLines={1} style={[styles.subtitle, { color: glass.onDarkMuted }]}>Échangez avec votre communauté locale</YText>
       </View>
 
-      {/* BARRE DE RECHERCHE PERMANENTE — ancrage fixe, jamais masquée par un changement de catégorie. */}
-      <YSearchBar
-        variant="glass"
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Rechercher une discussion, un commerçant ou une personne…"
-      />
+      {/* BARRE DE RECHERCHE PARTAGÉE AVEC LA CARTE — même YSearchBar (variant glass) + même bouton
+          Favoris circulaire à droite, même agencement (searchRow flex + gap) que le SearchMenu de la
+          Carte. Seul le placeholder change. Ancrage fixe, jamais masqué par un changement de catégorie. */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchFlex}>
+          <YSearchBar
+            variant="glass"
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Rechercher une discussion, un commerçant ou une personne…"
+          />
+        </View>
+        <FavoritesButton onPress={() => router.push('/explore')} />
+      </View>
 
       {/* LIGNE 2 — onglets principaux (compacts). */}
       <ChatSpaceSwitcher space={space} onChange={setSpace} unread={unread} dense />
@@ -179,10 +183,13 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  titleCol: { flex: 1, gap: 1 },
-  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
-  subtitle: { fontSize: 13, lineHeight: 17 },
+  // En-tête compact : titre discret (aligné sur les bords de la recherche, comme la Carte).
+  titleCol: { gap: 1, paddingHorizontal: spacing.xs },
+  title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  subtitle: { fontSize: 12, lineHeight: 16 },
+  // Ligne de recherche IDENTIQUE au SearchMenu de la Carte (flex + gap + Favoris à droite).
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  searchFlex: { flex: 1 },
   // Région de contenu FIXE : la liste occupe tout l'espace sous les filtres et défile en interne
   // → l'en-tête/onglets/sous-catégories restent parfaitement immobiles quel que soit le filtre.
   list: { flex: 1 },
