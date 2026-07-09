@@ -1,5 +1,7 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
 
+import { publishLightPhase } from './lightPhaseStore';
+
 /**
  * CYCLE SOLAIRE — la carte vit avec la vraie journée de l'utilisateur.
  *
@@ -88,12 +90,13 @@ export function installSolarLightCycle(map: MapboxMap): () => void {
       if (next === current) return;
       current = next;
       map.setConfigProperty('basemap', 'lightPreset', next);
+      publishLightPhase(next);
       if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
+         
         console.info(`[YOOTOO/map] cycle solaire → ${next}`);
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('[YOOTOO/map] cycle solaire error', err);
     }
   };

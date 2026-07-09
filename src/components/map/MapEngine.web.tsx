@@ -10,6 +10,7 @@ import {
   readLightLabFromUrl,
   urlHasLightOverride,
 } from '@/features/map/dev/lightPresetLab';
+import { publishLightPhase } from '@/features/map/lightPhaseStore';
 import { installSolarLightCycle } from '@/features/map/solarLightCycle';
 import { MapClusterController } from '@/components/map/cluster/clusterController';
 import { MapPlaceholder } from '@/components/map/MapPlaceholder';
@@ -201,6 +202,10 @@ export function MapEngine({
               // eslint-disable-next-line no-console
               console.error('[YOOTOO/map] error (cycle solaire)', err);
             }
+          } else {
+            // Cycle gelé (env/URL) : la phase effective reste cohérente pour les abonnés
+            // (ex. lumière d'ambiance des commerces) — elle suit l'ambiance forcée.
+            publishLightPhase(lightLab.lightPreset);
           }
           if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
             // LIGHT LAB : comparateur live des 8 ambiances Standard (L = preset, T = faded).

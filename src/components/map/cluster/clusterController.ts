@@ -14,6 +14,10 @@ import {
   clusterCountLayerSpec,
   clusterSourceSpec,
   clustersLayerSpec,
+  MERCHANT_LIGHT_LAYER,
+  merchantLightLayerSpec,
+  merchantLightModeFromUrl,
+  merchantLightOpacity,
   PHOTO_MARKER_CAP,
   SOURCE_ID,
   UNCLUSTERED_HIT_LAYER,
@@ -21,6 +25,7 @@ import {
   ZOOM_HIDE_CRYPTOGRAMS_CLOSE,
   ZOOM_SHOW_PHOTO_MARKERS,
 } from '@/features/map/cluster/layers';
+import { getLightPhase, subscribeLightPhase, type LightPhase } from '@/features/map/lightPhaseStore';
 
 import type { CryptogramId } from '@/features/merchants/cryptograms';
 
@@ -48,6 +53,9 @@ export class MapClusterController {
   private installed = false;
   private userMarker: MapboxMarker | null = null;
   private selectedId: string | null = null;
+  /** Lumière d'ambiance des commerces : mode de calibration (dev) + désabonnement phase. */
+  private readonly lightMode = merchantLightModeFromUrl();
+  private unsubscribeLightPhase: (() => void) | null = null;
 
   constructor(
     private readonly map: MapboxMap,
@@ -115,15 +123,37 @@ export class MapClusterController {
     this.selection.destroy();
     this.userMarker?.remove();
     this.userMarker = null;
-    for (const layer of [CLUSTERS_LAYER, CLUSTER_COUNT_LAYER, UNCLUSTERED_HIT_LAYER]) {
+    this.unsubscribeLightPhase?.();
+    this.unsubscribeLightPhase = null;
+    for (const layer of [MERCHANT_LIGHT_LAYER, CLUSTERS_LAYER, CLUSTER_COUNT_LAYER, UNCLUSTERED_HIT_LAYER]) {
       if (this.map.getLayer(layer)) this.map.removeLayer(layer);
     }
     if (this.map.getSource(SOURCE_ID)) this.map.removeSource(SOURCE_ID);
     this.installed = false;
   }
 
+  /** Applique l'intensité de la lumière d'ambiance pour la phase donnée (fondu natif 2,5 s). */
+  private applyMerchantLight(phase: LightPhase): void {
+    try {
+      if (!this.map.getLayer(MERCHANT_LIGHT_LAYER)) return;
+      this.map.setPaintProperty(
+        MERCHANT_LIGHT_LAYER,
+        'circle-opacity',
+        merchantLightOpacity(phase, this.lightMode),
+      );
+    } catch (err) {
+       
+      console.error('[YOOTOO/map] merchant light error', err);
+    }
+  }
+
   private installLayers(): void {
     if (this.installed) return;
+    // Lumière d'ambiance des commerces — installée AVANT les couches marqueurs (toujours
+    // dessous) ; son intensité suit la phase solaire effective (lightPhaseStore).
+    this.map.addLayer(merchantLightLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
+    this.applyMerchantLight(getLightPhase());
+    this.unsubscribeLightPhase = subscribeLightPhase((phase) => this.applyMerchantLight(phase));
     this.map.addLayer(clustersLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
     this.map.addLayer(clusterCountLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
     this.map.addLayer(unclusteredHitLayerSpec() as unknown as Parameters<MapboxMap['addLayer']>[0]);
@@ -142,7 +172,7 @@ export class MapClusterController {
   };
 
   /** Clic sur un pin sobre (points non clusterisés, zoom large) → sélection du commerce. */
-  private onUnclusteredClick = (e: MapMouseEvent & { features?: Array<{ properties?: { id?: string } | null }> }): void => {
+  private onUnclusteredClick = (e: MapMouseEvent & { features?: { properties?: { id?: string } | null }[] }): void => {
     const id = e.features?.[0]?.properties?.id;
     if (id) this.onSelect(id);
   };

@@ -1,5 +1,7 @@
 import type { Map as MapboxMap } from 'mapbox-gl';
 
+import { publishLightPhase } from '@/features/map/lightPhaseStore';
+
 /**
  * LIGHT LAB (dev-only, web-only) — comparateur des ambiances officielles Mapbox Standard.
  *
@@ -79,10 +81,11 @@ export function installLightPresetLab(
     try {
       map.setConfigProperty('basemap', 'lightPreset', state.lightPreset);
       map.setConfigProperty('basemap', 'theme', state.theme);
-      // eslint-disable-next-line no-console
+      publishLightPhase(state.lightPreset);
+       
       console.info(`[YOOTOO/map] light lab → ${describe(state)}`);
     } catch (err) {
-      // eslint-disable-next-line no-console
+       
       console.error('[YOOTOO/map] light lab error', err);
     }
   };
@@ -107,7 +110,7 @@ export function installLightPresetLab(
   window.addEventListener('keydown', onKey);
   const dispose = () => window.removeEventListener('keydown', onKey);
   map.on('remove', dispose);
-  // eslint-disable-next-line no-console
+   
   console.info(
     `[YOOTOO/map] light lab actif — ${describe(state)} · touche L = preset suivant, T = faded on/off · URL: ?light=dawn|day|dusk|night&theme=faded`,
   );
