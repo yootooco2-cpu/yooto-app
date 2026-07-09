@@ -3519,6 +3519,153 @@
       }
     },
     {
+      "id": "building-roof",
+      "type": "fill-extrusion",
+      "source": "composite",
+      "source-layer": "building",
+      "minzoom": 15,
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "get",
+            "extrude"
+          ],
+          "true"
+        ],
+        [
+          "==",
+          [
+            "geometry-type"
+          ],
+          "Polygon"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "type"
+          ],
+          "building:part"
+        ],
+        [
+          "==",
+          [
+            "get",
+            "underground"
+          ],
+          "false"
+        ],
+        [
+          "has",
+          "height"
+        ]
+      ],
+      "paint": {
+        "fill-extrusion-color": [
+          "case",
+          [
+            "<",
+            [
+              "coalesce",
+              [
+                "get",
+                "height"
+              ],
+              3
+            ],
+            18
+          ],
+          [
+            "match",
+            [
+              "%",
+              [
+                "coalesce",
+                [
+                  "id"
+                ],
+                0
+              ],
+              4
+            ],
+            0,
+            "#C08A6E",
+            1,
+            "#B87A5E",
+            2,
+            "#CB9578",
+            3,
+            "#C2826A",
+            "#C08A6E"
+          ],
+          "#D8D6CE"
+        ],
+        "fill-extrusion-height": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          15.5,
+          [
+            "+",
+            [
+              "*",
+              [
+                "get",
+                "height"
+              ],
+              0.95
+            ],
+            1.4
+          ]
+        ],
+        "fill-extrusion-base": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          15.5,
+          [
+            "*",
+            [
+              "get",
+              "height"
+            ],
+            0.95
+          ]
+        ],
+        "fill-extrusion-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0,
+          15.6,
+          1
+        ],
+        "fill-extrusion-vertical-gradient": false,
+        "fill-extrusion-cast-shadows": true,
+        "fill-extrusion-emissive-strength": 0.12,
+        "fill-extrusion-cutoff-fade-range": 0.24
+      }
+    },
+    {
       "id": "admin-1-boundary-bg",
       "type": "line",
       "source": "composite",
