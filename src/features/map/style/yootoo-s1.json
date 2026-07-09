@@ -9,13 +9,13 @@
   "zoom": 11,
   "fog": {
     "range": [
-      0.7,
-      7
+      1.2,
+      10
     ],
     "color": "#EDE6DA",
     "high-color": "#D4D9D4",
     "space-color": "#879BA5",
-    "horizon-blend": 0.18,
+    "horizon-blend": 0.1,
     "star-intensity": 0
   },
   "light": {
@@ -6068,18 +6068,18 @@
       "type": "ambient",
       "properties": {
         "color": "#FFF0DC",
-        "intensity": 0.46
+        "intensity": 0.58
       }
     },
     {
       "id": "sun",
       "type": "directional",
       "properties": {
-        "color": "#FFD49A",
-        "intensity": 0.84,
+        "color": "#FFE9CC",
+        "intensity": 0.62,
         "direction": [
           315,
-          66
+          76
         ],
         "cast-shadows": true,
         "shadow-intensity": [
@@ -6093,9 +6093,9 @@
           15,
           0,
           15.5,
-          0.64,
+          0.3,
           17,
-          0.72
+          0.36
         ]
       }
     }
