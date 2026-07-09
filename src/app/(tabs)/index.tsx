@@ -1,7 +1,9 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Dimensions } from 'react-native';
 import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
+import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
@@ -15,6 +17,7 @@ import { SearchMenu, useMerchants, useMerchantSearchStore, withPhotoForDemo, typ
 const AMBIENT_HEIGHT = Math.round(Dimensions.get('window').height);
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { data } = useMerchants();
   // Démo : ne garder que les commerces avec une vraie photo (aucun repli visible dans les cartes).
   const merchants = useMemo(() => withPhotoForDemo(data ?? []), [data]);
@@ -60,11 +63,12 @@ export default function HomeScreen() {
   return (
     <SectionScreen section="accueil" scrollY={scrollY} height={AMBIENT_HEIGHT}>
       <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
-        {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories). */}
+        {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories + favoris). */}
         <SearchMenu
           query={query}
           onQueryChange={setQuery}
           onCategoryChange={(m) => setCategoryMatch(() => m)}
+          trailing={<FavoritesButton onPress={() => router.push('/explore')} />}
         />
 
         {filtering ? (
