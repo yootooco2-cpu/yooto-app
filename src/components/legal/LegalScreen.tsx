@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { YText } from '@/components/ui/YText';
+import { SUPPORT_EMAIL, supportMailtoUrl } from '@/constants/support';
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
@@ -29,6 +30,8 @@ export function LegalScreen({ doc }: { doc: LegalDoc }) {
       </View>
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
+        {/* Titre en H1 dans le contenu → hiérarchie claire + jamais tronqué par l'en-tête. */}
+        <YText style={[styles.docTitle, { color: colors.text }]}>{doc.title}</YText>
         <YText variant="caption" color="muted">{doc.subtitle} · mis à jour le {LEGAL_UPDATED}</YText>
 
         {/* Bandeau de prudence (version provisoire). */}
@@ -47,6 +50,16 @@ export function LegalScreen({ doc }: { doc: LegalDoc }) {
             ))}
           </View>
         ))}
+
+        {/* Contact réellement cliquable (lien fonctionnel, jamais inerte). */}
+        <Pressable
+          onPress={() => void Linking.openURL(`${supportMailtoUrl()}?subject=${encodeURIComponent(`${doc.title} — YOOTOO`)}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Nous écrire à ${SUPPORT_EMAIL}`}
+          style={({ pressed }) => [styles.contact, glass.panel, pressed && styles.pressed]}>
+          <Feather name="mail" size={16} color={colors.primary} />
+          <YText variant="body" style={{ color: colors.text }}>Nous écrire — {SUPPORT_EMAIL}</YText>
+        </Pressable>
       </ScrollView>
     </View>
   );
@@ -65,7 +78,10 @@ const styles = StyleSheet.create({
   back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
   content: { padding: spacing.lg, gap: spacing.md },
+  docTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6, lineHeight: 30 },
   banner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radii.lg },
   section: { gap: spacing.xs, marginTop: spacing.sm },
   heading: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2, marginBottom: 2 },
+  contact: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radii.lg, marginTop: spacing.md },
+  pressed: { opacity: 0.85 },
 });
