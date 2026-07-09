@@ -149,6 +149,12 @@ export default function SettingsScreen() {
           <SettingsNavigationRow icon={{ set: 'feather', name: 'message-square' }} label="Suggestions" onPress={() => mail('Suggestion — YOOTOO')} />
         </SettingsSection>
 
+        {/* ---------- LÉGAL ---------- */}
+        <SettingsSection title="Légal">
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'file-text' }} label="Conditions générales d’utilisation" onPress={() => router.push('/legal/terms')} />
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Politique de confidentialité" onPress={() => router.push('/legal/privacy')} />
+        </SettingsSection>
+
         {/* ---------- À PROPOS ---------- */}
         <SettingsSection title="À propos" footer={APP_TAGLINE}>
           <SettingsNavigationRow icon={{ set: 'mci', name: 'leaf' }} iconTint={colors.primary} label={APP_NAME} subtitle="Application mobile" />
