@@ -132,6 +132,9 @@ font uniquement via des `import type`, effacés au runtime).
 | Recency weighting (décroissance temporelle v2) | ✅ |
 | Profil → Préférences (vue, export, reset) | ✅ |
 | Persistance **MMKV** (dev build) + fallback Web/Expo Go | ✅ |
+| **Pages légales** (CGU + Politique de confidentialité) | ✅ **Completed — terminé & figé** |
+
+> **Pages légales — Completed & figées (2026-07-09).** UX & technique **validés** : routes `/legal/terms` et `/legal/privacy`, écran `LegalScreen` (DA sombre, sections structurées, bouton retour, responsive, contact cliquable), entrées « Légal » rebranchées dans les Réglages, texte isolé et remplaçable dans `src/features/legal/content.ts` (bandeau « version provisoire »). **Hors périmètre de développement** : aucune évolution ne sera apportée, sauf — (1) corrections de bugs ; (2) mise à jour du contenu après **validation par un juriste** ; (3) ajout des **informations légales définitives** (raison sociale, SIRET, adresse, responsable de traitement) ; (4) **publication des mêmes contenus sur une URL web publique** avant soumission App Store / Play Store.
 
 ---
 
