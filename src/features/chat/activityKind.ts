@@ -1,40 +1,36 @@
-import { Feather } from '@expo/vector-icons';
-import { type ComponentProps } from 'react';
-
+import type { CryptoId } from './components/PublicationCrypto';
 import type { ActivityKind } from './types';
 
-type FeatherName = ComponentProps<typeof Feather>['name'];
-
-/** Étiquette raffinée d'un type de publication (chip) : libellé court + icône Feather monochrome. */
+/** Étiquette raffinée d'un type de publication (chip) : libellé court + cryptogramme éditorial. */
 export interface ActivityKindChip {
   label: string;
-  icon: FeatherName;
+  crypto: CryptoId;
 }
 
 /**
- * Type de publication → chip discrète (langage visuel des catégories : icône Feather + libellé,
- * teintés de l'accent de la catégorie par le composant). Remplace les gros emojis décoratifs :
- * l'utilisateur identifie le type d'un coup d'œil, sans que cela vole la vedette au commerçant.
- * PRÉSENTATION uniquement — aucune logique métier (le `kind` reste la source de vérité).
+ * Type de publication → chip discrète (libellé + cryptogramme YOOTOO, teinté de l'accent de la
+ * catégorie par le composant). Les cryptogrammes remplacent les icônes Feather : signature visuelle
+ * propriétaire, reconnaissable d'un coup d'œil. PRÉSENTATION uniquement — aucune logique métier
+ * (le `kind` reste la source de vérité).
  */
 const CHIPS: Record<ActivityKind, ActivityKindChip> = {
-  arrivage: { label: 'Arrivage', icon: 'package' },
-  produit: { label: 'Nouveauté', icon: 'star' },
-  offre: { label: 'Offre', icon: 'tag' },
-  evenement: { label: 'Événement', icon: 'calendar' },
-  degustation: { label: 'Dégustation', icon: 'coffee' },
-  concert: { label: 'Concert', icon: 'music' },
-  sortie: { label: 'Sortie', icon: 'compass' },
-  marche: { label: 'Marché', icon: 'shopping-bag' },
-  recolte: { label: 'Récolte', icon: 'sun' },
-  ouverture: { label: 'Ouverture', icon: 'unlock' },
-  fermeture: { label: 'Information', icon: 'info' },
-  benevolat: { label: 'Entraide', icon: 'heart' },
-  nouveau_pro: { label: 'Nouveauté', icon: 'star' },
-  annonce: { label: 'Information', icon: 'info' },
+  arrivage: { label: 'Arrivage', crypto: 'arrivage' },
+  produit: { label: 'Nouveauté', crypto: 'nouveaute' },
+  offre: { label: 'Offre', crypto: 'offre' },
+  evenement: { label: 'Événement', crypto: 'evenement' },
+  degustation: { label: 'Dégustation', crypto: 'degustation' },
+  concert: { label: 'Événement', crypto: 'evenement' },
+  sortie: { label: 'Sortie', crypto: 'evenement' },
+  marche: { label: 'Marché', crypto: 'marche' },
+  recolte: { label: 'Récolte', crypto: 'recolte' },
+  ouverture: { label: 'Ouverture', crypto: 'ouverture' },
+  fermeture: { label: 'Information', crypto: 'information' },
+  benevolat: { label: 'Engagement', crypto: 'engagement' },
+  nouveau_pro: { label: 'Ouverture', crypto: 'ouverture' },
+  annonce: { label: 'Information', crypto: 'information' },
 };
 
-const FALLBACK: ActivityKindChip = { label: 'Actualité', icon: 'zap' };
+const FALLBACK: ActivityKindChip = { label: 'Actualité', crypto: 'information' };
 
 /** Chip d'un type de publication (jamais nul : repli neutre si un futur `kind` n'est pas mappé). */
 export function activityKindChip(kind: ActivityKind): ActivityKindChip {
