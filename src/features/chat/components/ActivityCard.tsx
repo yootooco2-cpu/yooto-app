@@ -15,6 +15,7 @@ import type { ActivityItem, ChatParticipant } from '../types';
 import { ActivityActions } from './ActivityActions';
 import { ChatAvatar } from './ChatAvatar';
 import { FollowPill } from './FollowPill';
+import { PublicationTypeChip } from './PublicationTypeChip';
 
 /**
  * Carte VIVANTE du fil : émoji + auteur (vérifié) + proximité (🚶/🚴) + « en direct », puis une
@@ -70,22 +71,22 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
         </View>
       </View>
 
-      <View style={styles.body}>
-        <View style={[styles.emojiWrap, { backgroundColor: `${accent}22` }]}>
-          <YText style={styles.emoji}>{item.emoji}</YText>
-        </View>
-        <View style={styles.text}>
-          <YText numberOfLines={2} style={[styles.title, { color: colors.text }]}>{item.title}</YText>
-          {item.body ? (
-            <YText variant="caption" color="muted" numberOfLines={2} style={styles.desc}>{item.body}</YText>
-          ) : null}
-        </View>
+      <View style={styles.text}>
+        {/* Chip de type (Nouveauté, Offre…) à la place du gros emoji — même langage visuel que
+            « À ne pas manquer ». Le commerçant (en-tête) reste le héros de la carte. */}
+        <PublicationTypeChip kind={item.kind} accent={accent} />
+        <YText numberOfLines={2} style={[styles.title, { color: colors.text }]}>{item.title}</YText>
+        {item.body ? (
+          <YText variant="caption" color="muted" numberOfLines={2} style={styles.desc}>{item.body}</YText>
+        ) : null}
       </View>
 
+      {/* Catégorie conservée mais DISCRÈTE (simple label gris + icône) : elle situe le thème sans
+          rivaliser avec la chip de type ni alourdir la carte de deux pastilles colorées. */}
       {category ? (
-        <View style={[styles.tag, { backgroundColor: `${accent}1F` }]}>
-          <Feather name={category.icon} size={12} color={accent} />
-          <YText style={[styles.tagText, { color: accent }]}>{category.label}</YText>
+        <View style={styles.tag}>
+          <Feather name={category.icon} size={11} color={colors.mutedText} />
+          <YText style={[styles.tagText, { color: colors.mutedText }]}>{category.label}</YText>
         </View>
       ) : null}
 
@@ -105,12 +106,9 @@ const styles = StyleSheet.create({
   live: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#69B96C' },
   liveText: { fontSize: 12, fontWeight: '800', color: '#69B96C' },
-  body: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  emojiWrap: { width: 48, height: 48, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
-  emoji: { fontSize: 26 },
-  text: { flex: 1, gap: 2 },
+  text: { gap: 6 },
   title: { fontSize: 15, fontWeight: '700', lineHeight: 20 },
   desc: { lineHeight: 18 },
-  tag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.pill },
-  tagText: { fontSize: 12, fontWeight: '700' },
+  tag: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5 },
+  tagText: { fontSize: 11.5, fontWeight: '600', letterSpacing: -0.1 },
 });
