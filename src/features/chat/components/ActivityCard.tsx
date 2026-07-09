@@ -1,6 +1,8 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -22,12 +24,19 @@ import { PublicationTypeChip } from './PublicationTypeChip';
  * barre d'actions discrète (réagir · répondre · enregistrer · partager). Suivre pour les acteurs
  * du territoire. Chaque élément ajoute de la valeur, jamais du bruit.
  */
-export function ActivityCard({ item, author, now }: { item: ActivityItem; author?: ChatParticipant; now: number }) {
+export function ActivityCard({ item, author, now, highlighted = false }: { item: ActivityItem; author?: ChatParticipant; now: number; highlighted?: boolean }) {
   const { colors } = useTheme();
   const router = useRouter();
   const merchantId = author?.merchantId;
   const category = chatCategoryById(item.categoryId);
   const accent = category?.accent ?? colors.primary;
+
+  // Mise en évidence temporaire quand on arrive sur cette carte depuis une notification.
+  const hl = useSharedValue(0);
+  useEffect(() => {
+    if (highlighted) hl.value = withSequence(withTiming(1, { duration: 220 }), withTiming(0, { duration: 1500 }));
+  }, [highlighted, hl]);
+  const hlStyle = useAnimatedStyle(() => ({ opacity: hl.value * 0.16 }));
   const isBiz = Boolean(author && isTerritoryActor(author.kind));
   const prox = proximityHint(item.geo?.distanceKm);
   const live = isLiveNow(item.startsAt, item.endsAt, now);
@@ -42,6 +51,7 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Animated.View pointerEvents="none" style={[styles.hlOverlay, { backgroundColor: accent }, hlStyle]} />
       <View style={styles.top}>
         <Pressable
           style={styles.identity}
@@ -96,7 +106,8 @@ export function ActivityCard({ item, author, now }: { item: ActivityItem; author
 }
 
 const styles = StyleSheet.create({
-  card: { gap: spacing.sm, padding: spacing.md, borderRadius: radii.xl, borderWidth: 1, ...shadows.sm },
+  card: { gap: spacing.sm, padding: spacing.md, borderRadius: radii.xl, borderWidth: 1, ...shadows.sm, overflow: 'hidden' },
+  hlOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: radii.xl },
   top: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   identity: { flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   who: { flex: 1, gap: 2 },

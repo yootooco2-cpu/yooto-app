@@ -64,6 +64,8 @@ export { ChatCardSkeleton } from './components/ChatCardSkeleton';
 export { ActivityActions } from './components/ActivityActions';
 export { FollowPill } from './components/FollowPill';
 export { TrendsStrip } from './components/TrendsStrip';
+export { NotificationsStrip } from './components/NotificationsStrip';
+export { buildFeedNotifications, notifTime, type FeedNotification } from './notifications';
 export { HighlightCard } from './components/HighlightCard';
 export { ConversationCard } from './components/ConversationCard';
 export { MessageBubble } from './components/MessageBubble';

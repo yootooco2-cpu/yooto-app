@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
 
 import { FavoritesButton } from '@/components/favorites/FavoritesButton';
@@ -16,7 +16,8 @@ import {
   ChatCategoryBar,
   ChatSpaceSwitcher,
   ConversationCard,
-  TrendsStrip,
+  NotificationsStrip,
+  buildFeedNotifications,
   selectDiscussions,
   selectPrivateMessages,
   toConversationView,
@@ -36,12 +37,14 @@ function ChatBody() {
   const participants = useChatStore((s) => s.participants);
   const messages = useChatStore((s) => s.messages);
   const activity = useChatStore((s) => s.activity);
-  const trends = useChatStore((s) => s.trends);
+  const following = useChatStore((s) => s.following);
 
   const [space, setSpace] = useState<ChatSpace>('activity');
   const [category, setCategory] = useState('all');
   const [query, setQuery] = useState('');
   const [now] = useState(() => Date.now());
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     void init();
@@ -87,6 +90,18 @@ function ChatBody() {
     ? activity.filter((a) => `${participants[a.authorId]?.name ?? ''} ${a.title} ${a.body ?? ''}`.toLowerCase().includes(q))
     : activity;
 
+  // Notifications sociales (tri intelligent) dérivées des vraies publications.
+  const notifications = useMemo(() => buildFeedNotifications(activity, following, now), [activity, following, now]);
+
+  // Clic sur une notification → scroll fluide vers la publication + surbrillance temporaire.
+  const handleOpenNotification = (id: string) => {
+    const idx = shownActivity.findIndex((a) => a.id === id);
+    if (idx < 0) return;
+    setHighlightedId(id);
+    requestAnimationFrame(() => listRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.25 }));
+    setTimeout(() => setHighlightedId((cur) => (cur === id ? null : cur)), 2200);
+  };
+
   return (
     <YScreen transparent gap="sm" padding="lg">
       {/* En-tête volontairement SANS titre « Chat » : on est déjà dans l'onglet Chat → l'écran
@@ -124,16 +139,23 @@ function ChatBody() {
         </View>
       ) : space === 'activity' ? (
         <FlatList
+          ref={listRef}
           style={styles.list}
           data={shownActivity}
           keyExtractor={(a) => a.id}
-          renderItem={({ item }) => <ActivityCard item={item} author={participants[item.authorId]} now={now} />}
+          renderItem={({ item }) => (
+            <ActivityCard item={item} author={participants[item.authorId]} now={now} highlighted={highlightedId === item.id} />
+          )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          onScrollToIndexFailed={(info) => {
+            listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+            setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.25 }), 350);
+          }}
           ListHeaderComponent={
             q ? null : (
               <View style={styles.feedHead}>
-                <TrendsStrip trends={trends} />
+                <NotificationsStrip notifications={notifications} participants={participants} now={now} onOpen={handleOpenNotification} />
               </View>
             )
           }
