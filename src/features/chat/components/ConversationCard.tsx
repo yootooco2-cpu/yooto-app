@@ -49,7 +49,7 @@ export function ConversationCard({ view, now, onPress }: { view: ChatConversatio
           {/* Badge de type éditorial (cryptogramme officiel) choisi à la création, si présent. */}
           {conversation.publicationKind ? (
             <View style={styles.pubBadge}>
-              <PublicationCrypto id={conversation.publicationKind} size={16} />
+              <PublicationCrypto id={conversation.publicationKind} size={19} />
               <YText style={[styles.typeText, { color: colors.text }]}>{editorialLabel(conversation.publicationKind)}</YText>
             </View>
           ) : (

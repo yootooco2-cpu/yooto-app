@@ -17,7 +17,7 @@ export function PublicationTypeChip({ kind, accent }: { kind: ActivityKind; acce
   const chip = activityKindChip(kind);
   return (
     <View style={[styles.chip, { backgroundColor: `${accent}1F` }]}>
-      <PublicationCrypto id={chip.crypto} size={14} color={accent} />
+      <PublicationCrypto id={chip.crypto} size={17} color={accent} />
       <YText style={[styles.label, { color: accent }]}>{chip.label}</YText>
     </View>
   );
