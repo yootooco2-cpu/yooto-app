@@ -24,7 +24,7 @@ export interface ChatRepository {
   /** Enregistrer / retirer une publication. */
   setSaved(activityId: string, saved: boolean): Promise<void>;
   sendMessage(input: { conversationId: string; senderId: string; body: string }): Promise<ChatMessage>;
-  createConversation(input: { title: string; body: string; authorId: string; categoryId?: string }): Promise<{
+  createConversation(input: { title: string; body: string; authorId: string; categoryId?: string; publicationKind?: ChatConversation['publicationKind'] }): Promise<{
     conversation: ChatConversation;
     message: ChatMessage;
   }>;
@@ -129,7 +129,7 @@ export const mockChatRepository: ChatRepository = {
     return delay(message);
   },
 
-  async createConversation({ title, body, authorId, categoryId }) {
+  async createConversation({ title, body, authorId, categoryId, publicationKind }) {
     const now = new Date().toISOString();
     const conversation: ChatConversation = {
       id: uid('conv'),
@@ -142,6 +142,7 @@ export const mockChatRepository: ChatRepository = {
       unreadCount: 0,
       createdAt: now,
       updatedAt: now,
+      publicationKind,
     };
     const message: ChatMessage = { id: uid('msg'), conversationId: conversation.id, senderId: authorId, body: body.trim(), createdAt: now };
     conversations = [conversation, ...conversations];

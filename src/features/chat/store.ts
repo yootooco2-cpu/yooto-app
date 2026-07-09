@@ -38,7 +38,7 @@ interface ChatState {
   hydrateFromMerchants: (merchants: ChatMerchant[]) => void;
   loadMessages: (conversationId: string) => Promise<void>;
   sendMessage: (conversationId: string, body: string) => Promise<void>;
-  createConversation: (input: { title: string; body: string; categoryId?: string }) => Promise<string>;
+  createConversation: (input: { title: string; body: string; categoryId?: string; publicationKind?: ChatConversation['publicationKind'] }) => Promise<string>;
   markRead: (conversationId: string) => void;
   markNotificationRead: (id: string) => Promise<void>;
   toggleFollow: (actorId: string) => Promise<void>;
@@ -127,12 +127,13 @@ export const useChatStore = create<ChatState>()((set, get) => ({
     });
   },
 
-  async createConversation({ title, body, categoryId }) {
+  async createConversation({ title, body, categoryId, publicationKind }) {
     const { conversation, message } = await repository.createConversation({
       title,
       body,
       authorId: get().currentUserId,
       categoryId,
+      publicationKind,
     });
     set((s) => ({
       conversations: sortByActivity([conversation, ...s.conversations]),

@@ -67,3 +67,5 @@ export { TrendsStrip } from './components/TrendsStrip';
 export { HighlightCard } from './components/HighlightCard';
 export { ConversationCard } from './components/ConversationCard';
 export { MessageBubble } from './components/MessageBubble';
+export { PublicationTypePicker } from './components/PublicationTypePicker';
+export { EDITORIAL_TYPES, editorialCryptoAsset, editorialLabel, type CryptoId, type EditorialType } from './editorialTypes';

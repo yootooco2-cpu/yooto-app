@@ -8,10 +8,12 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
+import { editorialLabel } from '../editorialTypes';
 import { actorKindLabel, avatarUri, isTerritoryActor } from '../logic';
 import { formatChatTime } from '../time';
 import type { ChatConversationView } from '../types';
 import { ChatAvatar } from './ChatAvatar';
+import { PublicationCrypto } from './PublicationCrypto';
 
 /** Carte d'une conversation dans le fil — codes visuels YOOTOO (surface, coins, ombre) identiques
  *  aux cartes commerçants. Photo · nom · type · dernier message · heure · non lus · distance. */
@@ -44,9 +46,17 @@ export function ConversationCard({ view, now, onPress }: { view: ChatConversatio
           {author.verified ? <Feather name="check-circle" size={13} color={section.accent} /> : null}
         </View>
         <View style={styles.metaRow}>
-          <View style={[styles.typeBadge, { backgroundColor: colors.surfaceAlt }]}>
-            <YText style={[styles.typeText, { color: typeColor }]}>{typeLabel}</YText>
-          </View>
+          {/* Badge de type éditorial (cryptogramme officiel) choisi à la création, si présent. */}
+          {conversation.publicationKind ? (
+            <View style={styles.pubBadge}>
+              <PublicationCrypto id={conversation.publicationKind} size={16} />
+              <YText style={[styles.typeText, { color: colors.text }]}>{editorialLabel(conversation.publicationKind)}</YText>
+            </View>
+          ) : (
+            <View style={[styles.typeBadge, { backgroundColor: colors.surfaceAlt }]}>
+              <YText style={[styles.typeText, { color: typeColor }]}>{typeLabel}</YText>
+            </View>
+          )}
           {author.distanceLabel ? (
             <YText variant="caption" color="muted">
               · {author.distanceLabel}
@@ -90,6 +100,7 @@ const styles = StyleSheet.create({
   name: { flexShrink: 1, fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   typeBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radii.pill },
+  pubBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   typeText: { fontSize: 11, fontWeight: '700' },
   preview: { marginTop: 1 },
   right: { alignSelf: 'stretch', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.xs },

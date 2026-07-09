@@ -11,7 +11,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
-import { useChatStore } from '@/features/chat';
+import { PublicationTypePicker, useChatStore, type CryptoId } from '@/features/chat';
 
 function NewDiscussionBody() {
   const router = useRouter();
@@ -21,6 +21,7 @@ function NewDiscussionBody() {
   const createConversation = useChatStore((s) => s.createConversation);
   const init = useChatStore((s) => s.init);
 
+  const [type, setType] = useState<CryptoId | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [publishing, setPublishing] = useState(false);
@@ -30,7 +31,7 @@ function NewDiscussionBody() {
     if (!canPublish) return;
     setPublishing(true);
     await init();
-    const id = await createConversation({ title, body });
+    const id = await createConversation({ title, body, publicationKind: type ?? undefined });
     router.replace(`/chat/${id}`);
   };
 
@@ -45,6 +46,12 @@ function NewDiscussionBody() {
       </View>
 
       <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {/* PIÈCE MAÎTRESSE — choix du type de publication via les 18 cryptogrammes officiels. */}
+        <View style={styles.field}>
+          <YText variant="label" style={{ color: glass.onDarkMuted }}>TYPE DE PUBLICATION</YText>
+          <PublicationTypePicker value={type} onChange={setType} />
+        </View>
+
         <View style={styles.field}>
           <YText variant="label" style={{ color: glass.onDarkMuted }}>SUJET</YText>
           <View style={[styles.inputWrap, glass.panel]}>

@@ -3,6 +3,7 @@
  * principes fondateurs. Modèle pensé pour Supabase ET pour l'IA (YootChat) dès aujourd'hui :
  * champs de méta-IA optionnels, géolocalisation omniprésente, réputation fondée sur l'UTILITÉ.
  */
+import type { CryptoId } from './editorialTypes';
 
 // ── Acteurs & confiance ───────────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,8 @@ export interface ChatConversation {
   /** Méta-IA optionnelle (résumé, sujets) — future YootChat. */
   summary?: string;
   topics?: string[];
+  /** Type éditorial choisi à la création (cryptogramme officiel) — badge de la publication. */
+  publicationKind?: CryptoId;
 }
 
 // ── Interactions sociales (Phase A) ─────────────────────────────────────────────────────────────
