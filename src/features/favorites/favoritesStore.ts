@@ -22,6 +22,9 @@ interface FavoritesState {
   hydrated: boolean;
   toggle: (id: string) => void;
   remove: (id: string) => void;
+  /** Écrit l'état favori en LOCAL uniquement (optimiste), SANS synchro serveur — l'appelant
+   *  gère lui-même la persistance serveur + le rollback (ex. fiche commerce). */
+  setFavoriteLocal: (id: string, active: boolean) => void;
   /** Charge le disque (toujours sûr, sans réseau). */
   hydrate: () => Promise<void>;
   /** Fusionne l'état serveur (à n'appeler QUE quand une session existe). */
@@ -51,6 +54,13 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
     set((s) => ({ ids: s.ids.filter((x) => x !== id) }));
     void saveLocalFavorites(get().ids);
     void syncOne(id, false);
+  },
+
+  setFavoriteLocal: (id, active) => {
+    set((s) => ({
+      ids: active ? (s.ids.includes(id) ? s.ids : [id, ...s.ids]) : s.ids.filter((x) => x !== id),
+    }));
+    void saveLocalFavorites(get().ids);
   },
 
   hydrate: async () => {

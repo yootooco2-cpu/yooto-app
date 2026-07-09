@@ -1,0 +1,87 @@
+import { Feather } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { YText } from '@/components/ui/YText';
+import { SUPPORT_EMAIL, supportMailtoUrl } from '@/constants/support';
+import { useTheme } from '@/design/theme/ThemeProvider';
+import { glass } from '@/design/tokens/glass';
+import { radii } from '@/design/tokens/radii';
+import { spacing } from '@/design/tokens/spacing';
+import { LEGAL_PROVISIONAL, LEGAL_UPDATED, type LegalDoc } from '@/features/legal/content';
+
+/** Écran de document légal — DA YOOTOO, lisible, sections structurées, bouton retour. Le texte
+ *  provient de `@/features/legal/content` (remplaçable par une version validée sans toucher l'écran). */
+export function LegalScreen({ doc }: { doc: LegalDoc }) {
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/settings'));
+
+  return (
+    <View style={[styles.root, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.separator, paddingTop: insets.top + spacing.sm }]}>
+        <Pressable onPress={goBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.back}>
+          <Feather name="chevron-left" size={24} color={colors.text} />
+        </Pressable>
+        <YText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{doc.title}</YText>
+        <View style={styles.back} />
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]} showsVerticalScrollIndicator={false}>
+        {/* Titre en H1 dans le contenu → hiérarchie claire + jamais tronqué par l'en-tête. */}
+        <YText style={[styles.docTitle, { color: colors.text }]}>{doc.title}</YText>
+        <YText variant="caption" color="muted">{doc.subtitle} · mis à jour le {LEGAL_UPDATED}</YText>
+
+        {/* Bandeau de prudence (version provisoire). */}
+        <View style={[styles.banner, glass.panel]}>
+          <Feather name="info" size={16} color={colors.warning} style={{ marginTop: 1 }} />
+          <YText variant="caption" style={{ flex: 1, color: colors.mutedText, lineHeight: 18 }}>{LEGAL_PROVISIONAL}</YText>
+        </View>
+
+        <YText variant="body" style={{ color: colors.text, lineHeight: 23 }}>{doc.intro}</YText>
+
+        {doc.sections.map((s) => (
+          <View key={s.heading} style={styles.section}>
+            <YText style={[styles.heading, { color: colors.text }]}>{s.heading}</YText>
+            {s.body.map((p, i) => (
+              <YText key={i} variant="body" style={{ color: colors.mutedText, lineHeight: 22 }}>{p}</YText>
+            ))}
+          </View>
+        ))}
+
+        {/* Contact réellement cliquable (lien fonctionnel, jamais inerte). */}
+        <Pressable
+          onPress={() => void Linking.openURL(`${supportMailtoUrl()}?subject=${encodeURIComponent(`${doc.title} — YOOTOO`)}`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Nous écrire à ${SUPPORT_EMAIL}`}
+          style={({ pressed }) => [styles.contact, glass.panel, pressed && styles.pressed]}>
+          <Feather name="mail" size={16} color={colors.primary} />
+          <YText variant="body" style={{ color: colors.text }}>Nous écrire — {SUPPORT_EMAIL}</YText>
+        </Pressable>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  back: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+  content: { padding: spacing.lg, gap: spacing.md },
+  docTitle: { fontSize: 26, fontWeight: '800', letterSpacing: -0.6, lineHeight: 30 },
+  banner: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, padding: spacing.md, borderRadius: radii.lg },
+  section: { gap: spacing.xs, marginTop: spacing.sm },
+  heading: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2, marginBottom: 2 },
+  contact: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radii.lg, marginTop: spacing.md },
+  pressed: { opacity: 0.85 },
+});

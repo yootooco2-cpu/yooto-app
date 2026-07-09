@@ -7,7 +7,7 @@ export {
 export { QUICK_FILTERS } from './filters';
 export { getMerchantById, localMerchantDataSource } from './selectors';
 export { buildRecommendationReasons, getMerchantTags } from './insights';
-export { getMerchantCoverPhoto, isRealPhotoUrl } from './photos';
+export { getMerchantCoverPhoto, isRealPhotoUrl, hasMerchantPhoto, withPhotoForDemo, DEMO_REQUIRE_PHOTO } from './photos';
 export {
   CRYPTOGRAMS,
   cryptogramColor,
@@ -19,6 +19,8 @@ export { cryptogramAsset, cryptogramAssetUri, filterCryptogramAsset } from './cr
 export { merchantsToMapMarkers } from './toMapMarkers';
 export { getMerchantRepository } from './repository';
 export { useMerchant, useMerchants, merchantKeys } from './queries';
+export { SearchMenu } from './components/SearchMenu';
+export { type MerchantPredicate } from './categoryFamilies';
 export { useMerchantSearch } from './useMerchantSearch';
 export { useMerchantSearchStore } from './searchStore';
 export {

@@ -25,7 +25,7 @@ const ICONS: Record<string, IconDef> = {
   index: { set: 'feather', name: 'home' },
   explore: { set: 'feather', name: 'map' },
   merchants: { set: 'feather', name: 'shopping-bag' },
-  'de-saison': { set: 'mci', name: 'leaf' },
+  chat: { set: 'feather', name: 'message-circle' },
   profile: { set: 'feather', name: 'user' },
 };
 
@@ -137,9 +137,11 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
 }
 
 const styles = StyleSheet.create({
+  // Barre AFFINÉE : un peu plus fine, espacements internes allégés, icônes recentrées — même
+  // identité graphique (verre teinté, coins, halo, couleurs, proportions des icônes).
   dock: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingTop: 6,
   },
   barShadow: {
     borderRadius: radii.xl + 6,
@@ -155,25 +157,25 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: 6,
     paddingHorizontal: spacing.xs,
   },
   item: {
     flex: 1,
     alignItems: 'center',
-    gap: 3,
-    paddingVertical: 4,
+    gap: 2,
+    paddingVertical: 2,
   },
   iconWrap: {
     width: 40,
-    height: 34,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },
   halo: {
     position: 'absolute',
     width: 40,
-    height: 34,
+    height: 30,
     borderRadius: radii.pill,
   },
   label: {

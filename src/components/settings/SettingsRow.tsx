@@ -27,6 +27,8 @@ interface Props {
   icon?: IconSpec;
   /** Teinte de l'icône (défaut : primaire du thème). */
   iconTint?: string;
+  /** Élément de tête personnalisé (ex. logo de marque) — remplace `icon` si fourni. */
+  leading?: ReactNode;
   label: string;
   subtitle?: string;
   /** Élément de droite (Switch, chevron, texte de valeur…). */
@@ -39,13 +41,13 @@ interface Props {
  * Ligne de réglage GÉNÉRIQUE (brique de base). Icône teintée optionnelle + libellé + sous-titre +
  * zone de droite libre. Devient tactile si `onPress`. Entièrement thémée (aucune couleur en dur).
  */
-export function SettingsRow({ icon, iconTint, label, subtitle, right, onPress, danger }: Props) {
+export function SettingsRow({ icon, iconTint, leading, label, subtitle, right, onPress, danger }: Props) {
   const { colors } = useTheme();
   const labelColor = danger ? colors.danger : colors.text;
 
   const content = (
     <View style={styles.row}>
-      {icon ? <SettingsIcon icon={icon} tint={danger ? colors.danger : iconTint ?? colors.primary} /> : null}
+      {leading ?? (icon ? <SettingsIcon icon={icon} tint={danger ? colors.danger : iconTint ?? colors.primary} /> : null)}
       <View style={styles.texts}>
         <YText style={[styles.label, { color: labelColor }]} numberOfLines={1}>
           {label}

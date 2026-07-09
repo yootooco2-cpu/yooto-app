@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import {
@@ -26,9 +26,11 @@ interface Props {
  *  - sans note → état vide propre (aucun espace mort) ;
  *  - note + nombre d'avis → grande note + étoiles + « N avis Google » (+ lien optionnel) ;
  *  - répartition disponible (futur) → barres 5★→1★ ajoutées AUTOMATIQUEMENT, même layout.
- * Aucune donnée inventée.
+ * Aucune donnée inventée. Thémé (suit le thème courant, y compris le scope sombre).
  */
 export function ReviewsSummary({ rating, reviewCount, distribution, onSeeReviews }: Props) {
+  const { colors } = useTheme();
+
   if (typeof rating !== 'number' || !Number.isFinite(rating)) {
     return (
       <YText variant="body" color="muted">
@@ -67,9 +69,9 @@ export function ReviewsSummary({ rating, reviewCount, distribution, onSeeReviews
                 <YText variant="caption" color="muted" style={styles.barLabel}>
                   {star}★
                 </YText>
-                <View style={styles.track}>
+                <View style={[styles.track, { backgroundColor: colors.border }]}>
                   <View
-                    style={[styles.fill, { width: `${Math.round(distributionRatio(distribution, star) * 100)}%` }]}
+                    style={[styles.fill, { width: `${Math.round(distributionRatio(distribution, star) * 100)}%`, backgroundColor: colors.primary }]}
                   />
                 </View>
               </View>
@@ -90,52 +92,15 @@ export function ReviewsSummary({ rating, reviewCount, distribution, onSeeReviews
 }
 
 const styles = StyleSheet.create({
-  wrap: {
-    gap: spacing.sm,
-  },
-  summary: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    alignItems: 'center',
-  },
-  scoreBlock: {
-    gap: 2,
-    minWidth: 96,
-  },
-  scoreLine: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: spacing.xs,
-  },
-  outOf: {
-    marginBottom: spacing.xs,
-  },
-  stars: {
-    letterSpacing: 2,
-  },
-  bars: {
-    flex: 1,
-    gap: spacing.xs,
-    justifyContent: 'center',
-  },
-  barRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  barLabel: {
-    width: 24,
-  },
-  track: {
-    flex: 1,
-    height: 8,
-    borderRadius: radii.pill,
-    backgroundColor: colors.border,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderRadius: radii.pill,
-    backgroundColor: colors.primary,
-  },
+  wrap: { gap: spacing.sm },
+  summary: { flexDirection: 'row', gap: spacing.lg, alignItems: 'center' },
+  scoreBlock: { gap: 2, minWidth: 96 },
+  scoreLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
+  outOf: { marginBottom: spacing.xs },
+  stars: { letterSpacing: 2 },
+  bars: { flex: 1, gap: spacing.xs, justifyContent: 'center' },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  barLabel: { width: 24 },
+  track: { flex: 1, height: 8, borderRadius: radii.pill, overflow: 'hidden' },
+  fill: { height: '100%', borderRadius: radii.pill },
 });

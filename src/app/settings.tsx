@@ -1,10 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AuthSheet } from '@/components/auth/AuthSheet';
+import { BrandIcon } from '@/components/settings/BrandIcon';
 import { SettingsNavigationRow } from '@/components/settings/SettingsNavigationRow';
+import { LocationSimulationSettings } from '@/components/settings/LocationSimulationSettings';
 import { SettingsSection } from '@/components/settings/SettingsSection';
 import { SettingsSwitch } from '@/components/settings/SettingsSwitch';
 import { SettingsThemeSelector } from '@/components/settings/SettingsThemeSelector';
@@ -16,6 +18,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
+import { useControlCenterAccess } from '@/features/admin/access';
 import { useLinkedProviders, useProfileRow, useSession } from '@/features/auth';
 import { useSettings } from '@/features/settings/SettingsProvider';
 import { haptics } from '@/lib/haptics';
@@ -24,6 +27,9 @@ import { PreferenceService } from '@/services/PreferenceService';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  // Retour SÛR : revient si possible, sinon rejoint directement le Profil (évite l'erreur
+  // « GO_BACK not handled » quand l'écran est ouvert sans historique, ex. lien direct sur web).
+  const goBack = () => (router.canGoBack() ? router.back() : router.replace('/profile'));
   const { colors } = useTheme();
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
@@ -31,23 +37,23 @@ export default function SettingsScreen() {
   const linked = useLinkedProviders(isAuthenticated ? userId : null);
   const { settings, setNotification, setMapSetting } = useSettings();
   const toast = useToast();
+  const controlCenter = useControlCenterAccess();
 
   const [signingOut, setSigningOut] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
 
   const name = isAuthenticated ? identity?.displayName ?? 'Membre YOOTOO' : 'Invité';
   const email = isAuthenticated ? identity?.email ?? profileRow.email : null;
-  const hasEmailLogin = linked.has('email');
 
   const mail = (subject: string) => void Linking.openURL(`${supportMailtoUrl()}?subject=${encodeURIComponent(subject)}`);
-  const todo = () => {};
+  const openOsSettings = () => void Linking.openSettings();
 
   const onSignOut = async () => {
     if (signingOut) return;
     setSigningOut(true);
     await signOut();
     setSigningOut(false);
-    router.back();
+    goBack();
   };
 
   const n = settings.notifications;
@@ -57,7 +63,7 @@ export default function SettingsScreen() {
     <View style={[styles.root, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.separator }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.back}>
+        <Pressable onPress={goBack} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour" style={styles.back}>
           <Feather name="chevron-left" size={24} color={colors.text} />
         </Pressable>
         <YText style={[styles.headerTitle, { color: colors.text }]}>Paramètres</YText>
@@ -65,23 +71,27 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* ---------- CENTRE DE PILOTAGE (équipe / admin uniquement) ---------- */}
+        {controlCenter ? (
+          <SettingsSection title="Équipe YOOTOO">
+            <SettingsNavigationRow icon={{ set: 'feather', name: 'activity' }} label="Centre de pilotage" subtitle="Supervision & santé de la plateforme" onPress={() => router.push('/pilotage')} />
+          </SettingsSection>
+        ) : null}
+
         {/* ---------- COMPTE ---------- */}
         <SettingsSection title="Compte">
           {isAuthenticated ? (
-            <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label={name} subtitle={email ?? undefined} onPress={todo} />
+            <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label={name} subtitle={email ?? undefined} onPress={() => router.push('/edit-profile')} />
           ) : (
             <SettingsNavigationRow icon={{ set: 'feather', name: 'user' }} label="Mode invité" subtitle="Connectez-vous pour synchroniser votre compte" onPress={() => setAuthOpen(true)} />
           )}
-          {isAuthenticated ? <SettingsNavigationRow icon={{ set: 'feather', name: 'edit-3' }} label="Modifier le profil" onPress={todo} /> : null}
-          {isAuthenticated && hasEmailLogin ? (
-            <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Changer le mot de passe" onPress={todo} />
-          ) : null}
+          {isAuthenticated ? <SettingsNavigationRow icon={{ set: 'feather', name: 'edit-3' }} label="Modifier le profil" onPress={() => router.push('/edit-profile')} /> : null}
         </SettingsSection>
 
         {/* ---------- COMPTES CONNECTÉS ---------- */}
         <SettingsSection title="Comptes connectés" footer="Sur Android, la connexion s’effectue via Google.">
-          <SettingsNavigationRow icon={{ set: 'mci', name: 'google' }} iconTint="#4285F4" label="Google" status={linked.has('google') ? 'on' : 'off'} />
-          <SettingsNavigationRow icon={{ set: 'mci', name: 'apple' }} iconTint={colors.text} label="Apple" status={linked.has('apple') ? 'on' : 'off'} />
+          <SettingsNavigationRow leading={<BrandIcon brand="google" />} label="Google" status={linked.has('google') ? 'on' : 'off'} />
+          <SettingsNavigationRow leading={<BrandIcon brand="apple" />} label="Apple" status={linked.has('apple') ? 'on' : 'off'} />
         </SettingsSection>
 
         {/* ---------- APPARENCE ---------- */}
@@ -124,22 +134,25 @@ export default function SettingsScreen() {
         </SettingsSection>
 
         {/* ---------- CONFIDENTIALITÉ ---------- */}
-        <SettingsSection title="Confidentialité">
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'database' }} label="Gestion des données" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'shield' }} label="Autorisations" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'map-pin' }} label="Localisation" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'download' }} label="Exporter mes données" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'trash-2' }} iconTint={colors.danger} label="Supprimer mon compte" onPress={todo} />
+        <SettingsSection title="Confidentialité" footer="Vos demandes sont traitées par l’équipe YOOTOO sous 30 jours.">
+          {Platform.OS !== 'web' ? (
+            <SettingsNavigationRow icon={{ set: 'feather', name: 'shield' }} label="Autorisations de l’application" subtitle="Localisation, notifications…" onPress={openOsSettings} />
+          ) : null}
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'download' }} label="Exporter mes données" onPress={() => mail('Export de mes données — YOOTOO')} />
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'trash-2' }} iconTint={colors.danger} label="Supprimer mon compte" onPress={() => mail('Suppression de mon compte — YOOTOO')} />
         </SettingsSection>
 
-        {/* ---------- AIDE ---------- */}
-        <SettingsSection title="Aide">
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'help-circle' }} label="FAQ" onPress={todo} />
+        {/* ---------- AIDE & CONTACT ---------- */}
+        <SettingsSection title="Aide & contact">
           <SettingsNavigationRow icon={{ set: 'feather', name: 'mail' }} label="Nous contacter" value={SUPPORT_EMAIL} onPress={() => mail('Contact — YOOTOO')} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'alert-triangle' }} label="Signaler un bug" onPress={() => mail('Signalement de bug — YOOTOO')} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'message-square' }} label="Suggestions" onPress={() => mail('Suggestion — YOOTOO')} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'file-text' }} label="Conditions générales" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Politique de confidentialité" onPress={todo} />
+        </SettingsSection>
+
+        {/* ---------- LÉGAL ---------- */}
+        <SettingsSection title="Légal">
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'file-text' }} label="Conditions générales d’utilisation" onPress={() => router.push('/legal/terms')} />
+          <SettingsNavigationRow icon={{ set: 'feather', name: 'lock' }} label="Politique de confidentialité" onPress={() => router.push('/legal/privacy')} />
         </SettingsSection>
 
         {/* ---------- À PROPOS ---------- */}
@@ -147,9 +160,10 @@ export default function SettingsScreen() {
           <SettingsNavigationRow icon={{ set: 'mci', name: 'leaf' }} iconTint={colors.primary} label={APP_NAME} subtitle="Application mobile" />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'tag' }} label="Version" value={APP_VERSION} />
           <SettingsNavigationRow icon={{ set: 'feather', name: 'hash' }} label="Numéro de build" value={APP_BUILD} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'file' }} label="Mentions légales" onPress={todo} />
-          <SettingsNavigationRow icon={{ set: 'feather', name: 'code' }} label="Licences Open Source" onPress={todo} />
         </SettingsSection>
+
+        {/* ---------- SIMULATION GPS (DEV UNIQUEMENT) ---------- */}
+        {__DEV__ ? <LocationSimulationSettings /> : null}
 
         {/* ---------- DÉCONNEXION ---------- */}
         {isAuthenticated ? (

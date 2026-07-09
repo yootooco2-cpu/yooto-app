@@ -1,17 +1,17 @@
 import { Feather } from '@expo/vector-icons';
 import { type ComponentProps } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, type ViewStyle } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 
 type FeatherName = ComponentProps<typeof Feather>['name'];
 
 /**
- * Bouton d'action avec icône (Itinéraire / Appeler / Site web / footer).
- * Partagé entre le corps de la fiche (`MerchantDetail`) et le footer de la route.
+ * Bouton d'action avec icône (Itinéraire / Appeler / Site web / footer). Thémé (suit le thème
+ * courant, y compris le scope sombre du panneau Focus). Partagé fiche + footer de route.
  */
 export function IconAction({
   icon,
@@ -24,17 +24,17 @@ export function IconAction({
   primary?: boolean;
   onPress: () => void;
 }) {
+  const { colors } = useTheme();
+  const variantStyle: ViewStyle = primary
+    ? { backgroundColor: colors.primary }
+    : { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border };
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => [
-        styles.action,
-        primary ? styles.actionPrimary : styles.actionSecondary,
-        pressed && styles.pressed,
-      ]}>
-      <Feather name={icon} size={16} color={primary ? '#FFFFFF' : colors.primary} />
+      style={({ pressed }) => [styles.action, variantStyle, pressed && styles.pressed]}>
+      <Feather name={icon} size={16} color={primary ? colors.onPrimary : colors.primary} />
       <YText variant="label" color={primary ? 'inverse' : 'primary'}>
         {label}
       </YText>
@@ -53,15 +53,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     borderRadius: radii.lg,
   },
-  actionPrimary: {
-    backgroundColor: colors.primary,
-  },
-  actionSecondary: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
+  pressed: { opacity: 0.85 },
 });

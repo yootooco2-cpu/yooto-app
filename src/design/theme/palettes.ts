@@ -10,10 +10,14 @@ export interface ThemeColors {
   background: string;
   surface: string;
   surfaceAlt: string;
+  /** Surface bouton secondaire au survol (hover web / état actif). */
+  surfaceAltHover: string;
   tint: string;
   text: string;
   mutedText: string;
   primary: string;
+  /** Bouton principal au survol (hover web). */
+  primaryHover: string;
   primaryDark: string;
   onPrimary: string;
   accent: string;
@@ -28,10 +32,12 @@ export const lightColors: ThemeColors = {
   background: '#F7F4EC',
   surface: '#FFFFFF',
   surfaceAlt: '#FBF8F1',
+  surfaceAltHover: '#F1ECDF',
   tint: '#EAF1E1',
   text: '#17201A',
   mutedText: '#6F7A72',
   primary: '#1F7A4D',
+  primaryHover: '#25925D',
   primaryDark: '#145A37',
   onPrimary: '#FFFFFF',
   accent: '#D6A85A',
@@ -42,21 +48,30 @@ export const lightColors: ThemeColors = {
   danger: '#C0392B',
 };
 
+/**
+ * DA sombre premium YOOTOO — reproduction FIDÈLE de la maquette de référence (7 juil. 2026).
+ * Vert naturel désaturé (jamais flashy), fiche vert-noir, cartes un ton au-dessus, étoile or.
+ * Fond fiche #111714 · surfaces #18211B · cartes internes #1E2A22 · boutons sec. #1D241F ·
+ * hover #263128 · texte #F3F0E8 / secondaire #B7B9B2 · accent vert #6A9B63 / clair #8EB67B ·
+ * Ouvert #69B96C · étoile #E7B654 · bordure blanche 8 %.
+ */
 export const darkColors: ThemeColors = {
-  background: '#0E1512',
-  surface: '#18211C',
-  surfaceAlt: '#202B25',
-  tint: '#172A20',
-  text: '#F1ECE0',
-  mutedText: '#9AA69E',
-  primary: '#5FBF97',
-  primaryDark: '#123524',
-  onPrimary: '#07120D',
-  accent: '#E0B368',
-  border: '#2B352E',
-  separator: '#232E28',
-  success: '#3CB371',
-  warning: '#E0A34A',
+  background: '#111714',
+  surface: '#18211B',
+  surfaceAlt: '#1E2A22',
+  surfaceAltHover: '#263128',
+  tint: '#18211B',
+  text: '#F3F0E8',
+  mutedText: '#B7B9B2',
+  primary: '#6A9B63',
+  primaryHover: '#8EB67B',
+  primaryDark: '#365B3B',
+  onPrimary: '#0C120E',
+  accent: '#E7B654',
+  border: 'rgba(255,255,255,0.08)',
+  separator: 'rgba(255,255,255,0.06)',
+  success: '#69B96C',
+  warning: '#E7B654',
   danger: '#E5695B',
 };
 

@@ -2,19 +2,31 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 
 import type { ServiceResult } from './ProfileService';
 
+const AVATARS_BUCKET = 'avatars';
+
 /**
- * Service de STOCKAGE — envoi/suppression de fichiers (avatars) dans Supabase Storage.
- * L'implémentation d'upload sera activée en PR photo de profil, une fois le bucket `avatars`
- * (+ policies) créé côté Supabase. Tant que ce n'est pas prêt, on renvoie un état explicite
- * (aucun crash, aucune donnée en dur).
+ * Service de STOCKAGE — envoi des photos de profil dans Supabase Storage (bucket public `avatars`).
+ * Chaque fichier est écrit sous `avatars/<uid>/…` (les policies imposent que seul le propriétaire
+ * écrive dans son dossier). Renvoie l'URL publique. Seul point d'accès au Storage (aucun composant).
  */
 export const StorageService = {
-  bucket: 'avatars',
+  bucket: AVATARS_BUCKET,
 
-  async uploadAvatar(_userId: string, _fileBytes: Uint8Array, _contentType: string): Promise<ServiceResult & { url?: string }> {
+  async uploadAvatar(
+    userId: string,
+    bytes: ArrayBuffer | Uint8Array,
+    contentType = 'image/jpeg',
+  ): Promise<ServiceResult & { url?: string }> {
     const supabase = getSupabaseClient();
     if (!supabase) return { ok: false, error: 'not-configured' };
-    // À implémenter (PR photo de profil) : upload dans le bucket `avatars` + URL publique/signée.
-    return { ok: false, error: 'storage-not-configured' };
+    const path = `${userId}/avatar_${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from(AVATARS_BUCKET).upload(path, bytes, {
+      contentType,
+      upsert: true,
+      cacheControl: '3600',
+    });
+    if (error) return { ok: false, error: error.message };
+    const { data } = supabase.storage.from(AVATARS_BUCKET).getPublicUrl(path);
+    return { ok: true, url: data.publicUrl };
   },
 };

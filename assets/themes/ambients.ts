@@ -61,6 +61,14 @@ export const AMBIENTS: Record<SectionKey, AmbientComposition> = {
       { x: 0.55, y: 0.9, size: 0.6, tone: 0, opacity: 0.35 },
     ],
   },
+  // Bulles d'échange : deux halos ronds proches, ambiance conversation locale.
+  chat: {
+    blobs: [
+      { x: 0.72, y: 0.18, size: 0.8, tone: 0, opacity: 0.8 },
+      { x: 0.22, y: 0.72, size: 0.72, tone: 1, opacity: 0.5 },
+      { x: 0.55, y: 0.95, size: 0.55, tone: 0, opacity: 0.32 },
+    ],
+  },
   // Minéral / verre fumé : reflets graphite très discrets.
   profil: {
     blobs: [

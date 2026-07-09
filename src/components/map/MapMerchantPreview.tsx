@@ -1,25 +1,15 @@
 import { Feather } from '@expo/vector-icons';
-import { type ComponentProps } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import { FavoriteHeartButton } from '@/components/favorites/FavoriteHeartButton';
+import { MerchantActionBar } from '@/components/merchants/MerchantActionBar';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
-import { YButton } from '@/components/ui/YButton';
 import { YText } from '@/components/ui/YText';
-import { colors } from '@/design/tokens/colors';
+import { DarkThemeScope, useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
-import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
-import { buildDirectionsUrl } from '@/features/merchants/directions';
-import { formatRatingFr, starFill } from '@/features/merchants/reviews';
-import { useFavoritesStore, useIsFavorite } from '@/features/favorites';
-
-type FeatherName = ComponentProps<typeof Feather>['name'];
-
-const openUrl = (url?: string) => {
-  if (url) void Linking.openURL(url).catch(() => {});
-};
 
 type Props = {
   merchant: Merchant;
@@ -29,220 +19,116 @@ type Props = {
   flat?: boolean;
 };
 
-/** Action compacte icône + label (Itinéraire / Appeler / Enregistrer). */
-function CompactAction({
-  icon,
-  label,
-  active,
-  onPress,
-}: {
-  icon: FeatherName;
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => [styles.action, active && styles.actionActive, pressed && styles.pressed]}>
-      <Feather name={icon} size={15} color={colors.primary} />
-      <YText variant="caption" color="primary" numberOfLines={1}>
-        {label}
-      </YText>
-    </Pressable>
-  );
-}
-
-/**
- * Mini-fiche du commerce sélectionné, affichée dans le bottom sheet de la carte.
- * Reprend l'identité de la fiche complète en format compact (photo, note, description,
- * actions rapides) sans dupliquer son code : réutilise les primitives partagées.
- */
-export function MapMerchantPreview({ merchant, onPress, onClose, flat = false }: Props) {
-  // Favori : source de vérité partagée (store Favoris) → alimente la sheet « Favoris » de la carte.
-  const saved = useIsFavorite(merchant.id);
-  const toggleFavorite = useFavoritesStore((s) => s.toggle);
-
+function PreviewInner({ merchant, onPress, onClose, flat = false }: Props) {
+  const { colors } = useTheme();
   const categoryLine = [CATEGORY_LABELS[merchant.category], merchant.city].filter(Boolean).join(' • ');
-  const stars = ((): string => {
-    if (typeof merchant.rating !== 'number') return '';
-    const { full, empty } = starFill(merchant.rating);
-    return '★'.repeat(full) + '☆'.repeat(empty);
-  })();
+  const hasDistance = merchant.distanceLabel !== '—' && merchant.distanceLabel.length > 0;
 
   return (
-    <Animated.View style={[styles.card, flat && styles.cardFlat]} entering={FadeInDown.duration(220)}>
-      <View style={styles.photoWrap}>
-        <MerchantPhoto
-          uri={getMerchantCoverPhoto(merchant)}
-          height={130}
-          rounded={radii.lg}
-          recyclingKey={merchant.id}
-        />
-        <Pressable accessibilityRole="button" accessibilityLabel="Fermer" onPress={onClose} hitSlop={8} style={styles.close}>
+    <Animated.View
+      style={[styles.card, flat ? styles.cardFlat : { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border }]}
+      entering={FadeInDown.duration(220)}>
+      <View style={styles.body}>
+        <Pressable onPress={onPress} accessibilityRole="imagebutton" accessibilityLabel={`Voir ${merchant.name}`} style={styles.photoWrap}>
+          <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={172} rounded={radii.lg} recyclingKey={merchant.id} />
+          <FavoriteHeartButton merchantId={merchant.id} />
+        </Pressable>
+
+        <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={merchant.name} style={styles.info}>
+          <YText style={[styles.name, { color: colors.text }]} numberOfLines={2}>
+            {merchant.name}
+          </YText>
+
+          {merchant.isProducer ? (
+            <View style={[styles.badge, { backgroundColor: colors.primaryDark }]}>
+              <YText style={[styles.badgeText, { color: colors.primaryHover }]}>PRODUCTEUR</YText>
+            </View>
+          ) : null}
+
+          <View style={styles.metaRow}>
+            {typeof merchant.rating === 'number' ? (
+              <View style={styles.metaItem}>
+                <Feather name="star" size={13} color={colors.accent} />
+                <YText style={[styles.metaText, { color: colors.text }]}>
+                  {merchant.rating.toFixed(1)}
+                  {typeof merchant.reviewCount === 'number' ? ` (${merchant.reviewCount})` : ''}
+                </YText>
+              </View>
+            ) : null}
+            {hasDistance ? (
+              <View style={styles.metaItem}>
+                <Feather name="map-pin" size={13} color={colors.mutedText} />
+                <YText style={[styles.metaText, { color: colors.text }]}>{merchant.distanceLabel}</YText>
+              </View>
+            ) : null}
+          </View>
+
+          {merchant.description ? (
+            <YText style={[styles.desc, { color: colors.mutedText }]} numberOfLines={2}>
+              {merchant.description}
+            </YText>
+          ) : categoryLine ? (
+            <YText style={[styles.desc, { color: colors.mutedText }]} numberOfLines={1}>
+              {categoryLine}
+            </YText>
+          ) : null}
+
+          <View style={[styles.statusBox, { borderColor: colors.border }]}>
+            <View style={[styles.statusDot, { backgroundColor: merchant.isOpenNow ? colors.success : colors.mutedText }]} />
+            <YText style={[styles.statusText, { color: merchant.isOpenNow ? colors.success : colors.mutedText }]}>
+              {merchant.isOpenNow ? 'Ouvert' : 'Fermé'}
+            </YText>
+          </View>
+        </Pressable>
+
+        <Pressable onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel="Fermer" style={[styles.close, { backgroundColor: colors.surfaceAlt }]}>
           <Feather name="x" size={16} color={colors.text} />
         </Pressable>
       </View>
 
-      <YText variant="subtitle" numberOfLines={1}>
-        {merchant.name}
-      </YText>
-
-      <View style={styles.categoryRow}>
-        {categoryLine ? (
-          <YText variant="caption" color="muted" numberOfLines={1} style={styles.categoryLine}>
-            {categoryLine}
-          </YText>
-        ) : null}
-        <View style={styles.localPill}>
-          <YText variant="caption" color="primary">
-            Local
-          </YText>
-        </View>
-        {merchant.isOpenNow ? (
-          <YText variant="caption" color="primary" style={styles.status}>
-            ● Ouvert
-          </YText>
-        ) : (
-          <YText variant="caption" color="muted" style={styles.status}>
-            ● Fermé
-          </YText>
-        )}
-      </View>
-
-      {typeof merchant.rating === 'number' ? (
-        <View style={styles.ratingLine}>
-          <YText variant="caption" color="accent" style={styles.stars}>
-            {stars}
-          </YText>
-          <YText variant="caption" style={styles.ratingScore}>
-            {formatRatingFr(merchant.rating)}
-          </YText>
-          {typeof merchant.reviewCount === 'number' ? (
-            <YText variant="caption" color="muted" style={styles.reviewCount}>
-              · {merchant.reviewCount} avis
-            </YText>
-          ) : null}
-        </View>
-      ) : null}
-
-      {merchant.description ? (
-        <YText variant="caption" color="muted" numberOfLines={2}>
-          {merchant.description}
-        </YText>
-      ) : null}
-
-      <View style={styles.actionsRow}>
-        <CompactAction icon="navigation" label="Itinéraire" onPress={() => openUrl(buildDirectionsUrl(merchant))} />
-        {merchant.phone ? (
-          <CompactAction icon="phone" label="Appeler" onPress={() => openUrl(`tel:${merchant.phone}`)} />
-        ) : null}
-        <CompactAction
-          icon="heart"
-          label={saved ? 'Favori' : 'Favoris'}
-          active={saved}
-          onPress={() => toggleFavorite(merchant.id)}
-        />
-      </View>
-
-      <YButton label="Voir la fiche" onPress={onPress} fullWidth />
+      {/* Barre d'actions groupée, fidèle à la maquette (ghost icône/label, dégradé + ombre discrète). */}
+      <MerchantActionBar merchant={merchant} />
     </Animated.View>
   );
 }
 
+/**
+ * Mini-fiche du commerce (bottom sheet de la carte) — DA sombre premium, forcée en thème sombre
+ * (DarkThemeScope) pour partager EXACTEMENT les mêmes tokens que le panneau desktop.
+ */
+export function MapMerchantPreview(props: Props) {
+  return (
+    <DarkThemeScope>
+      <PreviewInner {...props} />
+    </DarkThemeScope>
+  );
+}
+
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-    ...shadows.md,
-  },
-  cardFlat: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    padding: 0,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  photoWrap: {
-    position: 'relative',
-  },
-  close: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    ...shadows.sm,
-  },
-  categoryRow: {
+  card: { borderRadius: radii.xl, padding: spacing.md, gap: spacing.sm },
+  cardFlat: { backgroundColor: 'transparent', padding: 0 },
+  body: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.xs },
+  photoWrap: { width: 128, height: 172, borderRadius: radii.lg, overflow: 'hidden' },
+  info: { flex: 1, gap: spacing.xs },
+  name: { fontSize: 22, lineHeight: 27, fontWeight: '800', letterSpacing: -0.4 },
+  badge: { alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: spacing.sm, borderRadius: radii.pill, borderWidth: 1 },
+  badgeText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md, marginTop: 2 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  desc: { fontSize: 13, lineHeight: 18 },
+  statusBox: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.sm,
-  },
-  categoryLine: {
-    flexShrink: 1,
-  },
-  localPill: {
-    paddingVertical: 2,
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginTop: 2,
+    paddingVertical: 5,
     paddingHorizontal: spacing.sm,
-    borderRadius: radii.pill,
-    backgroundColor: 'rgba(31,122,77,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(31,122,77,0.25)',
-  },
-  status: {
-    fontWeight: '600',
-  },
-  ratingLine: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  stars: {
-    letterSpacing: 1,
-  },
-  ratingScore: {
-    color: colors.text,
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-  },
-  reviewCount: {
-    fontVariant: ['tabular-nums'],
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  action: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
     borderRadius: radii.md,
-    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.border,
   },
-  actionActive: {
-    backgroundColor: 'rgba(31,122,77,0.08)',
-    borderColor: 'rgba(31,122,77,0.25)',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12.5, fontWeight: '700' },
+  close: { position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
 });

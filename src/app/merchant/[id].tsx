@@ -4,6 +4,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { IconAction } from '@/components/merchants/IconAction';
 import { MerchantDetail } from '@/components/merchants/MerchantDetail';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { YButton } from '@/components/ui/YButton';
 import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
@@ -41,10 +42,17 @@ export default function MerchantDetailScreen() {
 
   if (isLoading) {
     return (
-      <YScreen center>
-        <YText variant="body" color="muted">
-          Chargement du commerce…
-        </YText>
+      <YScreen>
+        <View style={styles.skeleton}>
+          <Skeleton width="100%" height={210} radius={18} />
+          <Skeleton width="62%" height={24} radius={8} />
+          <Skeleton width="40%" height={14} radius={7} />
+          <View style={styles.skeletonPara}>
+            <Skeleton width="100%" height={12} />
+            <Skeleton width="94%" height={12} />
+            <Skeleton width="80%" height={12} />
+          </View>
+        </View>
       </YScreen>
     );
   }
@@ -99,4 +107,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
   },
+  skeleton: { gap: spacing.md },
+  skeletonPara: { gap: spacing.sm, marginTop: spacing.xs },
 });

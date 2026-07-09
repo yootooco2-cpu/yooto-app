@@ -1,6 +1,6 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { type ComponentProps, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { type ComponentProps, useCallback, useMemo, useState } from 'react';
 import { Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -80,8 +80,8 @@ function QuickCard({
   onPress?: () => void;
   styles: ReturnType<typeof makeStyles>;
 }) {
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
+  const inner = (
+    <>
       <View style={[styles.quickIcon, { backgroundColor: `${tint}1A` }]}>
         {icon.set === 'feather' ? <Feather name={icon.name} size={18} color={tint} /> : <MaterialCommunityIcons name={icon.name} size={18} color={tint} />}
       </View>
@@ -91,6 +91,13 @@ function QuickCard({
       <YText style={styles.quickSub} numberOfLines={1}>
         {subtitle}
       </YText>
+    </>
+  );
+  // Sans action : tuile INFORMATIVE (pas de faux bouton cliquable sans effet).
+  if (!onPress) return <View style={styles.quickCard}>{inner}</View>;
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={title} style={({ pressed }) => [styles.quickCard, pressed && styles.pressed]}>
+      {inner}
     </Pressable>
   );
 }
@@ -122,7 +129,11 @@ export default function ProfileScreen() {
 
   const { status, userId, identity } = useSession();
   const isAuthenticated = status === 'authenticated';
-  const profileRow = useProfileRow(isAuthenticated ? userId : null);
+  // Rafraîchit le profil (photo / nom édités dans les Paramètres) à chaque retour sur l'onglet
+  // Profil — l'écran restant monté, il faut re-lire la table `profiles`.
+  const [profileRefresh, setProfileRefresh] = useState(0);
+  useFocusEffect(useCallback(() => setProfileRefresh((k) => k + 1), []));
+  const profileRow = useProfileRow(isAuthenticated ? userId : null, profileRefresh);
   const favoriteIds = useFavoriteIds();
 
   const [signingOut, setSigningOut] = useState(false);
@@ -132,9 +143,10 @@ export default function ProfileScreen() {
   const reviewsCount = 0;
   const visitedCount = 0;
 
-  const name = isAuthenticated ? identity?.displayName ?? 'Membre YOOTOO' : 'Invité';
+  // La table `profiles` (éditée par l'utilisateur) prime sur les métadonnées de session Google.
+  const name = isAuthenticated ? profileRow.displayName ?? identity?.displayName ?? 'Membre YOOTOO' : 'Invité';
   const email = isAuthenticated ? identity?.email ?? profileRow.email : null;
-  const avatarUrl = isAuthenticated ? identity?.avatarUrl : null;
+  const avatarUrl = isAuthenticated ? profileRow.avatarUrl ?? identity?.avatarUrl : null;
   const since = isAuthenticated ? memberSince(profileRow.createdAt) : null;
 
   const onSignOut = async () => {
@@ -151,7 +163,7 @@ export default function ProfileScreen() {
     { key: 'reviews', icon: { set: 'feather', name: 'star' }, tint: P.gold, title: 'Mes avis', subtitle: `${reviewsCount} avis laissé${reviewsCount > 1 ? 's' : ''}` },
     { key: 'visited', icon: { set: 'feather', name: 'map-pin' }, tint: P.green, title: 'Lieux visités', subtitle: `${visitedCount} découverte${visitedCount > 1 ? 's' : ''}` },
     { key: 'prefs', icon: { set: 'feather', name: 'sliders' }, tint: P.green, title: 'Mes préférences', subtitle: 'Vos goûts' },
-    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: P.blue, title: 'Notifications', subtitle: 'Bientôt', onPress: () => router.push('/settings') },
+    { key: 'notif', icon: { set: 'feather', name: 'bell' }, tint: P.blue, title: 'Notifications', subtitle: 'Alertes et préférences', onPress: () => router.push('/settings') },
     { key: 'help', icon: { set: 'feather', name: 'help-circle' }, tint: P.green, title: 'Aide & Contact', subtitle: SUPPORT_EMAIL, onPress: mailSupport },
   ];
 

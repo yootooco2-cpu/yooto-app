@@ -6,14 +6,14 @@ import type { ThemeScheme } from './palettes';
  * Résolu selon le schéma clair/sombre. AUCUNE couleur en dur ailleurs : les écrans et la bottom
  * nav lisent ces valeurs via `useSectionTheme()`.
  */
-export type SectionKey = 'accueil' | 'carte' | 'commerce' | 'saison' | 'profil';
+export type SectionKey = 'accueil' | 'carte' | 'commerce' | 'saison' | 'chat' | 'profil';
 
 /** Correspondance route (onglet) → univers. */
 export const ROUTE_SECTION: Record<string, SectionKey> = {
   index: 'accueil',
   explore: 'carte',
   merchants: 'commerce',
-  'de-saison': 'saison',
+  chat: 'chat',
   profile: 'profil',
 };
 
@@ -86,6 +86,16 @@ const DEFS: Record<SectionKey, SectionDef> = {
     gradientLight: ['#E1E8CB', '#AEC08A', '#6E7F41'],
     gradientDark: ['#20260F', '#333B1B', '#0E1206'],
     bokeh: ['rgba(169,190,134,0.55)', 'rgba(110,127,65,0.32)'],
+  },
+  // 💬 Bleu-sarcelle — échange, lien local, confiance, conversation.
+  chat: {
+    label: 'Chat',
+    accent: '#3E86A8',
+    accentSoft: '#8FBFD2',
+    onAccent: '#F1FAFD',
+    gradientLight: ['#DCEAF0', '#A9CDDC', '#3E86A8'],
+    gradientDark: ['#122630', '#183A48', '#0A151B'],
+    bokeh: ['rgba(143,191,210,0.55)', 'rgba(62,134,168,0.32)'],
   },
   // 👤 Anthracite — élégance, confiance, verre fumé, graphite.
   profil: {

@@ -102,7 +102,7 @@ export function MapPlaceholder({ markers, selectedId, onSelectMarker, userLocati
 
       <View style={styles.badge}>
         <YText variant="caption" color="muted">
-          Carte interactive · Mapbox bientôt
+          Carte interactive
         </YText>
       </View>
 

@@ -30,6 +30,12 @@ export default function RootLayout() {
                 <Stack.Screen name="merchant/[id]" />
                 <Stack.Screen name="auth" />
                 <Stack.Screen name="settings" />
+                <Stack.Screen name="pilotage" />
+                <Stack.Screen name="edit-profile" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="chat/[id]" />
+                <Stack.Screen name="chat/new" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="legal/terms" />
+                <Stack.Screen name="legal/privacy" />
               </Stack>
             </ToastProvider>
           </QueryClientProvider>

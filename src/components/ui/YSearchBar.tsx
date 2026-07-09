@@ -1,4 +1,5 @@
-import { StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { forwardRef } from 'react';
+import { Platform, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { glass } from '@/design/tokens/glass';
@@ -13,13 +14,11 @@ type Props = Omit<TextInputProps, 'style'> & {
   variant?: 'default' | 'glass';
 };
 
-export function YSearchBar({
-  value,
-  onChangeText,
-  placeholder = 'Rechercher un commerce, un produit…',
-  variant = 'default',
-  ...props
-}: Props) {
+/** Barre de recherche YOOTOO. `ref` transmis au `TextInput` → focus programmatique possible. */
+export const YSearchBar = forwardRef<TextInput, Props>(function YSearchBar(
+  { value, onChangeText, placeholder = 'Rechercher un commerce, un produit…', variant = 'default', ...props },
+  ref,
+) {
   const { colors } = useTheme();
   const isGlass = variant === 'glass';
   const iconColor = isGlass ? glass.onDarkMuted : colors.mutedText;
@@ -28,7 +27,7 @@ export function YSearchBar({
     <View
       style={[
         styles.container,
-        isGlass ? glass.panel : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+        isGlass ? [glass.panel, styles.glassShadow] : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
       ]}>
       {/* Loupe minimaliste composée de Views (aucune librairie d'icônes) */}
       <View style={styles.glass}>
@@ -36,6 +35,7 @@ export function YSearchBar({
         <View style={[styles.glassHandle, { backgroundColor: iconColor }]} />
       </View>
       <TextInput
+        ref={ref}
         style={[styles.input, { color: isGlass ? glass.onDark : colors.text }]}
         value={value}
         onChangeText={onChangeText}
@@ -47,17 +47,22 @@ export function YSearchBar({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    borderRadius: radii.lg,
-    paddingHorizontal: spacing.md,
-    height: 50,
+    borderRadius: radii.pill,
+    paddingHorizontal: spacing.md + spacing.xs,
+    height: 54,
   },
+  // Ombre extrêmement douce → la barre « flotte » au-dessus de la carte, transition imperceptible.
+  glassShadow: Platform.select({
+    web: { boxShadow: '0 8px 28px rgba(0,0,0,0.28)' },
+    default: { shadowColor: '#000', shadowOpacity: 0.24, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 6 },
+  }),
   glass: {
     width: 16,
     height: 16,

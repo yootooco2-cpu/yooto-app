@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
@@ -10,6 +11,8 @@ import { SettingsRow, type IconSpec } from './SettingsRow';
 interface Props {
   icon?: IconSpec;
   iconTint?: string;
+  /** Élément de tête personnalisé (ex. logo de marque) — remplace `icon`. */
+  leading?: ReactNode;
   label: string;
   subtitle?: string;
   /** Valeur affichée à droite (ex. « Élevée », « Connecté »). */
@@ -20,12 +23,13 @@ interface Props {
 }
 
 /** Ligne de navigation (chevron) — thémée. Peut afficher une valeur ou un statut à droite. */
-export function SettingsNavigationRow({ icon, iconTint, label, subtitle, value, status, onPress }: Props) {
+export function SettingsNavigationRow({ icon, iconTint, leading, label, subtitle, value, status, onPress }: Props) {
   const { colors } = useTheme();
   return (
     <SettingsRow
       icon={icon}
       iconTint={iconTint}
+      leading={leading}
       label={label}
       subtitle={subtitle}
       onPress={onPress}

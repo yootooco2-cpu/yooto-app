@@ -1,32 +1,24 @@
 import { Feather } from '@expo/vector-icons';
 import BottomSheet, {
   BottomSheetBackdrop,
-  BottomSheetFlatList,
-  BottomSheetView,
   type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
-import { useIsFocused, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { type LayoutChangeEvent, Pressable, StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   MapEngine,
-  MapMerchantPreview,
   MapQuickAccessSheet,
-  MerchantFocusPanel,
   type QuickAccessSection,
 } from '@/components/map';
-import { DesktopNavRail } from '@/components/layout/DesktopNavRail';
-import { MerchantDetail } from '@/components/merchants/MerchantDetail';
-import { MerchantListRow } from '@/components/merchants/MerchantListRow';
+import { MerchantDetailsSheet } from '@/components/merchants/MerchantDetailsSheet';
 import { YButton } from '@/components/ui/YButton';
 import { YCard } from '@/components/ui/YCard';
-import { YChip } from '@/components/ui/YChip';
-import { FloatingMapNavigation } from '@/components/navigation/FloatingMapNavigation';
 import { SectionThemeProvider } from '@/design/theme/SectionThemeProvider';
 import { PreferenceService } from '@/services/PreferenceService';
-import { YScreen } from '@/components/ui/YScreen';
-import { YSearchBar } from '@/components/ui/YSearchBar';
 import { YText } from '@/components/ui/YText';
 import { colors } from '@/design/tokens/colors';
 import { glass } from '@/design/tokens/glass';
@@ -34,7 +26,7 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { useFocusStore, useIsDesktopWeb } from '@/features/layout';
-import { useSmartLocation } from '@/features/location';
+import { useLocationSimulationStore, useSmartLocation } from '@/features/location';
 import {
   isPlausibleViewport,
   useMapViewportStore,
@@ -42,14 +34,15 @@ import {
   type MapViewport,
 } from '@/features/map';
 import {
-  filterCryptogramAsset,
-  QUICK_FILTERS,
   useMerchantSearch,
   useMerchantSearchStore,
   type Merchant,
 } from '@/features/merchants';
-import { MerchantCategoryBar } from '@/features/merchants/components/MerchantCategoryBar';
-import { merchantCategoryById } from '@/features/merchants/merchantCategoryFilters';
+import { FavoritesButton } from '@/components/favorites/FavoritesButton';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { StatusBarStrip } from '@/components/ui/StatusBarStrip';
+import { SearchMenu } from '@/features/merchants/components/SearchMenu';
+import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
 import { useSettings } from '@/features/settings/SettingsProvider';
 import { useSession } from '@/features/auth';
@@ -84,13 +77,19 @@ function sameViewport(a: MapViewport | null, b: MapViewport): boolean {
 }
 
 /** Paliers du bottom sheet : peek (aperçu) / mid (liste, sélection) / full (immersif). */
-const SNAP_POINTS = ['15%', '55%', '90%'];
+// Palier haut à 82 % (et non 90 %) : même fiche déployée, un bandeau reste libre en haut pour que
+// la recherche et les catégories demeurent VISIBLES au-dessus de la carte en mode Consultation.
+const SNAP_POINTS = ['15%', '55%', '82%'];
+
+// Voile dégradé du chrome : la carte disparaît PROGRESSIVEMENT sous la recherche/catégories
+// (sombre au ras du status bar → transparent au niveau des catégories). Transition imperceptible.
+const TOP_SCRIM = ['rgba(17,23,20,0.90)', 'rgba(17,23,20,0.45)', 'rgba(17,23,20,0)'] as const;
+
 
 export default function MapScreen() {
-  const router = useRouter();
   // Synchro favoris (local-first + serveur si session) — hydrate au montage + après upgrade.
   useFavoritesSync();
-  const { query, setQuery, filters, toggleFilter, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
+  const { query, setQuery, location, userLocation, nearbyActive, results, markers, isLoading, isError, refetch } =
     useMerchantSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [quickAccessOpen, setQuickAccessOpen] = useState(false);
@@ -139,29 +138,28 @@ export default function MapScreen() {
     [setLastViewport],
   );
 
-  // Catégorie principale sélectionnée : MÊME source partagée (store) que l'Accueil et
-  // /commerçants. La barre de catégories vit sous la recherche (identique aux autres écrans) ;
-  // ici elle post-filtre les marqueurs de la carte ET la liste, sans toucher useMerchantSearch.
-  const activeCategory = useMerchantSearchStore((s) => s.activeCategory);
-  const setActiveCategory = useMerchantSearchStore((s) => s.setActiveCategory);
-  const categoryFilter = useMemo(() => merchantCategoryById(activeCategory), [activeCategory]);
+  // Navigation catégories à DEUX niveaux (familles → sous-catégories), propre à la carte.
+  // Elle ne remonte qu'un PRÉDICAT de filtrage (`mapMatch`) : on POST-filtre les marqueurs et la
+  // liste, sans toucher useMerchantSearch ni le Discovery Engine, et sans bouger la caméra.
+  const [mapMatch, setMapMatch] = useState<MerchantPredicate | null>(null);
 
   // Marqueurs affichés = filtrés par catégorie (sinon tous), PUIS par préférences carte
   // (producteurs / favoris) via PreferenceService — sans toucher au style Mapbox. `data` = commerce.
   const shownMarkers = useMemo(() => {
     const favSet = new Set(favoriteIds);
-    const byCategory = categoryFilter ? markers.filter((mk) => !!mk.data && categoryFilter.match(mk.data)) : markers;
+    const byCategory = mapMatch ? markers.filter((mk) => !!mk.data && mapMatch(mk.data)) : markers;
     return byCategory.filter(
       (mk) => !mk.data || PreferenceService.isMarkerVisible(mapPrefs, { isProducer: mk.data.isProducer, isFavorite: favSet.has(mk.data.id) }),
     );
-  }, [markers, categoryFilter, mapPrefs, favoriteIds]);
+  }, [markers, mapMatch, mapPrefs, favoriteIds]);
 
   const merchantsInArea = useMemo(() => {
-    const base = categoryFilter ? results.filter(categoryFilter.match) : results;
+    const base = mapMatch ? results.filter(mapMatch) : results;
     return searchArea ? base.filter((m) => inBounds(m, searchArea)) : base;
-  }, [results, searchArea, categoryFilter]);
+  }, [results, searchArea, mapMatch]);
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
+
 
   // Mode Focus Commerce : desktop-web + un commerce sélectionné. Écrivain UNIQUE de l'état
   // partagé `isFocus` (lu par le panneau/le sheet ici, et par la tab bar dans (tabs)/_layout).
@@ -169,7 +167,6 @@ export default function MapScreen() {
   // L'écran carte reste MONTÉ quand on change d'onglet (tabs) : sans cette garde, le Focus
   // (qui masque la tab bar) resterait actif sur Accueil tant qu'un commerce est sélectionné.
   const isScreenFocused = useIsFocused();
-  const isFocus = useFocusStore((s) => s.isFocus);
   const setFocus = useFocusStore((s) => s.setFocus);
   useEffect(() => {
     // Focus Commerce UNIQUEMENT si l'écran carte est au premier plan → dès qu'on navigue
@@ -182,29 +179,42 @@ export default function MapScreen() {
   // Localisation intelligente (PR1) : soft-ask après délai + recentrage. Jamais au lancement.
   const setUserLocation = useMerchantSearchStore((s) => s.setUserLocation);
   const smart = useSmartLocation({ userLocation, onLocate: setUserLocation });
+
+  // Simulation GPS (DEV) : dès qu'on active/change un point simulé, on recentre la carte dessus
+  // pour que la vue montre bien les commerces « autour de » cette position (la synchro app-wide
+  // met déjà à jour `userLocation` pour distances/recommandations).
+  const simEnabled = useLocationSimulationStore((s) => s.enabled);
+  const simPlace = useLocationSimulationStore((s) => s.place);
+  const recenterMap = smart.recenter;
+  useEffect(() => {
+    if (__DEV__ && simEnabled && simPlace) recenterMap();
+  }, [simEnabled, simPlace, recenterMap]);
+
   // « Me recentrer » : visible seulement si la position est connue ET hors du viewport courant.
   const showRecenter = Boolean(
     userLocation && liveViewport && !coordInViewport(userLocation, liveViewport),
   );
 
   // Snap à la sélection : on étend le sheet pour révéler la mini-fiche, on revient au peek à la fermeture.
+  // Palier d'ouverture : desktop/web → expanded direct (le scroll molette exige le palier haut) ;
+  // mobile → default (le drag tactile déploie ensuite naturellement vers expanded).
+  const defaultSheetIndex = isDesktopWeb ? 2 : 1;
   useEffect(() => {
-    sheetRef.current?.snapToIndex(selectedId ? 1 : 0);
-  }, [selectedId]);
+    sheetRef.current?.snapToIndex(selectedId ? defaultSheetIndex : 0);
+  }, [selectedId, defaultSheetIndex]);
+
+  // Immersion : la carte est plein écran, le chrome (recherche + catégories) FLOTTE au-dessus.
+  // On mesure sa hauteur pour poser les FAB juste en dessous du voile, jamais sous la recherche.
+  const insets = useSafeAreaInsets();
+  const [chromeHeight, setChromeHeight] = useState(0);
+  const onChromeLayout = useCallback((e: LayoutChangeEvent) => setChromeHeight(e.nativeEvent.layout.height), []);
+  const fabTop = chromeHeight > 0 ? chromeHeight + spacing.sm : insets.top + 132;
 
   // Liste virtualisée du bottom sheet (rendu de ligne stable).
-  const keyExtractor = useCallback((m: Merchant) => m.id, []);
-  const renderRow = useCallback(
-    ({ item }: { item: Merchant }) => (
-      <MerchantListRow merchant={item} onDark onPress={() => setSelectedId(item.id)} />
-    ),
-    [],
-  );
-
   // Backdrop premium : n'assombrit qu'au palier plein écran (index 2) → carte interactive au peek/mid.
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop {...props} appearsOnIndex={2} disappearsOnIndex={1} opacity={0.35} />
+      <BottomSheetBackdrop {...props} appearsOnIndex={2} disappearsOnIndex={1} opacity={0.18} />
     ),
     [],
   );
@@ -232,52 +242,23 @@ export default function MapScreen() {
   return (
     <SectionThemeProvider section="carte">
       <View style={styles.root}>
-      {isFocus ? <DesktopNavRail /> : null}
       <View style={styles.screenWrap}>
-        <YScreen gap="sm" padding="lg">
-      <YSearchBar variant="glass" value={query} onChangeText={setQuery} />
-
-      {/* Barre de catégories PARTAGÉE (identique à l'Accueil et à /commerçants), juste sous la
-          recherche. Tap = sélection/désélection ; pilote le store `activeCategory` commun. */}
-      <MerchantCategoryBar
-        active={activeCategory}
-        onToggle={(id) => setActiveCategory(activeCategory === id ? null : id)}
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filtersScroll}
-        contentContainerStyle={styles.filters}>
-        {QUICK_FILTERS.map((filter) => (
-          <YChip
-            key={filter.id}
-            label={filter.label}
-            icon={filterCryptogramAsset(filter.id)}
-            active={filters.includes(filter.id)}
-            onPress={() => toggleFilter(filter.id)}
-          />
-        ))}
-      </ScrollView>
-
-      {nearbyActive && location.status === 'denied' ? (
-        <YText variant="caption" color="muted">
-          Localisation indisponible — activez-la pour trier par distance.
-        </YText>
-      ) : null}
-
+      {/* Immersion : la carte est le FOND plein écran ; tout le chrome flotte au-dessus (voile
+          dégradé + verre) → plus aucune rupture « carte / barre / catégories ». */}
       <View style={styles.mapArea}>
         {isError ? (
-          <YCard variant="outline">
-            <YText variant="subtitle">Impossible de charger les commerces</YText>
-            <YText variant="body" color="muted">
-              Vérifiez votre connexion, puis réessayez.
-            </YText>
-            <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
-          </YCard>
+          <View style={[styles.errorWrap, { paddingTop: insets.top + spacing.xl }]}>
+            <YCard variant="outline">
+              <YText variant="subtitle">Impossible de charger les commerces</YText>
+              <YText variant="body" color="muted">
+                Vérifiez votre connexion, puis réessayez.
+              </YText>
+              <YButton label="Réessayer" variant="secondary" onPress={() => void refetch()} />
+            </YCard>
+          </View>
         ) : (
           <View style={styles.mapRow}>
-            <View style={[styles.mapCol, isFocus && styles.mapColFocused]}>
+            <View style={styles.mapCol}>
             {/* La carte est rendue IMMÉDIATEMENT (jamais bloquée par le chargement des données)
                 → visible en < 3 s ; les marqueurs apparaissent dès que les données arrivent. */}
             <MapEngine
@@ -292,15 +273,7 @@ export default function MapScreen() {
               onViewportChange={handleViewport}
             />
 
-            {/* Accès rapide « Favoris » — FAB glass discret en haut à GAUCHE (sous la barre de
-                recherche, côté opposé au recentrage). N'entre jamais en concurrence avec la recherche. */}
-            <Pressable
-              onPress={() => setQuickAccessOpen(true)}
-              accessibilityRole="button"
-              accessibilityLabel="Favoris"
-              style={[styles.favFab, glass.panel, shadows.md]}>
-              <Feather name="heart" size={18} color={glass.onDark} />
-            </Pressable>
+            {/* Accès « Favoris » déplacé dans l'en-tête (cœur du SearchMenu) → plus de FAB redondant. */}
 
             {/* Bottom sheet « Favoris » (overlay Modal, aucun impact moteur carte). */}
             <MapQuickAccessSheet
@@ -309,8 +282,7 @@ export default function MapScreen() {
               sections={quickAccessSections}
             />
 
-            {/* Navigation VERTICALE flottante (remplace la Bottom Tab Bar sur l'écran Carte). */}
-            <FloatingMapNavigation />
+            {/* Menu vertical supprimé : la navigation officielle est la barre du bas partagée. */}
 
             {/* Feuille d'auth JUSTE-À-TEMPS (surgit après le 1er favori, non bloquante). */}
             <AuthSheet
@@ -319,23 +291,21 @@ export default function MapScreen() {
               favoritesCount={favoriteIds.length}
             />
 
-            {/* « Me recentrer » — visible uniquement si la position est connue et hors du viewport. */}
+            {/* « Me recentrer » — reste visible dans les deux modes (contrôle carte). */}
             {showRecenter ? (
               <Pressable
                 onPress={smart.recenter}
                 accessibilityRole="button"
                 accessibilityLabel="Me recentrer"
-                style={[styles.recenterFab, glass.panel, shadows.md]}>
+                style={[styles.recenterFab, glass.panel, shadows.md, { top: fabTop }]}>
                 <Feather name="navigation" size={18} color={glass.onDark} />
               </Pressable>
             ) : null}
 
-            {/* Chargement (le compteur de zone vit désormais dans l'en-tête du bottom sheet). */}
+            {/* Chargement : chip en verre avec un skeleton discret (aucun texte « prototype »). */}
             {isLoading ? (
-              <View style={[styles.counterChip, glass.panel, shadows.sm]}>
-                <YText variant="caption" style={styles.counterText}>
-                  Chargement des commerces…
-                </YText>
+              <View style={[styles.counterChip, glass.panel, shadows.sm, { top: fabTop }]}>
+                <Skeleton width={104} height={9} radius={5} />
               </View>
             ) : null}
 
@@ -352,59 +322,68 @@ export default function MapScreen() {
 
             {/* Feuille du bas RÉDUITE À L'APERÇU : n'apparaît QUE lorsqu'un marqueur est sélectionné
                 (mini-fiche du commerce). Plus de liste « X commerces dans cette zone » → carte seule. */}
-            {!isFocus && selectedMerchant ? (
+            {/* Bottom sheet UNIQUE (mobile ET desktop) : jamais de panneau latéral. Sur desktop,
+                la feuille est simplement plus large et centrée. 3 paliers (peek/default/expanded),
+                contenu scrollable (horaires, contact, à propos, tags, photos). */}
+            {selectedMerchant ? (
               <BottomSheet
                 ref={sheetRef}
-                index={0}
+                index={defaultSheetIndex}
                 snapPoints={SNAP_POINTS}
                 enableDynamicSizing={false}
                 enablePanDownToClose={false}
                 backdropComponent={renderBackdrop}
                 handleIndicatorStyle={styles.sheetHandle}
-                backgroundStyle={[styles.sheetBackground, glass.panel]}
-                style={styles.sheetShadow}>
-                {selectedMerchant ? (
-                  // Mode « commerce » : mini-fiche réutilisée, dans le sheet.
-                  <BottomSheetView style={styles.sheetPreview}>
-                    {/* R6b : fiche en CARTE CLAIRE (non-flat) posée sur le sheet en verre sombre,
-                        fidèle à la DA (carte commerce claire sur chrome sombre). */}
-                    <MapMerchantPreview
-                      merchant={selectedMerchant}
-                      onClose={() => setSelectedId(null)}
-                      onPress={() =>
-                        router.push({ pathname: '/merchant/[id]', params: { id: selectedMerchant.id } })
-                      }
-                    />
-                  </BottomSheetView>
-                ) : (
-                  // Mode « liste » : compteur en en-tête + liste virtualisée.
-                  <>
-                    <View style={styles.sheetHeader}>
-                      <YText variant="label" style={{ color: glass.onDark }}>
-                        {count} commerce{count > 1 ? 's' : ''} dans cette zone
-                      </YText>
-                    </View>
-                    <BottomSheetFlatList
-                      data={merchantsInArea}
-                      keyExtractor={keyExtractor}
-                      renderItem={renderRow}
-                      contentContainerStyle={styles.sheetListContent}
-                    />
-                  </>
-                )}
+                backgroundStyle={[styles.sheetBackground, glass.panel, styles.sheetOpaque]}
+                /* Le CONTENEUR racine (pas seulement la feuille) doit dominer les marqueurs
+                   Mapbox : un marqueur positionné à z-index ≥ 1 passe sinon devant un conteneur
+                   à z-index auto. On isole donc la couche fiche au-dessus de la carte. */
+                containerStyle={styles.sheetContainer}
+                style={[styles.sheetShadow, isDesktopWeb && styles.sheetDesktop]}>
+                <MerchantDetailsSheet
+                  merchant={selectedMerchant}
+                  onClose={() => setSelectedId(null)}
+                  onOpenFull={() => sheetRef.current?.snapToIndex(2)}
+                />
               </BottomSheet>
             ) : null}
 
+            {/* CHROME FLOTTANT immersif (recherche + catégories + filtres). TOUJOURS visible, dans
+                les DEUX modes — jamais masqué. box-none → la carte reste interactive dans les vides. */}
+            <View
+              style={[styles.topChrome, { paddingTop: insets.top + spacing.sm }]}
+              onLayout={onChromeLayout}
+              pointerEvents="box-none">
+              <LinearGradient
+                colors={TOP_SCRIM}
+                locations={[0, 0.62, 1]}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
+              <View style={styles.topChromeInner} pointerEvents="box-none">
+                {/* Barre d'état façon smartphone (heure/réseau/wifi/batterie) — web uniquement. */}
+                <StatusBarStrip />
+                {/* MENU OFFICIEL PARTAGÉ (recherche + catégories). Le prédicat est enveloppé dans
+                    `() => match` : sinon React interprète la fonction passée au setter comme un
+                    updater et l'exécute (bug). */}
+                <SearchMenu
+                  query={query}
+                  onQueryChange={setQuery}
+                  onCategoryChange={(match) => setMapMatch(() => match)}
+                  trailing={<FavoritesButton onPress={() => setQuickAccessOpen(true)} />}
+                />
+                {nearbyActive && location.status === 'denied' ? (
+                  <YText variant="caption" style={styles.nearbyDenied}>
+                    Localisation indisponible — activez-la pour trier par distance.
+                  </YText>
+                ) : null}
+              </View>
             </View>
-            {isFocus && selectedMerchant ? (
-              <MerchantFocusPanel onClose={() => setSelectedId(null)} style={styles.focusPanel}>
-                <MerchantDetail merchant={selectedMerchant} onBack={() => setSelectedId(null)} />
-              </MerchantFocusPanel>
-            ) : null}
+
+            </View>
           </View>
         )}
       </View>
-        </YScreen>
       </View>
       </View>
     </SectionThemeProvider>
@@ -420,14 +399,6 @@ const styles = StyleSheet.create({
   screenWrap: {
     flex: 1,
   },
-  filtersScroll: {
-    flexGrow: 0,
-  },
-  filters: {
-    gap: spacing.sm,
-    paddingRight: spacing.sm,
-    alignItems: 'center',
-  },
   mapArea: {
     flex: 1,
   },
@@ -438,12 +409,30 @@ const styles = StyleSheet.create({
   mapCol: {
     flex: 1,
   },
-  // Focus desktop : la carte occupe 60 % (flex 3) et le panneau 40 % (flex 2) — tout en flex.
-  mapColFocused: {
-    flex: 3,
+  // Chrome flottant : superposé en HAUT de la carte (jamais en flux) → aucune coupure.
+  topChrome: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: spacing.xl,
+    zIndex: 8,
   },
-  focusPanel: {
-    flex: 2,
+  topChromeInner: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+  },
+  nearbyDenied: {
+    color: glass.onDarkMuted,
+    paddingHorizontal: spacing.xs,
+  },
+  // Erreur réseau : la carte n'est pas rendue → carte de secours centrée sur le fond de section.
+  errorWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.lg,
+    backgroundColor: colors.background,
   },
   recenterFab: {
     position: 'absolute',
@@ -457,6 +446,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    zIndex: 20,
   },
   // Accès rapide « Favoris » — miroir du recentrage, côté GAUCHE (le verre dépoli vient du token).
   favFab: {
@@ -468,7 +458,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 5,
+    zIndex: 20,
   },
   counterChip: {
     position: 'absolute',
@@ -480,6 +470,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
+    zIndex: 20,
   },
   counterText: {
     color: glass.onDark,
@@ -507,21 +498,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: glass.onDark,
   },
-  sheetPreview: {
-    padding: spacing.md,
-  },
-  sheetHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.12)',
-  },
-  sheetListContent: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xl,
-    gap: spacing.xs,
-  },
   sheetHandle: {
     width: 40,
     height: 4,
@@ -533,7 +509,27 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radii.xl,
     borderTopRightRadius: radii.xl,
   },
+  // Fond fiche quasi opaque (couleur DA de référence #111714) : garde le dépoli mais MASQUE
+  // totalement les commerces situés derrière → lecture des boutons/horaires jamais gênée.
+  sheetOpaque: {
+    backgroundColor: 'rgba(17,23,20,0.95)',
+  },
+  // CONTENEUR racine de la bottom sheet : couche visuelle prioritaire, au-dessus de TOUTE la
+  // carte (marqueurs z 1-6, clusters, callouts, overlays Mapbox). La partie transparente laisse
+  // passer les interactions carte (box-none) ; seule la fiche opaque masque les commerces derrière.
+  sheetContainer: {
+    zIndex: 100,
+    elevation: 32,
+  },
   sheetShadow: {
     ...shadows.lg,
+  },
+  // Desktop / large : la feuille reste une BOTTOM sheet (jamais latérale), simplement plus
+  // étroite et centrée horizontalement pour une lecture premium sur grand écran.
+  sheetDesktop: {
+    maxWidth: 720,
+    marginHorizontal: 'auto',
+    left: 0,
+    right: 0,
   },
 });
