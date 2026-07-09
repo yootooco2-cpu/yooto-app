@@ -12,8 +12,8 @@
       1.5,
       14
     ],
-    "color": "#EAE0CE",
-    "high-color": "#CFD6CE",
+    "color": "#E9E6DE",
+    "high-color": "#D6D8D3",
     "space-color": "#9AAAA6",
     "horizon-blend": 0.06,
     "star-intensity": 0
@@ -45,7 +45,7 @@
       "layout": {},
       "minzoom": 0,
       "paint": {
-        "background-color": "#F2EAD8"
+        "background-color": "#ECEAE3"
       },
       "metadata": {
         "mapbox:featureComponent": "land-and-water",
@@ -68,7 +68,7 @@
       ],
       "layout": {},
       "paint": {
-        "fill-color": "#7BB14F",
+        "fill-color": "#88A96C",
         "fill-opacity": [
           "interpolate",
           [
@@ -106,14 +106,14 @@
             "class"
           ],
           "wood",
-          "#6E9E48",
+          "#7C9A5C",
           "scrub",
-          "#9AB760",
+          "#9EB27A",
           "grass",
-          "#A4C666",
+          "#A6BD7F",
           "crop",
-          "#BCC576",
-          "#90B257"
+          "#BCC08A",
+          "#93A970"
         ],
         "fill-antialias": false,
         "fill-opacity": [
@@ -231,20 +231,20 @@
             "park",
             "garden"
           ],
-          "#7CB050",
+          "#87A86A",
           [
             "grass",
             "pitch"
           ],
-          "#93C05C",
+          "#9CBB76",
           "scrub",
-          "#8FAC5E",
+          "#93A872",
           "wood",
           "#6E9E48",
           "agriculture",
-          "#B9C173",
+          "#BABF8C",
           "cemetery",
-          "#8FB268",
+          "#93AD7A",
           "#EDE7DA"
         ],
         "fill-opacity": [
@@ -1201,26 +1201,26 @@
             "trunk",
             "primary"
           ],
-          "#FBF7EE",
+          "#F6F3EC",
           [
             "secondary",
             "tertiary"
           ],
-          "#F4EDDD",
+          "#E9E6DE",
           [
             "street",
             "street_limited",
             "minor"
           ],
-          "#F1EBDE",
+          "#E6E3DB",
           [
             "service",
             "track",
             "link",
             "driveway"
           ],
-          "#F2ECDF",
-          "#EFE8D9"
+          "#E8E5DD",
+          "#E5E2DA"
         ]
       },
       "metadata": {
@@ -1915,7 +1915,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#C3AF84",
+        "line-color": "#C6C0B2",
         "line-width": [
           "interpolate",
           [
@@ -2328,26 +2328,26 @@
             "trunk",
             "primary"
           ],
-          "#FBF7EE",
+          "#F6F3EC",
           [
             "secondary",
             "tertiary"
           ],
-          "#F4EDDD",
+          "#E9E6DE",
           [
             "street",
             "street_limited",
             "minor"
           ],
-          "#F1EBDE",
+          "#E6E3DB",
           [
             "service",
             "track",
             "link",
             "driveway"
           ],
-          "#F2ECDF",
-          "#EFE8D9"
+          "#E8E5DD",
+          "#E5E2DA"
         ]
       },
       "metadata": {
@@ -3208,26 +3208,26 @@
             "trunk",
             "primary"
           ],
-          "#FBF7EE",
+          "#F6F3EC",
           [
             "secondary",
             "tertiary"
           ],
-          "#F4EDDD",
+          "#E9E6DE",
           [
             "street",
             "street_limited",
             "minor"
           ],
-          "#F1EBDE",
+          "#E6E3DB",
           [
             "service",
             "track",
             "link",
             "driveway"
           ],
-          "#F2ECDF",
-          "#EFE8D9"
+          "#E8E5DD",
+          "#E5E2DA"
         ]
       },
       "metadata": {
@@ -3343,16 +3343,16 @@
             5
           ],
           0,
-          "#D6B486",
+          "#E7E1D3",
           1,
-          "#E6D0A4",
+          "#EFEDE5",
           2,
-          "#EFE2CA",
+          "#E1DBCD",
           3,
-          "#D9C196",
+          "#D6C4A4",
           4,
-          "#E0C79C",
-          "#E6D0A4"
+          "#E5E1D6",
+          "#E9E5DB"
         ],
         "fill-extrusion-height": [
           "interpolate",
