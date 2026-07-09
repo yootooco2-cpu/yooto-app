@@ -3343,16 +3343,16 @@
             5
           ],
           0,
-          "#F3F0E9",
+          "#F6F4ED",
           1,
-          "#FBFAF6",
+          "#FCFBF8",
           2,
-          "#EAE6DC",
+          "#F0EDE5",
           3,
-          "#D9B892",
+          "#CFA97E",
           4,
-          "#EDECE6",
-          "#F0EDE6"
+          "#C0906A",
+          "#F3F0E9"
         ],
         "fill-extrusion-height": [
           "interpolate",
