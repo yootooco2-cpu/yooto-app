@@ -8,7 +8,9 @@ import {
   LIGHT_LAB_DEFAULTS,
   installLightPresetLab,
   readLightLabFromUrl,
+  urlHasLightOverride,
 } from '@/features/map/dev/lightPresetLab';
+import { installSolarLightCycle } from '@/features/map/solarLightCycle';
 import { MapClusterController } from '@/components/map/cluster/clusterController';
 import { MapPlaceholder } from '@/components/map/MapPlaceholder';
 import { colors } from '@/design/tokens/colors';
@@ -184,9 +186,30 @@ export function MapEngine({
             ).__YOOTOO_MAP_STYLE_RUNTIME__ = debugStyle;
             // eslint-disable-next-line no-console
             console.info('[YOOTOO/map] style runtime ' + JSON.stringify(debugStyle));
-            // LIGHT LAB : comparateur live des 8 ambiances Standard (L = preset, T = faded).
+          }
+          // CYCLE SOLAIRE (prod + dev) : le lightPreset suit le vrai lever/coucher du
+          // soleil. Gelé si `EXPO_PUBLIC_MAP_LIGHT_CYCLE=off` ou si l'URL force une
+          // ambiance (`?light=` / `?theme=`, dev) — l'intention explicite gagne toujours.
+          let disposeSolar: (() => void) | null = null;
+          const solarFrozen =
+            process.env.EXPO_PUBLIC_MAP_LIGHT_CYCLE === 'off' ||
+            (process.env.NODE_ENV !== 'production' && urlHasLightOverride());
+          if (!solarFrozen) {
             try {
-              installLightPresetLab(map, lightLab);
+              disposeSolar = installSolarLightCycle(map);
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.error('[YOOTOO/map] error (cycle solaire)', err);
+            }
+          }
+          if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+            // LIGHT LAB : comparateur live des 8 ambiances Standard (L = preset, T = faded).
+            // Une frappe manuelle gèle le cycle solaire : la main de l'humain gagne.
+            try {
+              installLightPresetLab(map, lightLab, () => {
+                disposeSolar?.();
+                disposeSolar = null;
+              });
             } catch (err) {
               // eslint-disable-next-line no-console
               console.error('[YOOTOO/map] error (light lab)', err);

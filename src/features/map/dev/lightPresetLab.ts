@@ -24,9 +24,24 @@ export interface LightLabState {
   theme: BasemapTheme;
 }
 
-export const LIGHT_LAB_DEFAULTS: LightLabState = { lightPreset: 'day', theme: 'default' };
+/**
+ * BASE OFFICIELLE YOOTOO (Lot A1, validée le 9/7/2026) : `day + faded`.
+ * Fond officiel désaturé → les commerces restent les seuls éléments saturés de la scène.
+ */
+export const LIGHT_LAB_DEFAULTS: LightLabState = { lightPreset: 'day', theme: 'faded' };
 
-/** État initial depuis l'URL (`?light=dusk&theme=faded`) — silencieusement défensif. */
+/** L'URL force-t-elle une ambiance explicite ? (gèle alors le cycle solaire en dev). */
+export function urlHasLightOverride(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.has('light') || params.has('theme');
+  } catch {
+    return false;
+  }
+}
+
+/** État initial depuis l'URL (`?light=dusk&theme=faded|default`) — silencieusement défensif. */
 export function readLightLabFromUrl(): LightLabState {
   if (typeof window === 'undefined') return { ...LIGHT_LAB_DEFAULTS };
   try {
@@ -37,7 +52,7 @@ export function readLightLabFromUrl(): LightLabState {
       lightPreset: (LIGHT_PRESETS as readonly string[]).includes(light ?? '')
         ? (light as LightPreset)
         : LIGHT_LAB_DEFAULTS.lightPreset,
-      theme: theme === 'faded' ? 'faded' : 'default',
+      theme: theme === 'faded' ? 'faded' : theme === 'default' ? 'default' : LIGHT_LAB_DEFAULTS.theme,
     };
   } catch {
     return { ...LIGHT_LAB_DEFAULTS };
@@ -50,8 +65,14 @@ const describe = (s: LightLabState): string =>
 /**
  * Installe le comparateur clavier sur la carte. Retourne un dispose ;
  * auto-nettoyé aussi sur `map.remove()` (événement `remove`).
+ * `onManualOverride` est notifié à la première frappe (l'appelant gèle alors
+ * le cycle solaire automatique : la main de l'humain gagne toujours).
  */
-export function installLightPresetLab(map: MapboxMap, initial: LightLabState): () => void {
+export function installLightPresetLab(
+  map: MapboxMap,
+  initial: LightLabState,
+  onManualOverride?: () => void,
+): () => void {
   const state: LightLabState = { ...initial };
 
   const apply = () => {
@@ -72,10 +93,12 @@ export function installLightPresetLab(map: MapboxMap, initial: LightLabState): (
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === 'l' || e.key === 'L') {
+      onManualOverride?.();
       const i = LIGHT_PRESETS.indexOf(state.lightPreset);
       state.lightPreset = LIGHT_PRESETS[(i + 1) % LIGHT_PRESETS.length];
       apply();
     } else if (e.key === 't' || e.key === 'T') {
+      onManualOverride?.();
       state.theme = state.theme === 'faded' ? 'default' : 'faded';
       apply();
     }
