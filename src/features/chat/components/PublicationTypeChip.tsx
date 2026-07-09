@@ -8,10 +8,10 @@ import type { ActivityKind } from '../types';
 import { PublicationCrypto } from './PublicationCrypto';
 
 /**
- * Chip DISCRÈTE de type de publication (Nouveauté, Fournée, Dégustation…) — même langage visuel que
+ * Chip DISCRÈTE de type de publication (Nouveauté, Arrivage, Dégustation…) — même langage visuel que
  * les catégories : petite pastille très arrondie, fond légèrement translucide teinté de l'accent,
- * icône Feather monochrome + libellé. Compacte et raffinée : identifie le type sans voler la vedette
- * au commerçant ni au contenu. Remplace les gros emojis décoratifs (présentation uniquement).
+ * cryptogramme YOOTOO monochrome + libellé. Compacte et raffinée : identifie le type sans voler la
+ * vedette au commerçant ni au contenu. Remplace les gros emojis décoratifs (présentation uniquement).
  */
 export function PublicationTypeChip({ kind, accent }: { kind: ActivityKind; accent: string }) {
   const chip = activityKindChip(kind);
