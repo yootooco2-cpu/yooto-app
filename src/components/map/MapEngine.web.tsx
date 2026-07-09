@@ -28,6 +28,12 @@ const prefersReducedMotion = (): boolean =>
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+const MAP_STYLE_SOURCE =
+  typeof process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL === 'string' &&
+  process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL.length > 0
+    ? process.env.EXPO_PUBLIC_MAPBOX_STYLE_URL
+    : 'local:src/features/map/style/yootoo-s1.json';
+
 /** Horloge réelle injectée dans le Scheduler (coalescing). */
 const realTimer: SchedulerTimer = {
   setTimer: (ms, cb) => {
@@ -146,6 +152,23 @@ export function MapEngine({
         map.on('load', () => {
           if (cancelled) return;
           if (timeout) clearTimeout(timeout);
+          if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+            const runtimeStyle = map.getStyle();
+            const buildingLayer = runtimeStyle.layers?.find((layer) => layer.id === 'building');
+            const debugStyle = {
+              source: MAP_STYLE_SOURCE,
+              fog: runtimeStyle.fog,
+              lights: runtimeStyle.lights,
+              buildingPaint: buildingLayer && 'paint' in buildingLayer ? buildingLayer.paint : undefined,
+            };
+            (
+              window as typeof window & {
+                __YOOTOO_MAP_STYLE_RUNTIME__?: typeof debugStyle;
+              }
+            ).__YOOTOO_MAP_STYLE_RUNTIME__ = debugStyle;
+            // eslint-disable-next-line no-console
+            console.info('[YOOTOO/map] style runtime ' + JSON.stringify(debugStyle));
+          }
           // PROTOTYPE (réversible, web-only) — végétation NATIONALE : arbres 2.5D dérivés au
           // runtime des polygones de végétation réels des tuiles (France entière), jamais hors
           // zones vertes. Installé AVANT le contrôleur → marqueurs commerces au-dessus. Non bloquant.

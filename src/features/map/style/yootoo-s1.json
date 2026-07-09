@@ -9,14 +9,24 @@
   "zoom": 11,
   "fog": {
     "range": [
-      1.5,
-      14
+      0.7,
+      7
     ],
-    "color": "#EEEDE8",
-    "high-color": "#DCDDD8",
-    "space-color": "#9AAAA6",
-    "horizon-blend": 0.06,
+    "color": "#EDE6DA",
+    "high-color": "#D4D9D4",
+    "space-color": "#879BA5",
+    "horizon-blend": 0.18,
     "star-intensity": 0
+  },
+  "light": {
+    "anchor": "map",
+    "position": [
+      1.4,
+      315,
+      42
+    ],
+    "color": "#FFF6E9",
+    "intensity": 0.42
   },
   "projection": {
     "name": "globe"
@@ -33,9 +43,9 @@
           315,
           28
         ],
-        "sky-atmosphere-sun-intensity": 8,
-        "sky-atmosphere-color": "#B9C6D2",
-        "sky-atmosphere-halo-color": "#F7E7C6",
+        "sky-atmosphere-sun-intensity": 11,
+        "sky-atmosphere-color": "#B6C3CB",
+        "sky-atmosphere-halo-color": "#FAD9A8",
         "sky-opacity": 1
       }
     },
@@ -45,7 +55,7 @@
       "layout": {},
       "minzoom": 0,
       "paint": {
-        "background-color": "#F0EFEA"
+        "background-color": "#F3F1EB"
       },
       "metadata": {
         "mapbox:featureComponent": "land-and-water",
@@ -68,7 +78,7 @@
       ],
       "layout": {},
       "paint": {
-        "fill-color": "#7BA850",
+        "fill-color": "#CFE7C8",
         "fill-opacity": [
           "interpolate",
           [
@@ -106,14 +116,14 @@
             "class"
           ],
           "wood",
-          "#6FA047",
+          "#A8D39D",
           "scrub",
-          "#97B566",
+          "#B9DCB0",
           "grass",
-          "#A3C46B",
+          "#C6E4BD",
           "crop",
-          "#BCC57E",
-          "#8FB05E"
+          "#D0E3B4",
+          "#B4D8AB"
         ],
         "fill-antialias": false,
         "fill-opacity": [
@@ -231,21 +241,21 @@
             "park",
             "garden"
           ],
-          "#7BB052",
+          "#CFE7C8",
           [
             "grass",
             "pitch"
           ],
-          "#99C161",
+          "#D2E8CB",
           "scrub",
-          "#92AD62",
+          "#BCDDB3",
           "wood",
-          "#6E9E48",
+          "#A8D39D",
           "agriculture",
-          "#B7BF7D",
+          "#D3E1B6",
           "cemetery",
-          "#93B16B",
-          "#EDE7DA"
+          "#C4E0BB",
+          "#EFEAE0"
         ],
         "fill-opacity": [
           "interpolate",
@@ -317,7 +327,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#79C2CE",
+        "line-color": "#B5DCE8",
         "line-width": [
           "interpolate",
           [
@@ -383,7 +393,7 @@
       "minzoom": 0,
       "layout": {},
       "paint": {
-        "fill-color": "#A7D6DE"
+        "fill-color": "#D7EEF5"
       },
       "metadata": {
         "mapbox:featureComponent": "land-and-water",
@@ -1201,26 +1211,26 @@
             "trunk",
             "primary"
           ],
-          "#F8F7F2",
+          "#D5D8DF",
           [
             "secondary",
             "tertiary"
           ],
-          "#E5E4DF",
+          "#C7CCD4",
           [
             "street",
             "street_limited",
             "minor"
           ],
-          "#E2E1DC",
+          "#DDE0E4",
           [
             "service",
             "track",
             "link",
             "driveway"
           ],
-          "#E4E3DE",
-          "#E3E2DD"
+          "#DDE0E4",
+          "#DDE0E4"
         ]
       },
       "metadata": {
@@ -1492,7 +1502,7 @@
           18,
           4
         ],
-        "line-color": "#F3E8CB",
+        "line-color": "#E7E4DC",
         "line-dasharray": [
           10,
           0
@@ -1677,7 +1687,7 @@
           18,
           12
         ],
-        "line-color": "#F3E8CB",
+        "line-color": "#E7E4DC",
         "line-dasharray": [
           "step",
           [
@@ -1915,7 +1925,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#C4C3BB",
+        "line-color": "#C1C5CC",
         "line-width": [
           "interpolate",
           [
@@ -2328,26 +2338,26 @@
             "trunk",
             "primary"
           ],
-          "#F8F7F2",
+          "#D5D8DF",
           [
             "secondary",
             "tertiary"
           ],
-          "#E5E4DF",
+          "#C7CCD4",
           [
             "street",
             "street_limited",
             "minor"
           ],
-          "#E2E1DC",
+          "#DDE0E4",
           [
             "service",
             "track",
             "link",
             "driveway"
           ],
-          "#E4E3DE",
-          "#E3E2DD"
+          "#DDE0E4",
+          "#DDE0E4"
         ]
       },
       "metadata": {
@@ -3208,26 +3218,26 @@
             "trunk",
             "primary"
           ],
-          "#F8F7F2",
+          "#D5D8DF",
           [
             "secondary",
             "tertiary"
           ],
-          "#E5E4DF",
+          "#C7CCD4",
           [
             "street",
             "street_limited",
             "minor"
           ],
-          "#E2E1DC",
+          "#DDE0E4",
           [
             "service",
             "track",
             "link",
             "driveway"
           ],
-          "#E4E3DE",
-          "#E3E2DD"
+          "#DDE0E4",
+          "#DDE0E4"
         ]
       },
       "metadata": {
@@ -3330,29 +3340,96 @@
       ],
       "paint": {
         "fill-extrusion-color": [
-          "match",
+          "interpolate",
           [
-            "%",
+            "linear"
+          ],
+          [
+            "coalesce",
             [
-              "coalesce",
-              [
-                "id"
-              ],
-              0
+              "get",
+              "height"
             ],
-            5
+            3
           ],
           0,
-          "#F6F4ED",
-          1,
-          "#FCFBF8",
-          2,
-          "#F0EDE5",
-          3,
-          "#CFA97E",
-          4,
-          "#C0906A",
-          "#F3F0E9"
+          [
+            "match",
+            [
+              "%",
+              [
+                "coalesce",
+                [
+                  "id"
+                ],
+                0
+              ],
+              5
+            ],
+            0,
+            "#EFEBE4",
+            1,
+            "#F8F5F0",
+            2,
+            "#E8E3DA",
+            3,
+            "#F2EEE6",
+            4,
+            "#DED0BD",
+            "#EFEBE4"
+          ],
+          14,
+          [
+            "match",
+            [
+              "%",
+              [
+                "coalesce",
+                [
+                  "id"
+                ],
+                0
+              ],
+              5
+            ],
+            0,
+            "#ECE7DE",
+            1,
+            "#F6F2EC",
+            2,
+            "#E4DED3",
+            3,
+            "#EFEAE1",
+            4,
+            "#D8C7B0",
+            "#ECE7DE"
+          ],
+          48,
+          [
+            "match",
+            [
+              "%",
+              [
+                "coalesce",
+                [
+                  "id"
+                ],
+                0
+              ],
+              5
+            ],
+            0,
+            "#F3EFE8",
+            1,
+            "#FBF9F4",
+            2,
+            "#EBE6DC",
+            3,
+            "#F5F2EB",
+            4,
+            "#E1D2BB",
+            "#F3EFE8"
+          ]
         ],
         "fill-extrusion-height": [
           "interpolate",
@@ -3412,8 +3489,33 @@
           1
         ],
         "fill-extrusion-vertical-gradient": true,
-        "fill-extrusion-ambient-occlusion-intensity": 0.72,
-        "fill-extrusion-ambient-occlusion-radius": 5.0
+        "fill-extrusion-ambient-occlusion-intensity": 0.64,
+        "fill-extrusion-ambient-occlusion-radius": 4.8,
+        "fill-extrusion-ambient-occlusion-ground-radius": 6.2,
+        "fill-extrusion-ambient-occlusion-ground-attenuation": 0.52,
+        "fill-extrusion-ambient-occlusion-wall-radius": 5.2,
+        "fill-extrusion-cast-shadows": true,
+        "fill-extrusion-flood-light-color": "#FFE3B8",
+        "fill-extrusion-flood-light-intensity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          15,
+          0.08,
+          16.0,
+          0.38,
+          17.5,
+          0.42
+        ],
+        "fill-extrusion-flood-light-ground-radius": 18,
+        "fill-extrusion-flood-light-ground-attenuation": 0.68,
+        "fill-extrusion-flood-light-wall-radius": 20,
+        "fill-extrusion-emissive-strength": 0.06,
+        "fill-extrusion-cutoff-fade-range": 0.24
       }
     },
     {
@@ -4049,7 +4151,7 @@
       "paint": {
         "text-color": "#5E8B86",
         "text-halo-color": "#F3EEE2",
-        "text-halo-width": 1.0
+        "text-halo-width": 1
       },
       "metadata": {
         "mapbox:featureComponent": "natural-features",
@@ -4158,7 +4260,7 @@
       "source": "composite",
       "id": "natural-line-label",
       "paint": {
-        "text-halo-width": 1.0,
+        "text-halo-width": 1,
         "text-halo-color": "#F3EEE2",
         "text-halo-blur": 0.5,
         "text-color": "#6E7A55"
@@ -4303,7 +4405,7 @@
           ]
         ],
         "text-halo-color": "#F3EEE2",
-        "text-halo-width": 1.0,
+        "text-halo-width": 1,
         "text-halo-blur": 0.5,
         "text-color": "#6E7A55"
       },
@@ -4443,7 +4545,7 @@
       "paint": {
         "text-color": "#5E8B86",
         "text-halo-color": "#F3EEE2",
-        "text-halo-width": 1.0
+        "text-halo-width": 1
       },
       "source-layer": "natural_label"
     },
@@ -4590,7 +4692,7 @@
       "paint": {
         "text-color": "#5E8B86",
         "text-halo-color": "#F3EEE2",
-        "text-halo-width": 1.0
+        "text-halo-width": 1
       },
       "metadata": {
         "mapbox:featureComponent": "natural-features",
@@ -5818,16 +5920,16 @@
       "id": "ambient",
       "type": "ambient",
       "properties": {
-        "color": "#FFF3E2",
-        "intensity": 0.55
+        "color": "#FFF0DC",
+        "intensity": 0.46
       }
     },
     {
       "id": "sun",
       "type": "directional",
       "properties": {
-        "color": "#FFE7C2",
-        "intensity": 0.66,
+        "color": "#FFD49A",
+        "intensity": 0.84,
         "direction": [
           315,
           66
@@ -5841,10 +5943,12 @@
           [
             "zoom"
           ],
-          15.0,
+          15,
           0,
           15.5,
-          0.44
+          0.64,
+          17,
+          0.72
         ]
       }
     }
