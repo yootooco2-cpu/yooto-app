@@ -92,12 +92,8 @@ function ChatBody() {
 
   return (
     <YScreen transparent gap="sm" padding="lg">
-      {/* EN-TÊTE COMPACT — même univers que la Carte : identité discrète, impact visuel réduit. */}
-      <View style={styles.titleCol}>
-        <YText style={[styles.title, { color: glass.onDark }]}>Chat</YText>
-        <YText numberOfLines={1} style={[styles.subtitle, { color: glass.onDarkMuted }]}>Échangez avec votre communauté locale</YText>
-      </View>
-
+      {/* En-tête volontairement SANS titre « Chat » : on est déjà dans l'onglet Chat → l'écran
+          démarre directement sur la barre de recherche premium, comme la Carte (plus immersif). */}
       {/* BARRE DE RECHERCHE PARTAGÉE AVEC LA CARTE — même YSearchBar (variant glass) + même bouton
           Favoris circulaire à droite, même agencement (searchRow flex + gap) que le SearchMenu de la
           Carte. Seul le placeholder change. Ancrage fixe, jamais masqué par un changement de catégorie. */}
@@ -183,10 +179,6 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  // En-tête compact : titre discret (aligné sur les bords de la recherche, comme la Carte).
-  titleCol: { gap: 1, paddingHorizontal: spacing.xs },
-  title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
-  subtitle: { fontSize: 12, lineHeight: 16 },
   // Ligne de recherche IDENTIQUE au SearchMenu de la Carte (flex + gap + Favoris à droite).
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   searchFlex: { flex: 1 },
