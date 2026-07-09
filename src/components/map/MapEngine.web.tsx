@@ -117,34 +117,10 @@ export function MapEngine({
         });
         mapRef.current = map;
 
-        // Erreurs Mapbox (tuiles, style, réseau) → log non bloquant. Un ÉCHEC DE STYLE est
-        // remonté explicitement (statut error) : jamais de repli silencieux vers un style Mapbox.
+        // Erreurs Mapbox (tuiles, style, réseau) → log non bloquant.
         map.on('error', (e: { error?: unknown }) => {
-          const msg = e?.error instanceof Error ? e.error.message : String(e?.error ?? '');
           // eslint-disable-next-line no-console
           console.error('[YOOTOO/map] error', e?.error ?? e);
-          if (/style|glyph|sprite/i.test(msg)) {
-            // eslint-disable-next-line no-console
-            console.error('[YOOTOO/map] ÉCHEC DU STYLE CUSTOM yootoo-s1 — pas de repli sur light-v11.');
-            if (!cancelled) setStatus('error');
-          }
-        });
-
-        // LOG TEMPORAIRE de contrôle : confirme que la carte charge bien NOTRE style custom.
-        // `water` doit valoir '#83CFDC' (valeur propre à yootoo-s1) — si c'est le style Mapbox
-        // par défaut, la couleur serait différente et le nom ne serait pas « YOOTOO S1 ».
-        map.on('style.load', () => {
-          try {
-            const st = map.getStyle();
-            // eslint-disable-next-line no-console
-            console.info('[YOOTOO/map] loaded style: yootoo-s1', {
-              name: st?.name,
-              id: (st as { id?: string } | undefined)?.id,
-              water: map.getPaintProperty('water', 'fill-color'),
-            });
-          } catch {
-            /* getStyle indisponible → ignorer */
-          }
         });
 
         // Émet le viewport courant (centre + zoom + emprise) — jamais bloquant.

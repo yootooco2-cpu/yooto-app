@@ -317,7 +317,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#57BACB",
+        "line-color": "#79C2CE",
         "line-width": [
           "interpolate",
           [
@@ -383,7 +383,7 @@
       "minzoom": 0,
       "layout": {},
       "paint": {
-        "fill-color": "#83CFDC"
+        "fill-color": "#A7D6DE"
       },
       "metadata": {
         "mapbox:featureComponent": "land-and-water",
