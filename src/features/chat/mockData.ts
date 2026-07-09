@@ -29,12 +29,14 @@ const PH = {
 
 export const MOCK_PARTICIPANTS: ChatParticipant[] = [
   { id: CURRENT_USER_ID, kind: 'particulier', name: 'Vous', avatarUrl: null, neighborhood: 'Écusson' },
-  // Professionnels & producteurs (comptes vérifiés + vraies photos = crédibilité, présence réaliste)
-  { id: 'pro_boulangerie', kind: 'professionnel', name: 'Boulangerie du Marché', merchantId: 'm_boulangerie', coverUrl: PH.bread, verified: true, online: true, neighborhood: 'Écusson', distanceLabel: '400 m', geo: geo(0.4, 'Écusson'), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 42, acceptedAnswers: 3, confirmedRecos: 6 } },
-  { id: 'pro_ferme', kind: 'producteur', name: 'La Ferme de Lucie', merchantId: 'm_ferme', coverUrl: PH.veggies, verified: true, lastActiveAt: ago(8), distanceLabel: '3,2 km', geo: geo(3.2), badges: [{ kind: 'producteur_local', label: 'Producteur local' }], reputation: { helpfulScore: 55, acceptedAnswers: 2, confirmedRecos: 11 } },
-  { id: 'pro_cafe', kind: 'professionnel', name: 'Café des Arceaux', merchantId: 'm_cafe', coverUrl: PH.cafe, verified: true, online: true, distanceLabel: '650 m', geo: geo(0.65), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 30, acceptedAnswers: 1, confirmedRecos: 4 } },
-  { id: 'pro_ceramique', kind: 'professionnel', name: 'Atelier Terracotta', merchantId: 'm_ceramique', coverUrl: PH.pottery, verified: false, lastActiveAt: ago(18), distanceLabel: '900 m', geo: geo(0.9), badges: [] },
-  { id: 'pro_cave', kind: 'professionnel', name: 'Cave des Cévennes', merchantId: 'm_cave', coverUrl: PH.wine, verified: true, lastActiveAt: ago(190), distanceLabel: '1,1 km', geo: geo(1.1), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }] },
+  // Professionnels & producteurs (comptes vérifiés + vraies photos = crédibilité, présence réaliste).
+  // Pas de `merchantId` figé ici : le vrai identifiant de fiche est injecté par `hydrateFromMerchants`
+  // depuis les commerces réels. Sans hydratation → aucun lien mort (le bloc commerçant reste inerte).
+  { id: 'pro_boulangerie', kind: 'professionnel', name: 'Boulangerie du Marché', coverUrl: PH.bread, verified: true, online: true, neighborhood: 'Écusson', distanceLabel: '400 m', geo: geo(0.4, 'Écusson'), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 42, acceptedAnswers: 3, confirmedRecos: 6 } },
+  { id: 'pro_ferme', kind: 'producteur', name: 'La Ferme de Lucie', coverUrl: PH.veggies, verified: true, lastActiveAt: ago(8), distanceLabel: '3,2 km', geo: geo(3.2), badges: [{ kind: 'producteur_local', label: 'Producteur local' }], reputation: { helpfulScore: 55, acceptedAnswers: 2, confirmedRecos: 11 } },
+  { id: 'pro_cafe', kind: 'professionnel', name: 'Café des Arceaux', coverUrl: PH.cafe, verified: true, online: true, distanceLabel: '650 m', geo: geo(0.65), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }], reputation: { helpfulScore: 30, acceptedAnswers: 1, confirmedRecos: 4 } },
+  { id: 'pro_ceramique', kind: 'professionnel', name: 'Atelier Terracotta', coverUrl: PH.pottery, verified: false, lastActiveAt: ago(18), distanceLabel: '900 m', geo: geo(0.9), badges: [] },
+  { id: 'pro_cave', kind: 'professionnel', name: 'Cave des Cévennes', coverUrl: PH.wine, verified: true, lastActiveAt: ago(190), distanceLabel: '1,1 km', geo: geo(1.1), badges: [{ kind: 'verified_pro', label: 'Commerçant vérifié' }] },
   { id: 'assoc_velo', kind: 'association', name: 'Vélo-Cité Montpellier', coverUrl: PH.bike, verified: true, lastActiveAt: ago(45), distanceLabel: '1,3 km', geo: geo(1.3), badges: [{ kind: 'association', label: 'Association locale' }] },
   // Particuliers (réputation = utilité, jamais popularité)
   { id: 'part_camille', kind: 'particulier', name: 'Camille R.', avatarUrl: PH.woman, online: true, distanceLabel: '300 m', geo: geo(0.3, 'Écusson'), badges: [{ kind: 'bon_conseiller', label: 'Bon conseiller' }], reputation: { helpfulScore: 64, acceptedAnswers: 9, confirmedRecos: 7 } },

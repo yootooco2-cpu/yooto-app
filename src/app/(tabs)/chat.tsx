@@ -50,8 +50,11 @@ function ChatBody() {
   }, [init]);
 
   // Réconciliation : les acteurs pro du Chat = vrais commerces Supabase (nom, photo, fiche).
+  // On attend que le store soit `ready` (init a peuplé les participants) AVANT de superposer les
+  // vrais commerces — sinon la fin d'init (asynchrone) écrase l'hydratation et rétablit les mock,
+  // laissant des merchantId invalides → clic vers une fiche « introuvable ».
   useEffect(() => {
-    if (!realMerchants) return;
+    if (!ready || !realMerchants) return;
     const list = realMerchants
       .map((m) => ({ m, photo: getMerchantCoverPhoto(m) }))
       .filter((x) => x.photo !== null)
@@ -65,7 +68,7 @@ function ChatBody() {
         isProducer: m.isProducer,
       }));
     if (list.length > 0) hydrateFromMerchants(list);
-  }, [realMerchants, hydrateFromMerchants]);
+  }, [ready, realMerchants, hydrateFromMerchants]);
 
   const q = query.trim().toLowerCase();
   const unread = useMemo(() => unreadPrivateCount(conversations), [conversations]);
