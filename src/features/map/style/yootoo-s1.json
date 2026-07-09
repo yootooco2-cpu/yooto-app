@@ -3330,26 +3330,29 @@
       ],
       "paint": {
         "fill-extrusion-color": [
-          "interpolate",
+          "match",
           [
-            "linear"
-          ],
-          [
-            "coalesce",
+            "%",
             [
-              "get",
-              "height"
+              "coalesce",
+              [
+                "id"
+              ],
+              0
             ],
-            0
+            5
           ],
+          0,
+          "#D6B486",
+          1,
+          "#E6D0A4",
+          2,
+          "#EFE2CA",
           3,
-          "#DFC79A",
-          12,
-          "#EADAC0",
-          30,
-          "#F3EAD6",
-          60,
-          "#FAF2E2"
+          "#D9C196",
+          4,
+          "#E0C79C",
+          "#E6D0A4"
         ],
         "fill-extrusion-height": [
           "interpolate",
@@ -3409,8 +3412,8 @@
           1
         ],
         "fill-extrusion-vertical-gradient": true,
-        "fill-extrusion-ambient-occlusion-intensity": 0.66,
-        "fill-extrusion-ambient-occlusion-radius": 4.5
+        "fill-extrusion-ambient-occlusion-intensity": 0.72,
+        "fill-extrusion-ambient-occlusion-radius": 5.0
       }
     },
     {
