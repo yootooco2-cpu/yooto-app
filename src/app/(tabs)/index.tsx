@@ -3,7 +3,6 @@ import { Dimensions } from 'react-native';
 import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
-import { ProfileAvatarButton } from '@/components/profile/ProfileAvatarButton';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
@@ -61,12 +60,11 @@ export default function HomeScreen() {
   return (
     <SectionScreen section="accueil" scrollY={scrollY} height={AMBIENT_HEIGHT}>
       <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
-        {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories + profil). */}
+        {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories). */}
         <SearchMenu
           query={query}
           onQueryChange={setQuery}
           onCategoryChange={(m) => setCategoryMatch(() => m)}
-          trailing={<ProfileAvatarButton />}
         />
 
         {filtering ? (
