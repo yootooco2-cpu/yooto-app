@@ -32,11 +32,11 @@ export const MAP_COLOR_LANGUAGE: Record<string, string> = {
   fromagerie: '#D3A94A', // crème dorée
   cafe: '#5B4636', // espresso
   restaurant: '#C0674A', // terracotta
-  marche: '#C65A48', // terracotta marché
+  marche: '#C46E5C', // terracotta marché (adouci)
   traiteur: '#C07B3C', // ambre traiteur
   caviste: '#7E2E3C', // bordeaux
-  boucherie: '#A23A48', // grenat
-  poissonnerie: '#2E7DA1', // bleu marée
+  boucherie: '#A85A64', // grenat (adouci)
+  poissonnerie: '#4E90AC', // bleu marée (plus doux)
   fleuriste: '#C06A86', // rose botanique
   artisanat: '#B06B3A', // cuivre
   librairie: '#4C5599', // encre
@@ -45,8 +45,8 @@ export const MAP_COLOR_LANGUAGE: Record<string, string> = {
   sport: '#7A8450', // olive
   nature: '#3D5A34', // forêt
   mobilite: '#5FB0E0', // ciel
-  transports: '#2C4A7A', // bleu ardoise
-  cooperative: '#2E8BD6', // bleu coopérative
+  transports: '#45608A', // bleu ardoise (plus doux)
+  cooperative: '#4C97CE', // bleu coopérative (plus doux)
   nearby: '#5688BC',
   open: '#65851A',
   autres: NEUTRAL_MARKER_COLOR,

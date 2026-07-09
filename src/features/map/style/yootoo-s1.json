@@ -45,7 +45,7 @@
       "layout": {},
       "minzoom": 0,
       "paint": {
-        "background-color": "#F3EEE2"
+        "background-color": "#F2EAD8"
       },
       "metadata": {
         "mapbox:featureComponent": "land-and-water",
@@ -68,7 +68,7 @@
       ],
       "layout": {},
       "paint": {
-        "fill-color": "#B7C795",
+        "fill-color": "#9BBE74",
         "fill-opacity": [
           "interpolate",
           [
@@ -82,9 +82,9 @@
           6,
           0.55,
           12,
-          0.34,
+          0.42,
           16,
-          0.3
+          0.36
         ]
       },
       "metadata": {
@@ -106,14 +106,14 @@
             "class"
           ],
           "wood",
-          "#B2C393",
+          "#8DB064",
           "scrub",
-          "#C6C89A",
+          "#ACBD82",
           "grass",
-          "#CCD6A6",
+          "#B1C886",
           "crop",
-          "#D6D0A6",
-          "#C7D1A4"
+          "#C6C98E",
+          "#A7BD7E"
         ],
         "fill-antialias": false,
         "fill-opacity": [
@@ -125,17 +125,17 @@
             "zoom"
           ],
           6,
-          0.22,
+          0.26,
           11,
-          0.35,
+          0.42,
           14,
-          0.33,
+          0.4,
           15,
-          0.3,
+          0.36,
           16,
-          0.22,
+          0.3,
           17,
-          0.12
+          0.2
         ]
       }
     },
@@ -231,20 +231,20 @@
             "park",
             "garden"
           ],
-          "#BFCF9B",
+          "#9CBB72",
           [
             "grass",
             "pitch"
           ],
-          "#C8D4A2",
+          "#ADC87F",
           "scrub",
-          "#C3C596",
+          "#A7B77C",
           "wood",
-          "#AEC08F",
+          "#8BAF66",
           "agriculture",
-          "#D3CDA2",
+          "#C6C48A",
           "cemetery",
-          "#C6CFAF",
+          "#ACC08E",
           "#EDE7DA"
         ],
         "fill-opacity": [
@@ -317,7 +317,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#A8BDB8",
+        "line-color": "#79C2CE",
         "line-width": [
           "interpolate",
           [
@@ -383,7 +383,7 @@
       "minzoom": 0,
       "layout": {},
       "paint": {
-        "fill-color": "#B9C7C2"
+        "fill-color": "#A7D6DE"
       },
       "metadata": {
         "mapbox:featureComponent": "land-and-water",
@@ -752,7 +752,7 @@
           18,
           4
         ],
-        "line-color": "#EDE3D0",
+        "line-color": "#BFD69E",
         "line-dasharray": [
           10,
           0
@@ -1385,11 +1385,11 @@
             "zoom"
           ],
           15,
-          1,
+          1.4,
           18,
-          4
+          5
         ],
-        "line-color": "#EDE3D0",
+        "line-color": "#BFD69E",
         "line-dasharray": [
           10,
           0
@@ -1915,7 +1915,7 @@
         "line-join": "round"
       },
       "paint": {
-        "line-color": "#DBCFB4",
+        "line-color": "#CDBE9C",
         "line-width": [
           "interpolate",
           [
@@ -2552,7 +2552,7 @@
           18,
           4
         ],
-        "line-color": "#EDE3D0",
+        "line-color": "#BFD69E",
         "line-dasharray": [
           10,
           0
@@ -3343,13 +3343,13 @@
             0
           ],
           3,
-          "#E3D7BF",
+          "#E7D3B0",
           12,
-          "#EAE1D0",
+          "#EDE0C8",
           30,
-          "#EFE7D6",
+          "#F1E7D2",
           60,
-          "#F3ECDD"
+          "#F6EEDD"
         ],
         "fill-extrusion-height": [
           "interpolate",
