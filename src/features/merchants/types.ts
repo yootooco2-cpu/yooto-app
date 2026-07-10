@@ -61,6 +61,19 @@ export interface Merchant {
   /** Scores internes (non affichés comme score brut). */
   localScore?: number;
   partnerPotential?: number;
+  // --- Identité légale vérifiée (SIRENE V2.4 — source : État français) ---
+  /** SIRET de l'établissement matché. Présent = identité vérifiée. */
+  siret?: string;
+  /** Code NAF/APE officiel (ex. « 47.21Z ») — activité objective. */
+  nafCode?: string;
+  /** Date de création (ISO) — « Depuis YYYY » + « Nouveau dans votre quartier ». */
+  sireneCreationDate?: string;
+  /** État administratif SIRENE : 'A' actif, 'C' cessé. */
+  sireneEtat?: string;
+  /** Nb d'établissements de l'unité légale — 1 = indépendance prouvée. */
+  sireneNbEtablissements?: number;
+  /** Score de vérification interne 0-100 (invisible — carburant IA). */
+  verificationScore?: number;
   status?: string;
   /** Position relative (%) sur la carte placeholder en attendant un provider. */
   pin: { x: number; y: number };

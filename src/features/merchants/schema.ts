@@ -47,6 +47,13 @@ export const merchantRowSchema = z.object({
   local_score: z.coerce.number().nullable().optional(),
   partner_potential: z.coerce.number().nullable().optional(),
   status: z.string().nullable().optional(),
+  // Identité légale vérifiée (SIRENE V2.4)
+  siret: z.string().nullable().optional(),
+  naf_code: z.string().nullable().optional(),
+  sirene_date_creation: z.string().nullable().optional(),
+  sirene_etat: z.string().nullable().optional(),
+  sirene_nb_etablissements: z.coerce.number().nullable().optional(),
+  verification_score: z.coerce.number().nullable().optional(),
   pin_x: z.coerce.number().nullable().optional(),
   pin_y: z.coerce.number().nullable().optional(),
 });
@@ -144,6 +151,13 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     openingHours: readWeekdayText(row.opening_hours),
     localScore: row.local_score ?? undefined,
     partnerPotential: row.partner_potential ?? undefined,
+    // Identité légale vérifiée (SIRENE V2.4) — NULL = non vérifié, jamais inventé.
+    siret: row.siret ?? undefined,
+    nafCode: row.naf_code ?? undefined,
+    sireneCreationDate: row.sirene_date_creation ?? undefined,
+    sireneEtat: row.sirene_etat ?? undefined,
+    sireneNbEtablissements: row.sirene_nb_etablissements ?? undefined,
+    verificationScore: row.verification_score ?? undefined,
     status: row.status ?? undefined,
     pin: { x: row.pin_x ?? 0, y: row.pin_y ?? 0 },
   };
