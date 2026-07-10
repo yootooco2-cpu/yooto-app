@@ -41,6 +41,8 @@ import {
 import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { SearchMenu } from '@/features/merchants/components/SearchMenu';
+import { TopCategoryStrip } from '@/features/merchants/components/TopCategoryStrip';
+import { rankTopCategoryMerchants } from '@/features/merchants/topCategory';
 import type { MerchantPredicate } from '@/features/merchants/categoryFamilies';
 import { FavoritesList, useFavoriteIds, useFavoritesSync } from '@/features/favorites';
 import { useSettings } from '@/features/settings/SettingsProvider';
@@ -147,20 +149,47 @@ export default function MapScreen() {
   // liste, sans toucher useMerchantSearch ni le Discovery Engine, et sans bouger la caméra.
   const [mapMatch, setMapMatch] = useState<MerchantPredicate | null>(null);
 
-  // Marqueurs affichés = filtrés par catégorie (sinon tous), PUIS par préférences carte
-  // (producteurs / favoris) via PreferenceService — sans toucher au style Mapbox. `data` = commerce.
+  // INTENTION D'ABORD — la carte s'ouvre NUE (fond de carte pur : bâtiments, routes, eau).
+  // Les commerces ne se matérialisent que sur une intention explicite de l'utilisateur :
+  // une catégorie sélectionnée dans la barre, OU une recherche en cours (une recherche
+  // tapée est une intention aussi claire qu'une catégorie). Tout désélectionner/effacer
+  // vide immédiatement marqueurs et clusters. NOTE : le corpus (fetch-once TanStack)
+  // reste partagé avec Accueil/Chat — on ne coupe pas la requête, on gate l'AFFICHAGE.
+  const hasMerchantIntent = mapMatch !== null || query.trim().length > 0;
+
+  // Marqueurs affichés = AUCUN sans intention ; sinon filtrés par catégorie, PUIS par
+  // préférences carte (producteurs / favoris) via PreferenceService. `data` = commerce.
   const shownMarkers = useMemo(() => {
+    if (!hasMerchantIntent) return [];
     const favSet = new Set(favoriteIds);
     const byCategory = mapMatch ? markers.filter((mk) => !!mk.data && mapMatch(mk.data)) : markers;
     return byCategory.filter(
       (mk) => !mk.data || PreferenceService.isMarkerVisible(mapPrefs, { isProducer: mk.data.isProducer, isFavorite: favSet.has(mk.data.id) }),
     );
-  }, [markers, mapMatch, mapPrefs, favoriteIds]);
+  }, [markers, mapMatch, mapPrefs, favoriteIds, hasMerchantIntent]);
 
   const merchantsInArea = useMemo(() => {
+    if (!hasMerchantIntent) return [];
     const base = mapMatch ? results.filter(mapMatch) : results;
     return searchArea ? base.filter((m) => inBounds(m, searchArea)) : base;
-  }, [results, searchArea, mapMatch]);
+  }, [results, searchArea, mapMatch, hasMerchantIntent]);
+
+  // Bande « meilleures adresses » de la catégorie active : classement produit strict
+  // (partenaires → score local → note → avis → proximité), sur TOUT le corpus de la
+  // catégorie (pas seulement la zone) — « près de vous » vient du critère de proximité.
+  const topCategoryMerchants = useMemo(
+    () => (mapMatch ? rankTopCategoryMerchants(results.filter(mapMatch)) : []),
+    [results, mapMatch],
+  );
+
+  // Cohérence de sélection : si l'intention disparaît (tout désélectionné, recherche effacée),
+  // le commerce sélectionné n'a plus de marqueur → fermeture immédiate de sa mise en avant.
+  // Ajustement d'état PENDANT le rendu (pattern React officiel) : aucun effet, aucune cascade.
+  const [prevMerchantIntent, setPrevMerchantIntent] = useState(hasMerchantIntent);
+  if (prevMerchantIntent !== hasMerchantIntent) {
+    setPrevMerchantIntent(hasMerchantIntent);
+    if (!hasMerchantIntent) setSelectedId(null);
+  }
 
   const selectedMerchant = results.find((m) => m.id === selectedId) ?? null;
 
@@ -224,7 +253,9 @@ export default function MapScreen() {
   );
 
   const count = merchantsInArea.length;
-  const showEmpty = !isLoading && !isError && searchArea !== null && count === 0;
+  // L'état vide n'a de sens QUE si l'utilisateur a exprimé une intention (catégorie/recherche)
+  // sans résultat dans la zone. La carte nue (aucune intention) est un état NORMAL → aucun message.
+  const showEmpty = hasMerchantIntent && !isLoading && !isError && searchArea !== null && count === 0;
 
   // Accès rapide — architecture À SECTIONS : V1 = « Favoris ». Ajouter « Collections »,
   // « Récents »… = pousser une entrée ici, sans toucher ni le sheet ni le reste de l'écran.
@@ -382,6 +413,20 @@ export default function MapScreen() {
               </View>
             </View>
 
+            {/* BANDE « MEILLEURES ADRESSES » — FLOTTANTE juste au-dessus du menu bas (le dock
+                est dans le flux : le bas de cet écran = le haut du menu → jamais masqué, safe
+                area absorbée par la tab bar). Uniquement quand une catégorie est active.
+                Classement produit (topCategory.ts) : partenaires → score local → note Google
+                → avis → proximité. JAMAIS les favoris personnels ici. */}
+            <View style={styles.bottomStrip} pointerEvents="box-none">
+              {mapMatch ? (
+                <TopCategoryStrip
+                  merchants={topCategoryMerchants}
+                  onSelect={(id) => setSelectedId(id)}
+                />
+              ) : null}
+            </View>
+
             </View>
           </View>
         )}
@@ -435,6 +480,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.lg,
     backgroundColor: colors.background,
+  },
+  // Bande « meilleures adresses » : flottante au ras du menu bas (12 px au-dessus — le dock
+  // gère lui-même la safe area bottom). PLEINE LARGEUR (le conteneur est invisible : seules
+  // les cartes flottent, et le scroll respire bord à bord). Carte plein écran derrière.
+  bottomStrip: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 12,
   },
   recenterFab: {
     position: 'absolute',
