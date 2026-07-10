@@ -65,6 +65,8 @@ export { ActivityActions } from './components/ActivityActions';
 export { FollowPill } from './components/FollowPill';
 export { TrendsStrip } from './components/TrendsStrip';
 export { NotificationsStrip } from './components/NotificationsStrip';
+export { FeedComposerPrompt } from './components/FeedComposerPrompt';
+export { rankFeed, feedScore, isPartnerAuthor, type FeedRankContext } from './feedRanking';
 export { buildFeedNotifications, notifTime, type FeedNotification } from './notifications';
 export { HighlightCard } from './components/HighlightCard';
 export { ConversationCard } from './components/ConversationCard';

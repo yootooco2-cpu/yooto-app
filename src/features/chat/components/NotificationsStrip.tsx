@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -14,9 +14,10 @@ import { ChatAvatar } from './ChatAvatar';
 import { PublicationCrypto } from './PublicationCrypto';
 
 /**
- * 🔔 NOTIFICATIONS — centre social en tête du fil. À la place des statistiques : de vraies
- * publications récentes (commerce + cryptogramme + message spécifique + temps écoulé), triées
- * intelligemment. Chaque ligne appelle au clic → ouvre/scrolle vers la publication dans le fil.
+ * 🔔 NOTIFICATIONS — COMPACTES (hiérarchie sociale : le FEED est le contenu principal,
+ * les notifications restent accessibles sans jamais dominer l'écran). Rangée horizontale
+ * de chips discrètes — avatar + cryptogramme + message 1 ligne + temps. Clic → scrolle
+ * vers la publication dans le fil.
  */
 export function NotificationsStrip({
   notifications,
@@ -35,11 +36,11 @@ export function NotificationsStrip({
   return (
     <View style={styles.wrap}>
       <View style={styles.head}>
-        <YText style={styles.headEmoji}>🔔</YText>
-        <YText style={[styles.title, { color: glass.onDark }]}>Notifications</YText>
+        <YText style={[styles.title, { color: glass.onDarkMuted }]}>Notifications</YText>
+        <YText style={[styles.count, { color: glass.onDarkMuted }]}>{notifications.length}</YText>
       </View>
 
-      <View style={styles.list}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {notifications.map((n) => {
           const author = participants[n.authorId];
           return (
@@ -48,48 +49,56 @@ export function NotificationsStrip({
               onPress={() => onOpen(n.id)}
               accessibilityRole="button"
               accessibilityLabel={`${author?.name ?? ''} — ${n.message}`}
-              style={({ pressed }) => [styles.row, glass.panel, shadows.sm, pressed && styles.pressed]}>
+              style={({ pressed }) => [styles.chip, glass.panel, shadows.sm, pressed && styles.pressed]}>
               <View style={styles.avatarWrap}>
-                <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={46} online={author?.online === true} />
+                <ChatAvatar name={author?.name ?? '—'} avatarUrl={author ? avatarUri(author) : null} size={34} online={author?.online === true} />
                 <View style={[styles.badge, { borderColor: colors.surface, backgroundColor: colors.surface }]}>
-                  <PublicationCrypto id={n.crypto} size={22} />
+                  <PublicationCrypto id={n.crypto} size={16} />
                 </View>
               </View>
 
               <View style={styles.mid}>
                 <YText numberOfLines={1} style={[styles.name, { color: glass.onDark }]}>{author?.name ?? '—'}</YText>
-                <YText numberOfLines={2} style={[styles.msg, { color: glass.onDarkMuted }]}>{n.message}</YText>
+                <YText numberOfLines={1} style={[styles.msg, { color: glass.onDarkMuted }]}>{n.message}</YText>
               </View>
 
               <YText style={[styles.time, { color: glass.onDarkMuted }]}>{notifTime(n.createdAt, now)}</YText>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.sm },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: spacing.xs },
-  headEmoji: { fontSize: 15 },
-  title: { fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
-  list: { gap: spacing.xs },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.sm, borderRadius: radii.lg },
+  wrap: { gap: spacing.xs },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.xs },
+  title: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2, textTransform: 'uppercase' },
+  count: { fontSize: 11, fontWeight: '700', opacity: 0.8 },
+  row: { gap: spacing.xs, paddingVertical: 2 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 6,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.lg,
+    width: 230,
+  },
   pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
-  avatarWrap: { width: 46, height: 46 },
+  avatarWrap: { width: 34, height: 34 },
   badge: {
     position: 'absolute',
-    right: -5,
-    bottom: -5,
-    borderRadius: 14,
+    right: -4,
+    bottom: -4,
+    borderRadius: 10,
     borderWidth: 2,
     padding: 1,
     ...shadows.sm,
   },
-  mid: { flex: 1, gap: 1 },
-  name: { fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
-  msg: { fontSize: 12.5, lineHeight: 16 },
-  time: { fontSize: 11, alignSelf: 'flex-start' },
+  mid: { flex: 1, gap: 0 },
+  name: { fontSize: 12.5, fontWeight: '800', letterSpacing: -0.2 },
+  msg: { fontSize: 11.5, lineHeight: 14 },
+  time: { fontSize: 10, alignSelf: 'flex-start' },
 });

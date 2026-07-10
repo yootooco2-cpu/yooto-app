@@ -195,6 +195,8 @@ export interface ActivityItem {
   endsAt?: string;
   /** Compteurs de réactions (dénormalisés, comme le sera Supabase). */
   reactions?: ReactionSummary[];
+  /** Visuel de la publication (photo produit/ambiance) — le fil devient sensoriel. */
+  photoUrl?: string;
   /** Méta-IA optionnelle. */
   summary?: string;
   topics?: string[];

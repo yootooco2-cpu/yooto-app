@@ -1,6 +1,12 @@
 import { Feather } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, Share, StyleSheet, TextInput, View } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
 import { useSectionTheme } from '@/design/theme/SectionThemeProvider';
@@ -61,6 +67,20 @@ export function ActivityActions({ item }: { item: ActivityItem }) {
     void addComment(item.id, t);
   };
 
+  // Micro-animation « bounce » à l'enregistrement : le geste répond, l'app est vivante.
+  // (mutation du sharedValue INLINE dans la prop, pattern YButton — compatible React Compiler)
+  const saveScale = useSharedValue(1);
+  const saveAnim = useAnimatedStyle(() => ({ transform: [{ scale: saveScale.value }] }));
+
+  // Partage natif (Web Share / share sheet mobile) — silencieusement absent si non supporté.
+  const onShare = async () => {
+    try {
+      await Share.share({ message: `${item.title} — découvert sur YOOTOO` });
+    } catch {
+      // Plateforme sans partage natif (ex. desktop web sans Web Share API) → non bloquant.
+    }
+  };
+
   const reactColor = myReaction ? section.accent : colors.mutedText;
 
   return (
@@ -77,7 +97,19 @@ export function ActivityActions({ item }: { item: ActivityItem }) {
         <View style={styles.actions}>
           <ActionBtn icon="smile" label="Réagir" color={reactColor} onPress={() => setPicker((p) => !p)} />
           <ActionBtn icon="message-circle" label={comments.length > 0 ? String(comments.length) : 'Répondre'} color={open ? section.accent : colors.mutedText} onPress={() => setOpen((o) => !o)} accessibilityLabel="Répondre" />
-          <ActionBtn icon="star" color={saved ? colors.accent : colors.mutedText} onPress={() => void toggleSave(item.id)} accessibilityLabel={saved ? 'Enregistré' : 'Enregistrer'} />
+          <Animated.View style={saveAnim}>
+            <ActionBtn
+              icon="star"
+              color={saved ? colors.accent : colors.mutedText}
+              onPress={() => {
+                // `.set()` : API Reanimated compatible React Compiler (pas de mutation directe).
+                saveScale.set(withSequence(withSpring(1.3, { duration: 160 }), withSpring(1, { duration: 220 })));
+                void toggleSave(item.id);
+              }}
+              accessibilityLabel={saved ? 'Enregistré' : 'Enregistrer'}
+            />
+          </Animated.View>
+          <ActionBtn icon="share-2" color={colors.mutedText} onPress={() => void onShare()} accessibilityLabel="Partager" />
         </View>
       </View>
 

@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
@@ -11,6 +12,7 @@ import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 
 import { chatCategoryById } from '../categories';
+import { isPartnerAuthor } from '../feedRanking';
 import { avatarUri, isFresh, isLiveNow, isTerritoryActor, proximityHint } from '../logic';
 import { formatChatTime } from '../time';
 import type { ActivityItem, ChatParticipant } from '../types';
@@ -64,6 +66,13 @@ export function ActivityCard({ item, author, now, highlighted = false }: { item:
             <View style={styles.nameRow}>
               <YText numberOfLines={1} style={[styles.name, { color: colors.text }]}>{author?.name ?? '—'}</YText>
               {author?.verified ? <Feather name="check-circle" size={13} color={accent} /> : null}
+              {/* Badge partenaire DISCRET (même détection que le ranking du fil) : la confiance
+                  se voit d'un coup d'œil, sans jamais crier. */}
+              {isPartnerAuthor(author) ? (
+                <View style={[styles.partner, { backgroundColor: `${accent}1F` }]}>
+                  <YText style={[styles.partnerText, { color: accent }]}>Partenaire</YText>
+                </View>
+              ) : null}
             </View>
             {meta ? <YText variant="caption" color="muted" numberOfLines={1}>{meta}</YText> : null}
           </View>
@@ -91,6 +100,18 @@ export function ActivityCard({ item, author, now, highlighted = false }: { item:
         ) : null}
       </View>
 
+      {/* Visuel de la publication (optionnel) : le fil devient sensoriel — on VOIT le pain
+          sortir du four. Jamais obligatoire, jamais de placeholder gris. */}
+      {item.photoUrl ? (
+        <Image
+          source={{ uri: item.photoUrl }}
+          style={styles.photo}
+          contentFit="cover"
+          transition={180}
+          accessibilityLabel={item.title}
+        />
+      ) : null}
+
       {/* Catégorie conservée mais DISCRÈTE (simple label gris + icône) : elle situe le thème sans
           rivaliser avec la chip de type ni alourdir la carte de deux pastilles colorées. */}
       {category ? (
@@ -113,6 +134,9 @@ const styles = StyleSheet.create({
   who: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   name: { flexShrink: 1, fontSize: 15, fontWeight: '800', letterSpacing: -0.2 },
+  partner: { borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  partnerText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.1 },
+  photo: { width: '100%', height: 168, borderRadius: radii.lg },
   right: { alignItems: 'flex-end', gap: 6 },
   live: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#69B96C' },

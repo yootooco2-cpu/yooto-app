@@ -16,8 +16,10 @@ import {
   ChatCategoryBar,
   ChatSpaceSwitcher,
   ConversationCard,
+  FeedComposerPrompt,
   NotificationsStrip,
   buildFeedNotifications,
+  rankFeed,
   selectDiscussions,
   selectPrivateMessages,
   toConversationView,
@@ -86,9 +88,18 @@ function ChatBody() {
     [conversations, participants, messages],
   );
 
+  // FIL SOCIAL CLASSÉ (feedRanking) : proximité > suivis > récence > partenaires > engagement.
+  // Le fil raconte le territoire immédiat — jamais un mur chronologique ni une course au buzz.
+  const commentsByActivity = useChatStore((s) => s.commentsByActivity);
+  const rankedActivity = useMemo(() => {
+    const commentCounts: Record<string, number> = {};
+    for (const [id, list] of Object.entries(commentsByActivity)) commentCounts[id] = list.length;
+    return rankFeed(activity, { following, now, participants, commentCounts });
+  }, [activity, following, now, participants, commentsByActivity]);
+
   const shownActivity = q
-    ? activity.filter((a) => `${participants[a.authorId]?.name ?? ''} ${a.title} ${a.body ?? ''}`.toLowerCase().includes(q))
-    : activity;
+    ? rankedActivity.filter((a) => `${participants[a.authorId]?.name ?? ''} ${a.title} ${a.body ?? ''}`.toLowerCase().includes(q))
+    : rankedActivity;
 
   // Notifications sociales (tri intelligent) dérivées des vraies publications.
   const notifications = useMemo(() => buildFeedNotifications(activity, following, now), [activity, following, now]);
@@ -155,6 +166,9 @@ function ChatBody() {
           ListHeaderComponent={
             q ? null : (
               <View style={styles.feedHead}>
+                {/* HIÉRARCHIE SOCIALE : (1) l'invitation à s'exprimer, (2) les notifications
+                    COMPACTES, (3) le feed — le contenu principal de l'écran. */}
+                <FeedComposerPrompt />
                 <NotificationsStrip notifications={notifications} participants={participants} now={now} onOpen={handleOpenNotification} />
               </View>
             )
@@ -203,7 +217,8 @@ const styles = StyleSheet.create({
   // Région de contenu FIXE : la liste occupe tout l'espace sous les filtres et défile en interne
   // → l'en-tête/onglets/sous-catégories restent parfaitement immobiles quel que soit le filtre.
   list: { flex: 1 },
-  listContent: { gap: spacing.sm, paddingBottom: spacing.lg },
-  feedHead: { gap: spacing.lg, marginBottom: spacing.md },
+  // Cartes plus AÉRÉES (gap md) : moins « liste administrative », plus « feed vivant ».
+  listContent: { gap: spacing.md, paddingBottom: spacing.lg },
+  feedHead: { gap: spacing.md, marginBottom: spacing.md },
   skeletonFeed: { gap: spacing.sm },
 });
