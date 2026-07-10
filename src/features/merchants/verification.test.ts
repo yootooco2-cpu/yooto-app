@@ -51,15 +51,22 @@ describe('vérification SIRENE — un badge n’apparaît que s’il est prouvé
     expect(isProvenProducer(base({ siret: 'x', sireneEtat: 'A', nafCode: '47.21Z' }))).toBe(false);
   });
 
-  it('fiche complète (Chez Fabien) → 3 badges ordonnés + Depuis 2010', () => {
+  it('fiche complète (Chez Fabien) → preuves uniquement, « Depuis » exclu de la rangée', () => {
     const badges = getVerificationBadges(
       base({ siret: '52872535100019', sireneEtat: 'A', nafCode: '47.21Z', sireneNbEtablissements: 1, sireneCreationDate: '2010-10-01' }),
     );
-    expect(badges.map((b) => b.id)).toEqual(['verified', 'independent', 'since']);
-    expect(badges[2].label).toBe('Depuis 2010');
+    expect(badges.map((b) => b.id)).toEqual(['verified', 'independent']);
   });
 
-  it('verifiedSinceYear rejette les dates invalides', () => {
+  it('producteur indépendant → les 3 preuves, dans l’ordre', () => {
+    const badges = getVerificationBadges(
+      base({ siret: 'x', sireneEtat: 'A', nafCode: '01.49Z', sireneNbEtablissements: 1 }),
+    );
+    expect(badges.map((b) => b.id)).toEqual(['verified', 'producer', 'independent']);
+  });
+
+  it('verifiedSinceYear (affiché dans le header, plus dans la rangée) rejette les dates invalides', () => {
+    expect(verifiedSinceYear(base({ sireneCreationDate: '2010-10-01' }))).toBe(2010);
     expect(verifiedSinceYear(base({ sireneCreationDate: 'n/a' }))).toBeUndefined();
     expect(verifiedSinceYear(base({}))).toBeUndefined();
   });

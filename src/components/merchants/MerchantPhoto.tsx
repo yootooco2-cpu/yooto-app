@@ -18,6 +18,8 @@ type Props = {
   rounded?: number;
   /** Clé de recyclage (id commerce) pour un défilement de liste fluide. */
   recyclingKey?: string;
+  /** Échec de chargement (URL 404/cassée) — permet au parent de retirer la photo. */
+  onError?: () => void;
 };
 
 /**
@@ -25,7 +27,7 @@ type Props = {
  * YOOTOO en filigrane (aucun texte « YOOTOO », aucun signal de prototype). Priorité de la source
  * gérée en amont par `getMerchantCoverPhoto` (cover → photo → galerie).
  */
-export function MerchantPhoto({ uri, height, fill = false, rounded = radii.lg, recyclingKey }: Props) {
+export function MerchantPhoto({ uri, height, fill = false, rounded = radii.lg, recyclingKey, onError }: Props) {
   const dims = fill ? ({ width: '100%', height: '100%' } as const) : ({ width: '100%' as const, height });
 
   if (uri) {
@@ -37,6 +39,7 @@ export function MerchantPhoto({ uri, height, fill = false, rounded = radii.lg, r
         transition={220}
         cachePolicy="memory-disk"
         recyclingKey={recyclingKey}
+        onError={onError}
       />
     );
   }

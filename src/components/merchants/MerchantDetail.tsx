@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { type ComponentProps, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
@@ -16,7 +16,11 @@ import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { trackEvent } from '@/features/discovery';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, isRealPhotoUrl, type Merchant } from '@/features/merchants';
-import { getVerificationBadges } from '@/features/merchants/verification';
+import {
+  getVerificationBadges,
+  verifiedSinceYear,
+  type VerificationBadge,
+} from '@/features/merchants/verification';
 import { buildDirectionsUrl } from '@/features/merchants/directions';
 import { formatRatingFr, starFill } from '@/features/merchants/reviews';
 import { shareMerchant } from '@/features/merchants/share';
@@ -31,6 +35,16 @@ const clampPct = (n: number) => Math.max(0, Math.min(100, n));
 
 /** Hauteur de la galerie (grande photo + colonne de miniatures alignées). */
 const GALLERY_H = 288;
+
+/** Icônes des badges de preuve (DA — MaterialCommunityIcons, comme la bottom nav). */
+const VERIFICATION_ICONS: Record<
+  VerificationBadge['id'],
+  ComponentProps<typeof MaterialCommunityIcons>['name']
+> = {
+  verified: 'bank',
+  independent: 'handshake',
+  producer: 'sprout',
+};
 
 /** Rangée d'étoiles or (pleines/vides selon la note). */
 function StarRow({ rating }: { rating: number }) {
@@ -151,7 +165,21 @@ export function MerchantDetail({ merchant, onBack }: Props) {
   const ratingMeta = [typeof reviewCount === 'number' ? `${reviewCount} avis` : null, metaDistance]
     .filter(Boolean)
     .join(' • ');
-  const categoryLine = [CATEGORY_LABELS[merchant.category], city].filter(Boolean).join(' • ');
+  // Ville proprement capitalisée (la base stocke « montpellier ») — chaque mot, y compris
+  // après tiret/apostrophe (« clermont-l'hérault » → « Clermont-L'Hérault »).
+  const cityDisplay = city
+    ? city.replace(/(^|[\s\-'’])([a-zà-ÿ])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase())
+    : undefined;
+  // « Depuis YYYY » vit dans la ligne d'IDENTITÉ (design review) : la rangée de badges
+  // reste consacrée aux preuves officielles.
+  const sinceYear = verifiedSinceYear(merchant);
+  const categoryLine = [
+    CATEGORY_LABELS[merchant.category],
+    cityDisplay,
+    sinceYear !== undefined ? `Depuis ${sinceYear}` : null,
+  ]
+    .filter(Boolean)
+    .join(' • ');
 
   // Identité vérifiée SIRENE (V2.4) — badges PROUVÉS par les données de l'État,
   // jamais devinés. Absents tant que la fiche n'est pas matchée : aucun bruit.
@@ -203,11 +231,22 @@ export function MerchantDetail({ merchant, onBack }: Props) {
     .filter((photo) => photo !== cover)
     .slice(0, 4);
   const allImages = Array.from(new Set([cover, ...galleryImages].filter((u): u is string => !!u)));
+
+  // PHOTOS CASSÉES (design review 10/07) : une URL 404 laissait expo-image sur son fond
+  // neutre POUR TOUJOURS → grands blocs vides. Chaque échec retire l'URL ; plus aucune
+  // photo valide → le carrousel disparaît entièrement et le contenu remonte. Jamais de
+  // placeholder permanent, jamais trompeur. Les fiches aux bonnes photos sont inchangées.
+  const [failedPhotos, setFailedPhotos] = useState<ReadonlySet<string>>(new Set());
+  const markPhotoFailed = (uri: string) =>
+    setFailedPhotos((prev) => (prev.has(uri) ? prev : new Set(prev).add(uri)));
+  const liveImages = allImages.filter((u) => !failedPhotos.has(u));
+  const displayCover = liveImages[0] ?? null;
   // Galerie type Airbnb : jusqu'à 2 miniatures empilées à droite. Hauteur répartie sur la colonne.
-  const galleryThumbs = galleryImages.slice(0, 2);
+  const displayThumbs = liveImages.slice(1, 3);
+  const hasPhotos = liveImages.length > 0;
   const thumbH =
-    galleryThumbs.length > 0
-      ? (GALLERY_H - (galleryThumbs.length - 1) * spacing.xs) / galleryThumbs.length
+    displayThumbs.length > 0
+      ? (GALLERY_H - (displayThumbs.length - 1) * spacing.xs) / displayThumbs.length
       : GALLERY_H;
 
   const onDirections = () => {
@@ -217,15 +256,36 @@ export function MerchantDetail({ merchant, onBack }: Props) {
 
   return (
     <>
-      {/* Galerie type Airbnb : grande photo à gauche + colonne de miniatures à droite. */}
+      {/* Galerie type Airbnb : grande photo à gauche + colonne de miniatures à droite.
+          Aucune photo VALIDE → pas de carrousel du tout : une simple rangée retour/cœur,
+          et la fiche commence directement au contenu. */}
+      {!hasPhotos ? (
+        <View style={styles.noPhotoHeader}>
+          <Pressable
+            onPress={back}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+            hitSlop={8}
+            style={styles.backFabInline}>
+            <Feather name="chevron-left" size={20} color="#17201A" />
+          </Pressable>
+          <FavoriteHeartButton merchantId={merchant.id} style={styles.heartInline} />
+        </View>
+      ) : (
       <View style={styles.gallery}>
         <Pressable
-          disabled={allImages.length === 0}
+          disabled={liveImages.length === 0}
           onPress={() => setGalleryIndex(0)}
           accessibilityRole="imagebutton"
           accessibilityLabel="Voir les photos en plein écran"
           style={styles.galleryMain}>
-          <MerchantPhoto uri={cover} height={GALLERY_H} rounded={radii.lg} recyclingKey={merchant.id} />
+          <MerchantPhoto
+            uri={displayCover}
+            height={GALLERY_H}
+            rounded={radii.lg}
+            recyclingKey={merchant.id}
+            onError={() => displayCover && markPhotoFailed(displayCover)}
+          />
           <Pressable
             onPress={back}
             accessibilityRole="button"
@@ -234,31 +294,38 @@ export function MerchantDetail({ merchant, onBack }: Props) {
             style={styles.backFab}>
             <Feather name="chevron-left" size={20} color="#17201A" />
           </Pressable>
-          {allImages.length > 1 ? (
+          {/* Compteur en BAS-GAUCHE (design review) : il ne concurrence plus le cœur. */}
+          {liveImages.length > 1 ? (
             <View style={styles.countBadge}>
               <Feather name="image" size={12} color="#FFFFFF" />
               <YText variant="caption" color="inverse">
-                1/{allImages.length}
+                1/{liveImages.length}
               </YText>
             </View>
           ) : null}
           <FavoriteHeartButton merchantId={merchant.id} />
         </Pressable>
 
-        {galleryThumbs.length > 0 ? (
+        {displayThumbs.length > 0 ? (
           <View style={styles.galleryCol}>
-            {galleryThumbs.map((photo, index) => (
+            {displayThumbs.map((photo, index) => (
               <Pressable
                 key={`${photo}-${index}`}
                 accessibilityRole="imagebutton"
                 accessibilityLabel="Voir les photos en plein écran"
-                onPress={() => setGalleryIndex(Math.max(0, allImages.indexOf(photo)))}>
-                <MerchantPhoto uri={photo} height={thumbH} rounded={radii.md} />
+                onPress={() => setGalleryIndex(Math.max(0, liveImages.indexOf(photo)))}>
+                <MerchantPhoto
+                  uri={photo}
+                  height={thumbH}
+                  rounded={radii.md}
+                  onError={() => markPhotoFailed(photo)}
+                />
               </Pressable>
             ))}
           </View>
         ) : null}
       </View>
+      )}
 
       {/* Bloc d'intro — rythme resserré (gap sm) : header, actions, badges, description, tags. */}
       <View style={styles.intro}>
@@ -302,18 +369,24 @@ export function MerchantDetail({ merchant, onBack }: Props) {
         <ActionButton icon="navigation" label="Itinéraire" variant="primary" fullWidth onPress={onDirections} />
         <View style={styles.secondaryRow}>
           <ActionButton icon="phone" label="Appeler" fullWidth disabled={!phone} onPress={() => openUrl(`tel:${phone}`)} />
-          <ActionButton icon="globe" label="Site web" fullWidth disabled={!website} onPress={() => website && openUrl(ensureHttp(website))} />
+          {/* « Site web » n'apparaît QUE s'il existe (design review) : un bouton grisé
+              n'a rien à faire à cette place premium. */}
+          {website ? (
+            <ActionButton icon="globe" label="Site web" fullWidth onPress={() => openUrl(ensureHttp(website))} />
+          ) : null}
           <ActionButton icon="share-2" label="Partager" fullWidth onPress={() => void shareMerchant(merchant)} />
         </View>
 
         {/* IDENTITÉ VÉRIFIÉE (SIRENE) — la confiance d'abord : badges adossés au registre
-            officiel de l'État, au-dessus des attributs éditoriaux. */}
+            officiel de l'État, au-dessus des attributs éditoriaux. Icônes de la DA (jamais
+            d'emoji système → rendu identique iOS/Android/Web, palette maîtrisée). */}
         {verificationBadges.length > 0 ? (
           <View style={styles.chipsRow}>
             {verificationBadges.map((b) => (
               <View key={b.id} style={styles.verifiedBadge}>
+                <MaterialCommunityIcons name={VERIFICATION_ICONS[b.id]} size={13} color={c.primary} />
                 <YText variant="caption" color="primary">
-                  {b.emoji} {b.label}
+                  {b.label}
                 </YText>
               </View>
             ))}
@@ -452,7 +525,7 @@ export function MerchantDetail({ merchant, onBack }: Props) {
       <View style={styles.footerSpacer} />
 
       <FullscreenGallery
-        images={allImages}
+        images={liveImages}
         initialIndex={galleryIndex ?? 0}
         visible={galleryIndex !== null}
         onClose={() => setGalleryIndex(null)}
@@ -487,10 +560,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.92)',
     ...shadows.sm,
   },
+  // Bas-gauche (design review) : ne concurrence plus le cœur (haut-droite) ni le retour.
   countBadge: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
+    bottom: spacing.sm,
+    left: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
@@ -552,14 +626,37 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(31,122,77,0.25)',
   },
   // Badge « vérifié » : même famille visuelle que les attributs, liseré affirmé —
-  // la preuve officielle se distingue de l'éditorial sans crier.
+  // la preuve officielle se distingue de l'éditorial sans crier. Icône + texte alignés.
   verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radii.pill,
     backgroundColor: 'rgba(31,122,77,0.14)',
     borderWidth: 1.5,
     borderColor: 'rgba(31,122,77,0.45)',
+  },
+  // Fiche SANS photo valide : simple rangée retour/cœur — le contenu commence tout de suite.
+  noPhotoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backFabInline: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F3F0E8',
+    ...shadows.sm,
+  },
+  heartInline: {
+    position: 'relative',
+    top: 0,
+    right: 0,
   },
   tag: {
     paddingVertical: spacing.xs,

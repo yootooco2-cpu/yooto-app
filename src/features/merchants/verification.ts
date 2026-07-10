@@ -9,9 +9,14 @@ import type { Merchant } from './types';
  * tangible : les vrais indépendants distingués des chaînes.
  */
 
+/**
+ * Badge de preuve — la rangée est réservée aux PREUVES officielles (design review 10/07) :
+ * l'ancienneté (« Depuis YYYY ») vit dans la ligne d'identité du header, pas ici.
+ * L'icône est mappée côté UI (icônes de la DA — jamais d'emoji système, rendu
+ * identique iOS/Android/Web).
+ */
 export interface VerificationBadge {
-  id: 'verified' | 'independent' | 'producer' | 'since';
-  emoji: string;
+  id: 'verified' | 'independent' | 'producer';
   label: string;
 }
 
@@ -62,23 +67,19 @@ export function isNewInTown(m: Pick<Merchant, 'sireneCreationDate'>, nowMs: numb
 }
 
 /**
- * Badges de vérification de la fiche — ordre d'importance, max 4.
+ * Badges de vérification de la fiche — PREUVES uniquement, ordre d'importance, max 3.
  * Le badge « Local » (éditorial) vit déjà dans le header : on ne le duplique pas.
  */
 export function getVerificationBadges(m: Merchant): VerificationBadge[] {
   const badges: VerificationBadge[] = [];
   if (!isVerifiedMerchant(m)) return badges;
 
-  badges.push({ id: 'verified', emoji: '🏛', label: 'Vérifié · registre officiel' });
+  badges.push({ id: 'verified', label: 'Vérifié · registre officiel' });
   if (isProvenProducer(m)) {
-    badges.push({ id: 'producer', emoji: '🌾', label: 'Producteur vérifié' });
+    badges.push({ id: 'producer', label: 'Producteur vérifié' });
   }
   if (isProvenIndependent(m)) {
-    badges.push({ id: 'independent', emoji: '🤝', label: 'Entreprise indépendante' });
-  }
-  const year = verifiedSinceYear(m);
-  if (year !== undefined) {
-    badges.push({ id: 'since', emoji: '📅', label: `Depuis ${year}` });
+    badges.push({ id: 'independent', label: 'Entreprise indépendante' });
   }
   return badges;
 }
