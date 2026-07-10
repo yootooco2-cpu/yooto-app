@@ -139,14 +139,16 @@ export function unclusteredHitLayerSpec() {
  * ------------------------------------------------------------------------------------------------ */
 
 /**
- * Intensité par phase solaire — délibérément SOUS le seuil conscient en journée.
- * Règle produit : si on remarque l'effet au premier regard, c'est déjà trop fort.
+ * Intensité par phase solaire — calibrage validé à l'écran (9/7/2026) : la v1 était
+ * imperceptible même en comparaison off. Règle produit maintenue : discret en journée
+ * (perceptible seulement en comparaison), clairement lisible et doux au crépuscule,
+ * vraies vitrines vivantes la nuit — jamais un néon, jamais un bord.
  */
 export const MERCHANT_LIGHT_OPACITY: Record<LightPhase, number> = {
-  dawn: 0.03,
-  day: 0.015,
-  dusk: 0.055,
-  night: 0.07,
+  dawn: 0.05,
+  day: 0.03,
+  dusk: 0.11,
+  night: 0.15,
 };
 
 /** Mode de calibration (dev) : `?merchantLight=off|low|high`. `normal` en production. */

@@ -6,9 +6,13 @@ import {
 import { publishLightPhase, getLightPhase, subscribeLightPhase } from '../lightPhaseStore';
 
 describe('lumière d’ambiance des commerces — intensités', () => {
-  it('reste sous le seuil de perception en journée (règle produit : quasi imperceptible)', () => {
-    expect(MERCHANT_LIGHT_OPACITY.day).toBeLessThanOrEqual(0.02);
-    expect(MERCHANT_LIGHT_OPACITY.dawn).toBeLessThanOrEqual(0.04);
+  it('reste discrète en journée (perceptible seulement en comparaison off) et douce à l’aube', () => {
+    expect(MERCHANT_LIGHT_OPACITY.day).toBeLessThanOrEqual(0.035);
+    expect(MERCHANT_LIGHT_OPACITY.dawn).toBeLessThanOrEqual(0.06);
+  });
+
+  it('la nuit reste un point chaud maîtrisé, jamais un néon', () => {
+    expect(MERCHANT_LIGHT_OPACITY.night).toBeLessThanOrEqual(0.18);
   });
 
   it('croît naturellement vers le soir (matin < journée inversé, dusk < night)', () => {
