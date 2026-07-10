@@ -16,6 +16,7 @@ import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { trackEvent } from '@/features/discovery';
 import { CATEGORY_LABELS, getMerchantCoverPhoto, isRealPhotoUrl, type Merchant } from '@/features/merchants';
+import { getVerificationBadges } from '@/features/merchants/verification';
 import { buildDirectionsUrl } from '@/features/merchants/directions';
 import { formatRatingFr, starFill } from '@/features/merchants/reviews';
 import { shareMerchant } from '@/features/merchants/share';
@@ -151,6 +152,10 @@ export function MerchantDetail({ merchant, onBack }: Props) {
     .filter(Boolean)
     .join(' • ');
   const categoryLine = [CATEGORY_LABELS[merchant.category], city].filter(Boolean).join(' • ');
+
+  // Identité vérifiée SIRENE (V2.4) — badges PROUVÉS par les données de l'État,
+  // jamais devinés. Absents tant que la fiche n'est pas matchée : aucun bruit.
+  const verificationBadges = getVerificationBadges(merchant);
 
   // « Local » (statut) vit dans le header ; les autres attributs restent en badges.
   const badges: string[] = [];
@@ -300,6 +305,20 @@ export function MerchantDetail({ merchant, onBack }: Props) {
           <ActionButton icon="globe" label="Site web" fullWidth disabled={!website} onPress={() => website && openUrl(ensureHttp(website))} />
           <ActionButton icon="share-2" label="Partager" fullWidth onPress={() => void shareMerchant(merchant)} />
         </View>
+
+        {/* IDENTITÉ VÉRIFIÉE (SIRENE) — la confiance d'abord : badges adossés au registre
+            officiel de l'État, au-dessus des attributs éditoriaux. */}
+        {verificationBadges.length > 0 ? (
+          <View style={styles.chipsRow}>
+            {verificationBadges.map((b) => (
+              <View key={b.id} style={styles.verifiedBadge}>
+                <YText variant="caption" color="primary">
+                  {b.emoji} {b.label}
+                </YText>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {/* Badges attributs (le statut « Local » est déjà dans le header) */}
         {badges.length > 0 ? (
@@ -531,6 +550,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(31,122,77,0.10)',
     borderWidth: 1,
     borderColor: 'rgba(31,122,77,0.25)',
+  },
+  // Badge « vérifié » : même famille visuelle que les attributs, liseré affirmé —
+  // la preuve officielle se distingue de l'éditorial sans crier.
+  verifiedBadge: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(31,122,77,0.14)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(31,122,77,0.45)',
   },
   tag: {
     paddingVertical: spacing.xs,
