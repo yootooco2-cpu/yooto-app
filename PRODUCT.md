@@ -33,6 +33,10 @@ YOOTOO est une plateforme de découverte locale : une carte intelligente, des fi
 
 ## Design Principles
 
+> Les lois d'ingénierie qui portent ces principes (preuve, silence, hiérarchie de preuves,
+> réversibilité…) vivent dans **CONSTITUTION.md** (chapitre 3) — source unique côté ingénierie.
+> Les principes ci-dessous gouvernent le registre produit/design.
+
 0. **La pertinence territoriale avant l'exhaustivité** — YOOTOO ne référence pas tous les commerces ; il recommande ceux qui font vivre le territoire (indépendants, artisans, producteurs, circuits courts). Chaque acteur du catalogue doit pouvoir répondre à : *« pourquoi mérite-t-il d'être recommandé par YOOTOO ? »*. Une plateforme de référence avec moins de commerces cohérents vaut mieux qu'un annuaire sans identité. Les chaînes et la restauration industrielle sans ancrage local ne sont pas jugées — elles ne correspondent simplement pas à la mission.
 
 1. **La preuve avant la promesse** — un badge YOOTOO descend toujours d'une donnée vérifiable (registre officiel, NAF, date de création). Ce que l'interface affirme, l'État ou la donnée le prouve.
