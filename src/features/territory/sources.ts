@@ -8,10 +8,11 @@ import { isNewInTown } from '@/features/merchants/verification';
  * fonction PURE (testable) qui sélectionne et ordonne des commerces depuis le corpus
  * déjà chargé — aucun fetch, aucun état.
  *
- * Sources futures (même contrat, zéro changement d'UI) : producteurs vérifiés,
- * nouveaux artisans, à découvrir, les mieux notés, cette semaine, événements…
- * Quand le moteur SIRENE-first sera opérationnel, `recentlyOpenedSource` deviendra
- * automatiquement le flux officiel des créations : seule sa `select` changera.
+ * STATUT (gouvernance 11/07) : abstraction EXPLORATOIRE — 1 producteur, 1 consommateur.
+ * Elle sera « officielle » après les jalons A (2e producteur réel accepté sans changer
+ * ce schéma) et B (2e consommateur). Honnêteté de contrat : `select(merchants)` est un
+ * sélecteur de corpus COMMERCES — des contenus d'autre nature (événements, recos IA)
+ * appelleront probablement des interfaces sœurs, pas un élargissement de celle-ci.
  */
 
 export interface TerritorySourceContext {
