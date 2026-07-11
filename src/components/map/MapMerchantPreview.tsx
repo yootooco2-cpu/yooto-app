@@ -5,11 +5,12 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { FavoriteHeartButton } from '@/components/favorites/FavoriteHeartButton';
 import { MerchantActionBar } from '@/components/merchants/MerchantActionBar';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
+import { VerifiedMark } from '@/components/merchants/VerifiedMark';
 import { YText } from '@/components/ui/YText';
 import { DarkThemeScope, useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
-import { CATEGORY_LABELS, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
+import { CATEGORY_LABELS, formatCityName, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
 
 type Props = {
   merchant: Merchant;
@@ -21,7 +22,7 @@ type Props = {
 
 function PreviewInner({ merchant, onPress, onClose, flat = false }: Props) {
   const { colors } = useTheme();
-  const categoryLine = [CATEGORY_LABELS[merchant.category], merchant.city].filter(Boolean).join(' • ');
+  const categoryLine = [CATEGORY_LABELS[merchant.category], formatCityName(merchant.city)].filter(Boolean).join(' • ');
   const hasDistance = merchant.distanceLabel !== '—' && merchant.distanceLabel.length > 0;
 
   return (
@@ -35,9 +36,13 @@ function PreviewInner({ merchant, onPress, onClose, flat = false }: Props) {
         </Pressable>
 
         <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={merchant.name} style={styles.info}>
-          <YText style={[styles.name, { color: colors.text }]} numberOfLines={2}>
-            {merchant.name}
-          </YText>
+          <View style={styles.nameRow}>
+            <YText style={[styles.name, styles.nameText, { color: colors.text }]} numberOfLines={2}>
+              {merchant.name}
+            </YText>
+            {/* Sceau vérifié (J4) — signal discret, silence si non vérifié. */}
+            <VerifiedMark merchant={merchant} size={16} />
+          </View>
 
           {merchant.isProducer ? (
             <View style={[styles.badge, { backgroundColor: colors.primaryDark }]}>
@@ -111,6 +116,8 @@ const styles = StyleSheet.create({
   photoWrap: { width: 128, height: 172, borderRadius: radii.lg, overflow: 'hidden' },
   info: { flex: 1, gap: spacing.xs },
   name: { fontSize: 22, lineHeight: 27, fontWeight: '800', letterSpacing: -0.4 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nameText: { flexShrink: 1 },
   badge: { alignSelf: 'flex-start', paddingVertical: 3, paddingHorizontal: spacing.sm, borderRadius: radii.pill, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.md, marginTop: 2 },

@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { Cryptogram } from '@/components/merchants/Cryptogram';
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
+import { VerifiedMark } from '@/components/merchants/VerifiedMark';
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
@@ -69,6 +70,8 @@ export function MerchantCard({ merchant, selected = false, onPress }: Props) {
                 <YText style={[styles.ratingVal, { color: colors.text }]}>{merchant.rating.toFixed(1)}</YText>
               </View>
             ) : null}
+            {/* Sceau vérifié (J4) : signal discret, silence si non vérifié. */}
+            <VerifiedMark merchant={merchant} />
             {place ? (
               <YText variant="caption" color="muted">
                 {place}

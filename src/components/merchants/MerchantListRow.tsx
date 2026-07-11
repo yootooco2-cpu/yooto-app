@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { MerchantPhoto } from '@/components/merchants/MerchantPhoto';
+import { VerifiedMark } from '@/components/merchants/VerifiedMark';
 import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
@@ -26,9 +27,13 @@ export function MerchantListRow({ merchant, onPress, onDark = false }: Props) {
         <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={56} rounded={radii.md} />
       </View>
       <View style={styles.text}>
-        <YText variant="bodyStrong" numberOfLines={1} style={onDark ? { color: glass.onDark } : undefined}>
-          {merchant.name}
-        </YText>
+        <View style={styles.nameRow}>
+          <YText variant="bodyStrong" numberOfLines={1} style={[styles.name, onDark ? { color: glass.onDark } : undefined]}>
+            {merchant.name}
+          </YText>
+          {/* Sceau vérifié (J4) — silence si non vérifié. */}
+          <VerifiedMark merchant={merchant} size={13} />
+        </View>
         <YText
           variant="caption"
           color="muted"
@@ -62,5 +67,13 @@ const styles = StyleSheet.create({
   text: {
     flex: 1,
     gap: 1,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  name: {
+    flexShrink: 1,
   },
 });
