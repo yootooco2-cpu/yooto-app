@@ -36,6 +36,15 @@ Divergence NAF/Google **dans la même famille** (caveau 11.02 vu `liquor_store`)
 le NAF mène, la divergence est journalisée. Divergence **inter-familles** = contradiction →
 QUARANTAINE, aucun ne gagne.
 
+**Règle v1.1 (issue de la falsification Animalis — Loi 8, règle de CLASSE)** : les preuves de
+MÊME niveau se surveillent entre elles. Un NAF composite n'est résolu par le niveau 2 que si
+celui-ci est NON CONTREDIT en son sein : si la catégorie Google (2a) et le texte (2b) désignent
+des lectures différentes du composite, c'est une contradiction intra-niveau → QUARANTAINE
+(`florist` × radical « animal » sur 47.76Z ne choisit plus jamais fleuristes). Sans NAF, une
+divergence 2a/2b inter-familles → QUARANTAINE ; intra-famille → raffinement journalisé, 2a mène.
+Garde anti-sur-prudence : la divergence INTER-niveaux compatible (Caveau) reste HIGH — la
+règle distingue la contradiction de la divergence compatible.
+
 ## 3. Invariants
 
 1. **Aucune fiche ne devient invisible** : `QUARANTAINE` est un statut de classification

@@ -23,12 +23,25 @@ const m = (over: Partial<Merchant>): Merchant =>
   }) as Merchant;
 
 describe('Référentiel métier permanent (cas obligatoires)', () => {
-  it('Animalis — NAF composite 47.76Z + indice « animal » → animaleries, HIGH', () => {
+  it('Animalis (fixture RÉELLE, avec le libellé Google erroné) — contradiction intra-niveau → QUARANTAINE (v1.1)', () => {
+    // La falsification a montré que la fixture v1.0 omettait rawCategory='florist' (leçon Loi 8).
+    const d = classifyMerchant(m({ name: 'Animalis Nimes', nafCode: '47.76Z', rawCategory: 'florist' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+    expect(d.source).toBe('contradiction intra-niveau');
+    expect(d.evidence.join(' ')).toContain('florist');
+    expect(d.evidence.join(' ')).toContain('animal');
+  });
+
+  it('GARDE anti-sur-prudence : 47.76Z + florist SANS indice contradictoire → fleuristes, HIGH', () => {
+    const d = classifyMerchant(m({ name: 'Au Nom de la Rose', nafCode: '47.76Z', rawCategory: 'florist' } as Partial<Merchant>));
+    expect(d.category).toBe('fleuristes');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('Animalis sans libellé Google (texte seul, non contredit) → animaleries, HIGH', () => {
     const d = classifyMerchant(m({ name: 'Animalis Nimes', nafCode: '47.76Z' } as Partial<Merchant>));
     expect(d.category).toBe('animaleries');
     expect(d.confidence).toBe('HIGH');
-    expect(d.source).toBe('NAF composite + concordance');
-    expect(d.status).toBe('CLASSIFIED');
   });
 
   it('La Cagette — SAS coopérative invisible au NAF : le flag ESS (preuve 1a) prime → cooperatives, HIGH', () => {
@@ -140,6 +153,17 @@ describe('Invariants du moteur', () => {
     const d = classifyMerchant(m({ name: 'Mairie du Vigan', nafCode: '84.11Z' } as Partial<Merchant>));
     expect(d.status).toBe('QUARANTAINE');
     expect(d.evidence.join(' ')).toContain('84.11Z');
+  });
+
+  it("v1.1 sans NAF : divergence 2a/2b INTER-familles → quarantaine ; INTRA-famille → raffinement, 2a mène (garde Caveau)", () => {
+    // Inter-familles : Google fleuriste (nature) vs texte boucher (alimentation) → revue.
+    const inter = classifyMerchant(m({ name: 'Boucherie des Roses', rawCategory: 'florist' } as Partial<Merchant>));
+    expect(inter.status).toBe('QUARANTAINE');
+    expect(inter.source).toBe('contradiction intra-niveau');
+    // Intra-famille : Google épicerie vs texte primeur (même famille alimentation) → MEDIUM, pas de sur-prudence.
+    const intra = classifyMerchant(m({ name: 'Primeur du Marché', rawCategory: 'grocery_store' } as Partial<Merchant>));
+    expect(intra.status).toBe('CLASSIFIED');
+    expect(intra.confidence).toBe('MEDIUM');
   });
 
   it('reproductibilité : deux appels identiques → décisions strictement égales', () => {

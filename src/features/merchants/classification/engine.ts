@@ -192,9 +192,14 @@ export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
 
   const naf = resolveNaf(m.nafCode);
   const google = resolveGoogle(m);
-  const text = google ? null : resolveText(m);
+  // v1.1 : le texte est TOUJOURS évalué — les preuves de même niveau se surveillent entre elles.
+  const text = resolveText(m);
   const level2 = google ?? (text ? { node: text.node, raw: `texte « ${text.hit} »` } : null);
   const level2Label = google ? `catégorie Google « ${google.raw} »` : text ? `radical textuel « ${text.hit} »` : null;
+  /** Contradiction INTRA-niveau 2 : 2a et 2b présents et discordants (règle de classe v1.1). */
+  const intra2 = google && text && google.node !== text.node
+    ? { a: `catégorie Google « ${google.raw} » → ${google.node}`, b: `radical textuel « ${text.hit} » → ${text.node}` }
+    : null;
 
   // ── Preuve 1b : NAF cartographié, non composite.
   if (naf && 'node' in naf.target) {
@@ -227,9 +232,17 @@ export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
     });
   }
 
-  // ── Preuve 1b : NAF COMPOSITE — ne suffit jamais seul.
+  // ── Preuve 1b : NAF COMPOSITE — ne suffit jamais seul, et sa résolution exige un
+  //    niveau 2 NON CONTREDIT en son sein (règle v1.1 — falsification Animalis).
   if (naf && 'composite' in naf.target) {
     const candidates = naf.target.composite;
+    if (intra2) {
+      return quarantaine({
+        confidence: 'LOW', source: 'contradiction intra-niveau',
+        evidence: [`NAF ${m.nafCode} (composite : ${candidates.join(' | ')})`, intra2.a, intra2.b],
+        explanation: `Le NAF ${m.nafCode} est composite et les deux preuves secondaires se contredisent (${google!.node} vs ${text!.node}) : aucune ne peut le résoudre — revue requise, jamais une devinette.`,
+      });
+    }
     if (level2 && candidates.includes(level2.node)) {
       return decide({
         category: level2.node, confidence: 'HIGH', source: 'NAF composite + concordance',
@@ -253,6 +266,15 @@ export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
 
   // ── NAF absent ou non cartographié : on DESCEND d'un niveau (Loi 3), on n'abandonne pas.
   const nafNote = m.nafCode ? `NAF ${m.nafCode} non cartographié — ` : 'NAF absent — ';
+  // v1.1 : sans arbitre de niveau 1, une contradiction 2a/2b INTER-FAMILLES part en revue ;
+  // une divergence intra-famille reste un raffinement (garde anti-sur-prudence : Caveau-like).
+  if (intra2 && familyOf(google!.node) !== familyOf(text!.node) && google!.node !== NON_COMMERCE) {
+    return quarantaine({
+      confidence: 'LOW', source: 'contradiction intra-niveau',
+      evidence: [nafNote.trim().replace(/ —$/, ''), intra2.a, intra2.b],
+      explanation: `${nafNote}les deux preuves secondaires désignent des familles différentes (${google!.node} vs ${text!.node}) sans arbitre officiel : contradiction intra-niveau, revue requise.`,
+    });
+  }
   if (level2 && level2.node !== NON_COMMERCE) {
     return decide({
       category: level2.node, confidence: 'MEDIUM', source: google ? 'Google' : 'texte',
