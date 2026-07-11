@@ -42,10 +42,18 @@ const anyCat = (...ids: MerchantCategoryId[]): MerchantPredicate => (m) => ids.s
 const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const haystack = (m: Merchant): string =>
   norm([m.name, m.description, m.rawCategory, m.rawMerchantType, ...(m.tags ?? [])].filter(Boolean).join(' '));
-/** Affine un prédicat de base par une recherche texte (au moins un terme présent). */
+/**
+ * INVARIANT (Loi 8 — classe « faux positifs lexicaux ») : un mot-clé est un RADICAL apparié
+ * en DÉBUT DE MOT, jamais par inclusion de sous-chaîne. L'inclusion brute faisait matcher
+ * 'bus' dans `local_business` (121 fiches parasites). Le radical en début de mot préserve
+ * les stems volontaires ('ebenist' → ébéniste/ébénisterie) et élimine toute la classe.
+ */
+const escapeRe = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const stemRe = (needle: string): RegExp => new RegExp(`(?:^|[^a-z0-9])${escapeRe(needle)}`);
+/** Affine un prédicat de base par une recherche texte (au moins un radical en début de mot). */
 const withText = (base: MerchantPredicate, ...terms: string[]): MerchantPredicate => {
-  const needles = terms.map(norm);
-  return (m) => base(m) && needles.some((t) => haystack(m).includes(t));
+  const needles = terms.map((t) => stemRe(norm(t)));
+  return (m) => base(m) && needles.some((re) => re.test(haystack(m)));
 };
 /** Prédicat purement TEXTUEL (indépendant de toute catégorie) — au moins un terme présent. */
 const textMatch = (...terms: string[]): MerchantPredicate => withText(() => true, ...terms);
@@ -76,6 +84,14 @@ const kItem = (id: string, label: string, accent: string, keywords: string[]): C
   pictoKey: id,
   accent,
 });
+
+/**
+ * Vignerons & Domaines (GATE 1) — preuve de niveau 1 (NAF viticulture 01.21 / vinification
+ * 11.02) d'abord, radicaux textuels en repli (Loi 5 : le texte complète, ne gouverne pas).
+ */
+const vigneronsMatch: MerchantPredicate = (m) =>
+  Boolean(m.nafCode && (m.nafCode.startsWith('01.21') || m.nafCode.startsWith('11.02'))) ||
+  textMatch('vigneron', 'viticol', 'vignoble')(m);
 
 const RESTO = anyCat('restaurants', 'cafes');
 const BIENETRE = anyCat('bienetre', 'sport');
@@ -230,6 +246,18 @@ const ARTISANAT_FAMILIES: ArtisanatFamilyDef[] = [
       ['parfumeur', 'Parfumeur artisanal', ['parfumeur', 'parfum artisanal']],
     ],
   },
+  {
+    // GATE 1 : réparation & réemploi — 138 réparateurs (95.2x) + 80 acteurs seconde main
+    // actifs à Montpellier, aucune couverture hors vélos. Cœur de mission (durabilité,
+    // acteurs engagés — La Recyclerie d'Anduze, ressourceries…).
+    id: 'reparation-seconde-main', label: 'Réparation & Seconde main', accent: '#5E7A5A',
+    metiers: [
+      ['cordonnier', 'Cordonnier', ['cordonnier', 'cordonnerie']],
+      ['retoucherie', 'Retoucherie & Couture', ['retouche', 'retoucherie']],
+      ['reparateur', 'Réparateurs', ['reparation', 'reparateur', 'repar']],
+      ['ressourcerie', 'Ressourceries & Recycleries', ['ressourcerie', 'recyclerie', 'seconde main', 'friperie', 'depot vente']],
+    ],
+  },
 ];
 
 /** Nœuds FAMILLES d'artisanat (Niveau 2) : cryptogramme dédié + accent + enfants (métiers). */
@@ -275,9 +303,8 @@ const MOBILITE_METIERS: { id: string; label: string; accent: string; keywords: s
   { id: 'poussettes', label: 'Poussettes', accent: '#6F4568', keywords: ['poussette', 'puericulture'] },
   { id: 'velos-cargo', label: 'Vélos cargo', accent: '#797844', keywords: ['velo cargo', 'triporteur', 'biporteur', 'cargo bike'] },
   { id: 'mobilite-pmr', label: 'Mobilité PMR', accent: '#C27D1C', keywords: ['pmr', 'fauteuil roulant', 'mobilite reduite', 'materiel medical', 'handicap'] },
-  { id: 'covoiturage', label: 'Covoiturage', accent: '#2C5A77', keywords: ['covoiturage', 'covoiturer'] },
-  { id: 'bus', label: 'Bus', accent: '#2E6970', keywords: ['bus', 'autobus', 'autocar', 'navette'] },
-  { id: 'tramway', label: 'Tramway', accent: '#A94621', keywords: ['tramway', 'tram'] },
+  // Bus / Tramway / Covoiturage RETIRÉS (GATE 1) : aucune famille NAF commerçante, aucun
+  // « acteur » à découvrir, impossibles à peupler — et 'bus' matchait local_business (Loi 8).
 ];
 const MOBILITE_KEYWORDS: string[] = MOBILITE_METIERS.flatMap((m) => m.keywords);
 const mobiliteMatch: MerchantPredicate = either(MOBILITE, textMatch(...MOBILITE_KEYWORDS));
@@ -300,7 +327,12 @@ const NATURE_METIERS: { id: string; label: string; accent: string; keywords: str
   { id: 'plein-air', label: 'Activités de plein air', accent: '#6D7576', keywords: ['plein air', 'escalade', 'via ferrata', 'accrobranche', 'canoe', 'parapente'] },
 ];
 const NATURE_KEYWORDS: string[] = NATURE_METIERS.flatMap((m) => m.keywords);
-const natureMatch: MerchantPredicate = either(catMatch('nature'), textMatch(...NATURE_KEYWORDS));
+// Fleuristes (GATE 1) : 74 établissements actifs à Montpellier, prédicat + cryptogramme
+// existaient déjà dans le registre — la feuille n'était simplement jamais exposée.
+const natureMatch: MerchantPredicate = either(
+  either(catMatch('nature'), catMatch('fleuristes')),
+  textMatch(...NATURE_KEYWORDS),
+);
 
 /**
  * Grandes familles (Niveau 1) + « Tous » géré à part par le composant. Chaque famille est une
@@ -311,12 +343,18 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     id: 'alimentation',
     label: 'Alimentation',
     icon: 'shopping-bag',
-    match: anyCat(
-      'producteurs', 'boulangeries', 'primeurs', 'fromageries', 'boucheries', 'poissonneries',
-      'epiceries', 'traiteurs', 'patisseries', 'marches', 'cavistes', 'cooperatives',
+    match: either(
+      anyCat(
+        'producteurs', 'boulangeries', 'primeurs', 'fromageries', 'boucheries', 'poissonneries',
+        'epiceries', 'traiteurs', 'patisseries', 'marches', 'cavistes', 'cooperatives',
+      ),
+      vigneronsMatch,
     ),
     children: [
       catItem('producteurs', 'Producteurs'),
+      // GATE 1 : 2e gisement de Montpellier (210 établissements actifs 01.21Z) — la
+      // production viticole, que ni Cavistes (revente) ni Producteurs (générique) ne révèle.
+      { id: 'vignerons-domaines', label: 'Vignerons & Domaines', iconId: 'producteur', match: vigneronsMatch },
       catItem('boulangeries', 'Boulangeries'),
       catItem('primeurs', 'Primeurs'),
       catItem('fromageries', 'Fromageries'),
@@ -327,6 +365,12 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
       catItem('patisseries', 'Pâtisseries'),
       catItem('marches', 'Marchés'),
       catItem('cavistes', 'Cavistes'),
+      // RÈGLE PERMANENTE (Loi 8, GATE 1) : une catégorie SOUS le seuil normal de volume ne
+      // peut être créée QUE si trois conditions sont vraies SIMULTANÉMENT — coût
+      // d'implémentation nul · valeur de différenciation maximale · potentiel entièrement
+      // couvrable. Coopératives les satisfait (catItem existant, cœur de mission, 5 acteurs
+      // tous connus). La règle remplace l'exception.
+      catItem('cooperatives', 'Coopératives'),
     ],
   },
   {
@@ -388,7 +432,10 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     label: 'Nature',
     icon: 'feather',
     match: natureMatch,
-    children: NATURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
+    children: [
+      catItem('fleuristes', 'Fleuristes'),
+      ...NATURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
+    ],
   },
 ];
 
