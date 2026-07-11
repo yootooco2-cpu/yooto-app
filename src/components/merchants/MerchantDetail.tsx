@@ -15,7 +15,7 @@ import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
 import { trackEvent } from '@/features/discovery';
-import { CATEGORY_LABELS, getMerchantCoverPhoto, isRealPhotoUrl, type Merchant } from '@/features/merchants';
+import { CATEGORY_LABELS, formatCityName, getMerchantCoverPhoto, isRealPhotoUrl, type Merchant } from '@/features/merchants';
 import {
   getVerificationBadges,
   verifiedSinceYear,
@@ -165,11 +165,8 @@ export function MerchantDetail({ merchant, onBack }: Props) {
   const ratingMeta = [typeof reviewCount === 'number' ? `${reviewCount} avis` : null, metaDistance]
     .filter(Boolean)
     .join(' • ');
-  // Ville proprement capitalisée (la base stocke « montpellier ») — chaque mot, y compris
-  // après tiret/apostrophe (« clermont-l'hérault » → « Clermont-L'Hérault »).
-  const cityDisplay = city
-    ? city.replace(/(^|[\s\-'’])([a-zà-ÿ])/g, (_, sep: string, ch: string) => sep + ch.toUpperCase())
-    : undefined;
+  // Ville proprement capitalisée — helper PARTAGÉ (fiche + cartes + listes).
+  const cityDisplay = formatCityName(city);
   // « Depuis YYYY » vit dans la ligne d'IDENTITÉ (design review) : la rangée de badges
   // reste consacrée aux preuves officielles.
   const sinceYear = verifiedSinceYear(merchant);

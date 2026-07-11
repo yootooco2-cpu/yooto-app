@@ -5,6 +5,7 @@ export {
   normalizeMerchantCategory,
 } from './categories';
 export { QUICK_FILTERS } from './filters';
+export { formatCityName } from './format';
 export { getMerchantById, localMerchantDataSource } from './selectors';
 export { buildRecommendationReasons, getMerchantTags } from './insights';
 export { getMerchantCoverPhoto, isRealPhotoUrl, hasMerchantPhoto, withPhotoForDemo, DEMO_REQUIRE_PHOTO } from './photos';

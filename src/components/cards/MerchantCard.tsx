@@ -7,7 +7,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
-import { getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
+import { formatCityName, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
 import { cryptogramColor, cryptogramForMerchant } from '@/features/merchants/cryptograms';
 
 type Props = {
@@ -27,7 +27,8 @@ const IMAGE_HEIGHT = 172;
 export function MerchantCard({ merchant, selected = false, onPress }: Props) {
   const { colors } = useTheme();
   const hasDistance = merchant.distanceLabel !== '—' && merchant.distanceLabel.length > 0;
-  const place = hasDistance ? merchant.distanceLabel : merchant.city;
+  // Ville proprement capitalisée (la base stocke « montpellier »).
+  const place = hasDistance ? merchant.distanceLabel : formatCityName(merchant.city);
   const cryptoId = cryptogramForMerchant(merchant);
   const accent = cryptogramColor(cryptoId);
 
@@ -53,20 +54,21 @@ export function MerchantCard({ merchant, selected = false, onPress }: Props) {
       </View>
 
       <View style={styles.body}>
-        <View style={styles.titleRow}>
-          <YText variant="subtitle" numberOfLines={1} style={styles.title}>
-            {merchant.name}
-          </YText>
-          {typeof merchant.rating === 'number' ? (
-            <View style={[styles.ratingPill, { backgroundColor: colors.surfaceAlt }]}>
-              <YText style={[styles.ratingStar, { color: colors.accent }]}>★</YText>
-              <YText style={[styles.ratingVal, { color: colors.text }]}>{merchant.rating.toFixed(1)}</YText>
-            </View>
-          ) : null}
-        </View>
+        {/* Le NOM d'abord, pleine largeur et jusqu'à 2 lignes : c'est L'information de la
+            carte (review J3 : « S.. » puis « Suzan… » ne donnaient pas envie de cliquer).
+            L'identité d'un commerce ne se coupe pas. */}
+        <YText variant="subtitle" numberOfLines={2} style={styles.title}>
+          {merchant.name}
+        </YText>
 
-        {place || merchant.isOpenNow ? (
+        {place || merchant.isOpenNow || typeof merchant.rating === 'number' ? (
           <View style={styles.metaRow}>
+            {typeof merchant.rating === 'number' ? (
+              <View style={[styles.ratingPill, { backgroundColor: colors.surfaceAlt }]}>
+                <YText style={[styles.ratingStar, { color: colors.accent }]}>★</YText>
+                <YText style={[styles.ratingVal, { color: colors.text }]}>{merchant.rating.toFixed(1)}</YText>
+              </View>
+            ) : null}
             {place ? (
               <YText variant="caption" color="muted">
                 {place}
@@ -131,14 +133,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     gap: 5,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
   title: {
-    flexShrink: 1,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
