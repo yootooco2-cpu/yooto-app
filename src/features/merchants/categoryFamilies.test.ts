@@ -1,8 +1,10 @@
 import { CATEGORY_FAMILIES, categoryFamilyById, type CategoryNode } from './categoryFamilies';
+import { classifyMerchant } from './classification/engine';
 import type { Merchant } from './types';
 
-const merchant = (over: Partial<Merchant>): Merchant =>
-  ({
+/** Fixture qui suit le VRAI chemin de l'app : la décision du moteur est calculée comme au mapping. */
+const merchant = (over: Partial<Merchant>): Merchant => {
+  const base = {
     id: '1',
     name: '',
     category: 'shop',
@@ -15,7 +17,9 @@ const merchant = (over: Partial<Merchant>): Merchant =>
     hasRewards: false,
     pin: { x: 0, y: 0 },
     ...over,
-  }) as Merchant;
+  } as Merchant;
+  return { ...base, classification: classifyMerchant(base, { estEss: base.estEss === true }) };
+};
 
 const leafById = (id: string): CategoryNode | undefined => {
   const walk = (nodes: CategoryNode[]): CategoryNode | undefined => {
@@ -66,10 +70,14 @@ describe('categoryFamilies — arbre cible GATE 1', () => {
     expect(alim?.match?.(merchant({ isProducer: true, category: 'producer' }))).toBe(true);
   });
 
-  it('réutilise le match d’une catégorie existante pour la sous-catégorie (aucune duplication)', () => {
+  it('la feuille Producteurs suit la DÉCISION du moteur (un drapeau interne seul n’est pas une preuve)', () => {
     const alim = categoryFamilyById('alimentation');
     const producteurs = alim?.children?.find((i) => i.id === 'producteurs');
-    expect(producteurs?.match?.(merchant({ isProducer: true }))).toBe(true);
+    // Preuve (catégorie Google producer / NAF agricole) → routé.
+    expect(producteurs?.match?.(merchant({ category: 'producer' }))).toBe(true);
+    expect(producteurs?.match?.(merchant({ nafCode: '01.13Z' } as Partial<Merchant>))).toBe(true);
+    // Drapeau interne sans aucune preuve → quarantaine, pas de catégorie (Loi 2).
+    expect(producteurs?.match?.(merchant({ isProducer: true }))).toBe(false);
   });
 
   it('chaque nœud de 1er niveau est valide (une branche avec enfants, ou une feuille avec match)', () => {

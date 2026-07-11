@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { normalizeMerchantCategory } from './categories';
+import { classifyMerchant } from './classification/engine';
 import type { Merchant } from './types';
 
 /**
@@ -54,6 +55,9 @@ export const merchantRowSchema = z.object({
   sirene_etat: z.string().nullable().optional(),
   sirene_nb_etablissements: z.coerce.number().nullable().optional(),
   verification_score: z.coerce.number().nullable().optional(),
+  // Engagements officiels (Ticket 2) — true = prouvé par l'État, NULL = aucune preuve.
+  est_ess: z.boolean().nullable().optional(),
+  est_bio: z.boolean().nullable().optional(),
   pin_x: z.coerce.number().nullable().optional(),
   pin_y: z.coerce.number().nullable().optional(),
 });
@@ -109,7 +113,7 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
   const rawMerchantType = (row.merchant_type ?? '').trim().toLowerCase();
   const category = normalizeMerchantCategory(rawCategory);
 
-  return {
+  const base: Merchant = {
     id: row.id,
     name: row.name,
     category,
@@ -158,9 +162,14 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     sireneEtat: row.sirene_etat ?? undefined,
     sireneNbEtablissements: row.sirene_nb_etablissements ?? undefined,
     verificationScore: row.verification_score ?? undefined,
+    estEss: row.est_ess ?? undefined,
+    estBio: row.est_bio ?? undefined,
     status: row.status ?? undefined,
     pin: { x: row.pin_x ?? 0, y: row.pin_y ?? 0 },
   };
+  // Décision du moteur calculée UNE FOIS au mapping (source unique, reproductible) —
+  // la navigation la consomme, elle ne re-classifie jamais elle-même.
+  return { ...base, classification: classifyMerchant(base, { estEss: row.est_ess === true }) };
 }
 
 /** Valide une ligne brute (strict) et la mappe — accès unitaire (getById). */

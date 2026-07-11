@@ -35,9 +35,17 @@ export interface CategoryNode {
   children?: CategoryNode[];
 }
 
-const FALSE: MerchantPredicate = () => false;
-const catMatch = (id: MerchantCategoryId): MerchantPredicate => merchantCategoryById(id)?.match ?? FALSE;
-const anyCat = (...ids: MerchantCategoryId[]): MerchantPredicate => (m) => ids.some((id) => catMatch(id)(m));
+/**
+ * CÂBLAGE MOTEUR (post-GATE 2) : la catégorie d'un commerce est la DÉCISION du moteur
+ * Hierarchical Multi-Evidence, portée par `m.classification` (calculée au mapping —
+ * source unique). Les feuilles alimentaires sont STRICTEMENT pilotées par le moteur ;
+ * les familles à mots-clés gardent leur texte en UNION (une preuve officielle ajoute,
+ * elle ne retire jamais un match textuel légitime). Une fiche en QUARANTAINE sort des
+ * filtres de catégorie mais reste visible partout (Tous, recherche, carte) — Loi 3.
+ */
+const cls = (id: string): MerchantPredicate => (m) => m.classification?.category === id;
+const clsIn = (...ids: string[]): MerchantPredicate => (m) =>
+  ids.includes(m.classification?.category ?? '');
 
 const norm = (s: string): string => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const haystack = (m: Merchant): string =>
@@ -61,11 +69,11 @@ const textMatch = (...terms: string[]): MerchantPredicate => withText(() => true
 const either = (a: MerchantPredicate, b: MerchantPredicate): MerchantPredicate => (m) => a(m) || b(m);
 
 const item = (id: string, label: string, match: MerchantPredicate): CategoryNode => ({ id, label, match });
-/** Feuille ADOSSÉE à une catégorie existante : réutilise son `match` ET son cryptogramme. */
+/** Feuille pilotée par le MOTEUR : décision `classification.category` + cryptogramme du registre. */
 const catItem = (id: MerchantCategoryId, label: string): CategoryNode => ({
   id,
   label,
-  match: catMatch(id),
+  match: cls(id),
   iconId: merchantCategoryById(id)?.icon,
 });
 /** Feuille avec pictogramme dédié (registre) + accent, prédicat fourni. */
@@ -85,18 +93,13 @@ const kItem = (id: string, label: string, accent: string, keywords: string[]): C
   accent,
 });
 
-/**
- * Vignerons & Domaines (GATE 1) — preuve de niveau 1 (NAF viticulture 01.21 / vinification
- * 11.02) d'abord, radicaux textuels en repli (Loi 5 : le texte complète, ne gouverne pas).
- */
-const vigneronsMatch: MerchantPredicate = (m) =>
-  Boolean(m.nafCode && (m.nafCode.startsWith('01.21') || m.nafCode.startsWith('11.02'))) ||
-  textMatch('vigneron', 'viticol', 'vignoble')(m);
+/** Vignerons & Domaines (GATE 1) — décision du moteur (NAF 01.21/11.02 niveau 1, texte en repli). */
+const vigneronsMatch: MerchantPredicate = cls('vignerons-domaines');
 
-const RESTO = anyCat('restaurants', 'cafes');
-const BIENETRE = anyCat('bienetre', 'sport');
-const CULTURE = anyCat('culture', 'librairies');
-const MOBILITE = anyCat('mobilite', 'transports');
+const RESTO: MerchantPredicate = clsIn('restaurants', 'bars-cafes');
+const BIENETRE = cls('bienetre');
+const CULTURE = clsIn('culture', 'librairies');
+const MOBILITE = cls('mobilite');
 
 /**
  * BIEN-ÊTRE — métiers (soin, mouvement, santé douce, modification corporelle). Structure plate
@@ -260,17 +263,24 @@ const ARTISANAT_FAMILIES: ArtisanatFamilyDef[] = [
   },
 ];
 
-/** Nœuds FAMILLES d'artisanat (Niveau 2) : cryptogramme dédié + accent + enfants (métiers). */
+/** Nœuds FAMILLES d'artisanat (Niveau 2) : cryptogramme dédié + accent + enfants (métiers).
+ *  Réparation & Seconde main reçoit en plus les décisions du moteur (NAF 95.2x…). */
 const artisanatChildren: CategoryNode[] = ARTISANAT_FAMILIES.map((f) => ({
   id: f.id,
   label: f.label,
   pictoKey: f.id,
   accent: f.accent,
-  match: textMatch(...f.metiers.flatMap((mt) => mt[2])),
+  match:
+    f.id === 'reparation-seconde-main'
+      ? either(cls('reparation-seconde-main'), textMatch(...f.metiers.flatMap((mt) => mt[2])))
+      : textMatch(...f.metiers.flatMap((mt) => mt[2])),
   children: f.metiers.map(([id, label, kw]) => item(id, label, textMatch(...kw))),
 }));
 const ARTISANAT_KEYWORDS: string[] = ARTISANAT_FAMILIES.flatMap((f) => f.metiers.flatMap((mt) => mt[2]));
-const artisanatMatch: MerchantPredicate = either(catMatch('artisanat'), textMatch(...ARTISANAT_KEYWORDS));
+const artisanatMatch: MerchantPredicate = either(
+  clsIn('artisanat', 'reparation-seconde-main'),
+  textMatch(...ARTISANAT_KEYWORDS),
+);
 
 /**
  * CULTURE — 10 lieux/univers avec pictogramme dédié + couleur d'accent (référence validée).
@@ -327,10 +337,10 @@ const NATURE_METIERS: { id: string; label: string; accent: string; keywords: str
   { id: 'plein-air', label: 'Activités de plein air', accent: '#6D7576', keywords: ['plein air', 'escalade', 'via ferrata', 'accrobranche', 'canoe', 'parapente'] },
 ];
 const NATURE_KEYWORDS: string[] = NATURE_METIERS.flatMap((m) => m.keywords);
-// Fleuristes (GATE 1) : 74 établissements actifs à Montpellier, prédicat + cryptogramme
-// existaient déjà dans le registre — la feuille n'était simplement jamais exposée.
+// Fleuristes (GATE 1) exposée + décisions moteur (animaleries/jardineries issues du
+// composite 47.76Z) ; le texte reste en union pour les lieux (parcs, sentiers…).
 const natureMatch: MerchantPredicate = either(
-  either(catMatch('nature'), catMatch('fleuristes')),
+  clsIn('nature', 'fleuristes', 'animaleries', 'jardineries'),
   textMatch(...NATURE_KEYWORDS),
 );
 
@@ -343,12 +353,10 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     id: 'alimentation',
     label: 'Alimentation',
     icon: 'shopping-bag',
-    match: either(
-      anyCat(
-        'producteurs', 'boulangeries', 'primeurs', 'fromageries', 'boucheries', 'poissonneries',
-        'epiceries', 'traiteurs', 'patisseries', 'marches', 'cavistes', 'cooperatives',
-      ),
-      vigneronsMatch,
+    match: clsIn(
+      'producteurs', 'vignerons-domaines', 'boulangeries', 'primeurs', 'fromageries',
+      'boucheries', 'poissonneries', 'epiceries', 'traiteurs', 'patisseries', 'marches',
+      'cavistes', 'cooperatives',
     ),
     children: [
       catItem('producteurs', 'Producteurs'),
@@ -386,11 +394,11 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
       pItem('street', 'Street Food', '#B8863B', withText(RESTO, 'street', 'food truck', 'burger', 'kebab', 'tacos', 'snack')),
       pItem('grill', 'Grill / Viandes', '#C4632B', withText(RESTO, 'grill', 'viande', 'barbecue', 'steak', 'rotisserie', 'grillade')),
       pItem('vegetarien', 'Végétarien / Vegan', '#4E8A54', withText(RESTO, 'vegetarien', 'vegan', 'veggie', 'vegetal')),
-      pItem('bars-cafes', 'Bars / Cafés', '#7B4B2A', either(catMatch('cafes'), withText(RESTO, 'bar', 'pub', 'cave a vin'))),
+      pItem('bars-cafes', 'Bars / Cafés', '#7B4B2A', either(cls('bars-cafes'), withText(RESTO, 'bar', 'pub', 'cave a vin'))),
       pItem('brasseries', 'Brasseries / Bistrots', '#C08A2E', withText(RESTO, 'brasserie', 'bistrot', 'taverne', 'biere')),
       pItem('fast-casual', 'Fast Casual', '#C4632B', withText(RESTO, 'fast', 'rapide', 'casual', 'comptoir')),
       pItem('healthy', 'Healthy Bowls', '#4E8A54', withText(RESTO, 'healthy', 'bowl', 'poke', 'salade', 'detox')),
-      pItem('desserts', 'Pâtisseries / Desserts', '#6C5B8B', either(catMatch('patisseries'), withText(RESTO, 'dessert', 'glace', 'creperie'))),
+      pItem('desserts', 'Pâtisseries / Desserts', '#6C5B8B', either(cls('patisseries'), withText(RESTO, 'dessert', 'glace', 'creperie'))),
       pItem('monde', 'Cuisines du monde', '#2C4A6E', withText(RESTO, 'monde', 'world', 'libanais', 'mexicain', 'indien', 'marocain', 'turc', 'oriental', 'africain')),
     ],
   },

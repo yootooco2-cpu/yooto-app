@@ -68,8 +68,13 @@ export interface Merchant {
   nafCode?: string;
   /** Date de création (ISO) — « Depuis YYYY » + « Nouveau dans votre quartier ». */
   sireneCreationDate?: string;
-  /** État administratif SIRENE : 'A' actif, 'C' cessé. */
+  /** État administratif SIRENE de l'ÉTABLISSEMENT : 'A' actif, 'F' fermé, absent = non rapproché. */
   sireneEtat?: string;
+  /** Engagements officiels prouvés (API d'État) — true = prouvé, absent = aucune preuve. */
+  estEss?: boolean;
+  estBio?: boolean;
+  /** Décision du moteur Hierarchical Multi-Evidence (calculée au mapping — source unique). */
+  classification?: import('./classification/engine').Decision;
   /** Nb d'établissements de l'unité légale — 1 = indépendance prouvée. */
   sireneNbEtablissements?: number;
   /** Score de vérification interne 0-100 (invisible — carburant IA). */
