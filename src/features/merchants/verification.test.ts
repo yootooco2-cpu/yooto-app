@@ -30,10 +30,18 @@ describe('vérification SIRENE — un badge n’apparaît que s’il est prouvé
     expect(isVerifiedMerchant(base({}))).toBe(false);
   });
 
-  it('établissement cessé (etat C) : plus vérifié, aucun badge', () => {
-    const m = base({ siret: '123', sireneEtat: 'C', sireneNbEtablissements: 1 });
+  it("établissement FERMÉ (etat 'F' — la vraie valeur SIRENE) : plus vérifié, aucun badge", () => {
+    const m = base({ siret: '123', sireneEtat: 'F', sireneNbEtablissements: 1 });
     expect(isVerifiedMerchant(m)).toBe(false);
     expect(getVerificationBadges(m)).toEqual([]);
+    // Un producteur fermé ne doit plus alimenter le carrousel « Producteurs vérifiés ».
+    expect(isProvenProducer(base({ siret: 'x', sireneEtat: 'F', nafCode: '01.49Z' }))).toBe(false);
+  });
+
+  it("domaine {A, F, null} : état absent ou NON RECONNU → jamais de sceau (allowlist)", () => {
+    expect(isVerifiedMerchant(base({ siret: '123' }))).toBe(false); // null : non rapproché
+    expect(isVerifiedMerchant(base({ siret: '123', sireneEtat: 'C' }))).toBe(false); // vocabulaire UL
+    expect(isVerifiedMerchant(base({ siret: '123', sireneEtat: 'X' as never }))).toBe(false);
   });
 
   it('SIRET actif → badge « Vérifié · registre officiel »', () => {

@@ -31,7 +31,8 @@ export type Confidence = 'haute' | 'moyenne' | 'basse';
 export interface SptInput {
   /** Rapprochement SIRENE réussi (unité légale identifiée). */
   sireneMatched: boolean;
-  /** État administratif SIRENE de l'établissement ('A' actif, 'C' fermé). */
+  /** État administratif SIRENE de l'ÉTABLISSEMENT : 'A' actif · 'F' fermé · null non rapproché.
+   *  ('C' est le vocabulaire de l'unité légale — jamais stocké en base.) */
   sireneEtat: string | null;
   /** NAF de l'ÉTABLISSEMENT local (jamais celui du siège — piège Avignon/Metz). */
   nafCode: string | null;
@@ -65,6 +66,8 @@ export interface SptResult {
   raisonsNegatives: string[];
   /** Sous-ensemble des raisons négatives qui constituent des PREUVES de non-pertinence. */
   preuvesNonPertinence: string[];
+  /** Valeur d'état SIRENE hors domaine {A, F, null} : alerte, revue requise. */
+  etatSireneNonReconnu: boolean;
   plancherApplique: boolean;
   raisonDuPlancher: string | null;
 }
@@ -201,12 +204,19 @@ export function computeSptV11(input: SptInput): SptResult {
 
   const scoreBrut = ind + anc + act + eng + hum;
 
-  // ── Veto dur : établissement fermé (preuve officielle négative)
-  const ferme = input.sireneEtat === 'C';
+  // ── Veto dur : établissement FERMÉ ('F' = vocabulaire établissement, preuve officielle).
+  //    Une valeur hors domaine {A, F, null} n'est PAS un veto : alerte + revue (jamais
+  //    punie automatiquement, jamais publiée automatiquement).
+  const etat = input.sireneEtat;
+  const ferme = etat === 'F';
+  const etatSireneNonReconnu = etat != null && etat !== 'A' && etat !== 'F';
   if (ferme) {
-    const motif = "établissement fermé (SIRENE état 'C')";
+    const motif = "établissement fermé (SIRENE état 'F')";
     neg.push(motif);
     preuves.push(motif);
+  }
+  if (etatSireneNonReconnu) {
+    neg.push(`état SIRENE non reconnu (${etat}) — revue requise`);
   }
 
   let bandeBrute: Band =
@@ -254,6 +264,7 @@ export function computeSptV11(input: SptInput): SptResult {
     preuvesNonPertinence: preuves,
     plancherApplique,
     raisonDuPlancher,
+    etatSireneNonReconnu,
   };
 }
 
@@ -284,7 +295,14 @@ export function proposeAction(
     }
     return { action: 'AUCUNE_ACTION', validationHumaineRequise: false };
   }
-  if (result.bandeOperationnelle !== 'HORS-MISSION' && presentable) {
+  // Publier exige : bande correcte, présentabilité, ZÉRO preuve de non-pertinence
+  // (leçon Cheese Nan : un 56.10C à 38 restait « publiable ») et un état SIRENE sain.
+  if (
+    result.bandeOperationnelle !== 'HORS-MISSION' &&
+    presentable &&
+    result.preuvesNonPertinence.length === 0 &&
+    !result.etatSireneNonReconnu
+  ) {
     return { action: 'PUBLICATION_POSSIBLE', validationHumaineRequise: false };
   }
   return { action: 'RESTE_PENDING', validationHumaineRequise: false };

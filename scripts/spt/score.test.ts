@@ -94,15 +94,23 @@ describe('Faille ② — le silence ne punit pas (plancher opérationnel)', () =
     expect(r.preuvesNonPertinence.join(' ')).toContain('NAF éloigné');
   });
 
-  test('établissement fermé (SIRENE C) → HORS-MISSION, jamais remonté par le plancher', () => {
+  test("établissement fermé (SIRENE 'F' — vraie valeur du domaine) → HORS-MISSION, jamais remonté par le plancher", () => {
     const r = computeSptV11(verified({
-      sireneEtat: 'C', nbEtablissements: 1, nafCode: '01.49Z',
+      sireneEtat: 'F', nbEtablissements: 1, nafCode: '01.49Z',
       siegeCodePostal: '30250', dateCreation: '2010-01-01', googleRating: 4.9,
     }));
     expect(r.bandeBrute).toBe('HORS-MISSION');
     expect(r.bandeOperationnelle).toBe('HORS-MISSION');
     expect(r.plancherApplique).toBe(false);
     expect(r.preuvesNonPertinence.join(' ')).toContain('fermé');
+  });
+
+  test("valeur d'état HORS DOMAINE ('C', 'X') → alerte revue, PAS de veto, PAS de preuve", () => {
+    const r = computeSptV11(verified({ sireneEtat: 'C', nbEtablissements: 1, nafCode: '01.49Z' }));
+    expect(r.etatSireneNonReconnu).toBe(true);
+    expect(r.preuvesNonPertinence).toHaveLength(0);
+    expect(r.bandeBrute).not.toBe('HORS-MISSION');
+    expect(r.raisonsNegatives.join(' ')).toContain('non reconnu');
   });
 });
 
@@ -216,6 +224,30 @@ describe('Gouvernance des actions — le SPT propose, il ne décide pas', () => 
 
   test('pending + HORS-MISSION prouvé → reste pending', () => {
     expect(proposeAction('pending', horsMission, true).action).toBe('RESTE_PENDING');
+  });
+
+  test('règle Cheese Nan : COMPATIBLE mais porteur d\'une PREUVE (56.10C) → jamais publiable', () => {
+    // Score ≥ 35 grâce à indépendance + ancrage, mais NAF éloigné prouvé.
+    const r = computeSptV11(verified({
+      nbEtablissements: 1, nafCode: '56.10C', siegeCodePostal: '34400', dateCreation: '2025-01-01',
+    }));
+    expect(r.bandeOperationnelle).toBe('COMPATIBLE');
+    expect(r.preuvesNonPertinence.length).toBeGreaterThan(0);
+    expect(proposeAction('pending', r, true).action).toBe('RESTE_PENDING');
+  });
+
+  test('fiche FERMÉE : pending → reste pending ; active → rétrogradation PROPOSÉE (jamais automatique)', () => {
+    const fermee = computeSptV11(verified({ sireneEtat: 'F', nbEtablissements: 1, nafCode: '01.49Z' }));
+    expect(proposeAction('pending', fermee, true).action).toBe('RESTE_PENDING');
+    const a = proposeAction('active', fermee, true);
+    expect(a.action).toBe('RETROGRADATION_PROPOSEE');
+    expect(a.validationHumaineRequise).toBe(true);
+  });
+
+  test('état hors domaine → publication bloquée (revue), même présentable et bien classé', () => {
+    const r = computeSptV11(verified({ sireneEtat: 'X', nbEtablissements: 1, nafCode: '01.49Z' }));
+    expect(r.bandeOperationnelle).not.toBe('HORS-MISSION');
+    expect(proposeAction('pending', r, true).action).toBe('RESTE_PENDING');
   });
 });
 

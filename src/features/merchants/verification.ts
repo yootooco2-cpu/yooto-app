@@ -23,9 +23,15 @@ export interface VerificationBadge {
 /** Codes NAF « production » : agriculture (01), sylviculture (02), pêche (03). */
 const PRODUCER_NAF_PREFIXES = ['01.', '02.', '03.'];
 
-/** L'identité est vérifiée si un SIRET est présent ET l'établissement non cessé. */
+/**
+ * L'identité est vérifiée si un SIRET est présent ET l'établissement est ACTIF ('A').
+ * Domaine réel de `sireneEtat` : 'A' actif · 'F' fermé · null jamais rapproché —
+ * c'est le vocabulaire ÉTABLISSEMENT ('A'/'F') ; 'C' (cessée) est celui de l'unité
+ * légale et n'apparaît jamais en base. Allowlist stricte : fermé, inconnu ou non
+ * rapproché → jamais de sceau. Le sceau est une preuve, pas une présomption.
+ */
 export function isVerifiedMerchant(m: Pick<Merchant, 'siret' | 'sireneEtat'>): boolean {
-  return Boolean(m.siret) && m.sireneEtat !== 'C';
+  return Boolean(m.siret) && m.sireneEtat === 'A';
 }
 
 /** Indépendance PROUVÉE : l'unité légale ne possède qu'un seul établissement. */
