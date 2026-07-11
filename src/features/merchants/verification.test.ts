@@ -77,8 +77,8 @@ describe('« Nouveau dans votre quartier » (données prêtes, non affichées)',
   it('création il y a 30 jours → nouveau', () => {
     expect(isNewInTown(base({ sireneCreationDate: '2026-06-10' }), NOW)).toBe(true);
   });
-  it('création il y a 200 jours → plus nouveau', () => {
-    expect(isNewInTown(base({ sireneCreationDate: '2025-12-01' }), NOW)).toBe(false);
+  it('création il y a ~250 jours → plus nouveau (hors fenêtre 210 j)', () => {
+    expect(isNewInTown(base({ sireneCreationDate: '2025-11-01' }), NOW)).toBe(false);
   });
   it('date future ou absente → jamais nouveau', () => {
     expect(isNewInTown(base({ sireneCreationDate: '2026-09-01' }), NOW)).toBe(false);

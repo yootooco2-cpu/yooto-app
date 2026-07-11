@@ -54,10 +54,13 @@ export function verifiedSinceYear(m: Pick<Merchant, 'sireneCreationDate'>): numb
 }
 
 /**
- * « Nouveau dans votre quartier » — établissement créé il y a moins de 90 jours.
- * DONNÉES PRÊTES, fonctionnalité pas encore affichée (V2.4 : préparation).
+ * « Ils viennent d'ouvrir » — établissement créé récemment.
+ * Fenêtre 210 j (décision produit Sprint 1/J3, phase d'amorçage) : la date SIRENE est la
+ * création LÉGALE (l'ouverture réelle suit de plusieurs semaines) et le rythme rural
+ * justifie une fenêtre large — elle couvre les 5 vraies jeunes enseignes de la base.
+ * Se resserrera vers ~90 j quand la découverte SIRENE-first alimentera le flux en continu.
  */
-export const NEW_MERCHANT_WINDOW_DAYS = 90;
+export const NEW_MERCHANT_WINDOW_DAYS = 210;
 export function isNewInTown(m: Pick<Merchant, 'sireneCreationDate'>, nowMs: number): boolean {
   if (!m.sireneCreationDate) return false;
   const created = Date.parse(m.sireneCreationDate);

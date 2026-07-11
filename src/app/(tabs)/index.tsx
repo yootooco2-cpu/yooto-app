@@ -5,12 +5,14 @@ import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimate
 
 import { FavoritesButton } from '@/components/favorites/FavoritesButton';
 import { MerchantCarousel } from '@/components/home/MerchantCarousel';
+import { TerritoryCarousel } from '@/components/territory/TerritoryCarousel';
 import { SectionScreen } from '@/components/theme/SectionScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
 import { SearchMenu, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
+import { recentlyOpenedSource } from '@/features/territory/sources';
 
 // Bande d'ambiance ≈ une hauteur d'écran : l'image d'univers se dissout TRÈS progressivement vers
 // le fond sombre (fondu du BackgroundOverlay) et se prolonge sous la 1re section → aucune rupture.
@@ -85,6 +87,9 @@ export default function HomeScreen() {
           )
         ) : (
           <>
+            {/* TERRITORY ENGINE (Sprint 1/J3) — le territoire VIVANT en tête : créations
+                récentes prouvées par la date SIRENE. Source interchangeable, UI partagée. */}
+            <TerritoryCarousel source={recentlyOpenedSource} merchants={merchants} delay={30} />
             <MerchantCarousel
               title="Recommandés aujourd'hui"
               subtitle="Les mieux notés près de vous"
