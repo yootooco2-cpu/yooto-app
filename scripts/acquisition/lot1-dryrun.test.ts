@@ -11,6 +11,7 @@ import { classifyMerchant } from '@/features/merchants/classification/engine';
 import type { Merchant } from '@/features/merchants/types';
 
 import { computeSptV11 } from '../spt/score';
+import { receptionEvidence } from './accueil';
 
 const DATA =
   '/private/tmp/claude-501/-Users-jasoncombe/2e24c30e-4d3d-4a27-953f-14e22a8aea3f/scratchpad/lot1-candidats.json';
@@ -54,7 +55,16 @@ interface Candidat {
       else if (!c.latitude || !c.longitude) { sortie = 'QUARANTAINE'; raisons.push('coordonnées absentes — invisible sur la carte (voie VÉRIFIÉE incomplète)'); }
       else if (decision.status === 'QUARANTAINE') { sortie = 'QUARANTAINE'; raisons.push(`classification : ${decision.explanation}`); }
       else if (spt.bandeOperationnelle === 'HORS-MISSION') { sortie = 'QUARANTAINE'; raisons.push('SPT hors-mission — revue humaine (jamais un rejet sans preuve)'); }
-      else { sortie = 'PASS'; raisons.push(`voie VÉRIFIÉE complète · ${decision.source} → ${decision.category} · SPT ${spt.scoreOperationnel} ${spt.bandeOperationnelle}`); }
+      else {
+        // RÈGLE DE CLASSE (GATE 3) : l'existence d'un acteur ≠ l'existence d'un lieu.
+        const reception = receptionEvidence({ naf: c.naf, nom: c.nom, enseignes: c.enseignes, adresse: c.adresse });
+        if (!reception.proven) { sortie = 'QUARANTAINE'; raisons.push(reception.missing!); }
+        else {
+          sortie = 'PASS';
+          raisons.push(`voie VÉRIFIÉE complète · ${decision.source} → ${decision.category} · SPT ${spt.scoreOperationnel} ${spt.bandeOperationnelle}`);
+          raisons.push(...reception.evidence.map((e) => `accueil : ${e}`));
+        }
+      }
 
       return {
         siret: c.siret, nom: displayName, denomination: c.nom, adresse: c.adresse, naf: c.naf,
