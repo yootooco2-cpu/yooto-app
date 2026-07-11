@@ -1,5 +1,5 @@
 import type { Merchant } from '@/features/merchants';
-import { isNewInTown } from '@/features/merchants/verification';
+import { isNewInTown, isProvenProducer } from '@/features/merchants/verification';
 
 /**
  * TERRITORY SOURCES — le contrat de contenu du TerritoryCarousel.
@@ -34,6 +34,22 @@ const CAROUSEL_CAP = 10;
  * 🆕 Ils viennent d'ouvrir — créations récentes PROUVÉES par la date SIRENE.
  * Uniquement des données réelles : pas de date officielle → pas de présence ici.
  */
+/**
+ * 🌾 Producteurs vérifiés — activité agricole PROUVÉE par le NAF officiel (01/02/03).
+ * Deuxième source réelle du TerritoryCarousel (jalon A-light : même forme, plomberie
+ * multi-sources validée — le test de généricité complet reste les marchés, Sprint 3).
+ */
+export const verifiedProducersSource: TerritorySource = {
+  id: 'verified-producers',
+  title: '🌾 Producteurs vérifiés',
+  subtitle: 'Activité agricole prouvée par le registre officiel.',
+  select: (merchants) =>
+    merchants
+      .filter(isProvenProducer)
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+      .slice(0, CAROUSEL_CAP),
+};
+
 export const recentlyOpenedSource: TerritorySource = {
   id: 'recently-opened',
   title: '🆕 Ils viennent d’ouvrir',

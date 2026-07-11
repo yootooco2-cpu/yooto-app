@@ -12,7 +12,7 @@ import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
 import { SearchMenu, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
-import { recentlyOpenedSource } from '@/features/territory/sources';
+import { recentlyOpenedSource, verifiedProducersSource } from '@/features/territory/sources';
 
 // Bande d'ambiance ≈ une hauteur d'écran : l'image d'univers se dissout TRÈS progressivement vers
 // le fond sombre (fondu du BackgroundOverlay) et se prolonge sous la 1re section → aucune rupture.
@@ -112,6 +112,9 @@ export default function HomeScreen() {
               merchants={sections.toDiscover}
               delay={180}
             />
+            {/* 2e source territoriale (jalon A-light) : la mission rendue visible —
+                les producteurs dont l'activité agricole est PROUVÉE par le NAF. */}
+            <TerritoryCarousel source={verifiedProducersSource} merchants={merchants} delay={240} />
           </>
         )}
         <SupportContactFooter />

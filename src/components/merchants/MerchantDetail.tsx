@@ -18,6 +18,7 @@ import { trackEvent } from '@/features/discovery';
 import { CATEGORY_LABELS, formatCityName, getMerchantCoverPhoto, isRealPhotoUrl, type Merchant } from '@/features/merchants';
 import {
   getVerificationBadges,
+  isNewInTown,
   verifiedSinceYear,
   type VerificationBadge,
 } from '@/features/merchants/verification';
@@ -144,6 +145,8 @@ export function MerchantDetail({ merchant, onBack }: Props) {
   const { colors: c } = useTheme();
   const back = onBack ?? (() => router.back());
   const [galleryIndex, setGalleryIndex] = useState<number | null>(null);
+  // Horloge stable au montage (pureté du rendu — React Compiler) : « Nouveau » ne clignote pas.
+  const [nowMs] = useState(() => Date.now());
 
   const {
     address,
@@ -168,12 +171,14 @@ export function MerchantDetail({ merchant, onBack }: Props) {
   // Ville proprement capitalisée — helper PARTAGÉ (fiche + cartes + listes).
   const cityDisplay = formatCityName(city);
   // « Depuis YYYY » vit dans la ligne d'IDENTITÉ (design review) : la rangée de badges
-  // reste consacrée aux preuves officielles.
+  // reste consacrée aux preuves officielles. Créé récemment → « Nouveau » (dire
+  // « Depuis 2026 » en 2026 n'a pas de sens ; la jeunesse est une fierté, pas une durée).
   const sinceYear = verifiedSinceYear(merchant);
+  const isNew = isNewInTown(merchant, nowMs);
   const categoryLine = [
     CATEGORY_LABELS[merchant.category],
     cityDisplay,
-    sinceYear !== undefined ? `Depuis ${sinceYear}` : null,
+    isNew ? 'Nouveau' : sinceYear !== undefined ? `Depuis ${sinceYear}` : null,
   ]
     .filter(Boolean)
     .join(' • ');
