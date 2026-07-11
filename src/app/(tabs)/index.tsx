@@ -23,6 +23,10 @@ export default function HomeScreen() {
   const { data } = useMerchants();
   // Démo : ne garder que les commerces avec une vraie photo (aucun repli visible dans les cartes).
   const merchants = useMemo(() => withPhotoForDemo(data ?? []), [data]);
+  // « Ils viennent d'ouvrir » reçoit le corpus COMPLET (décision produit Sprint 2) : les
+  // créations SIRENE-first n'ont pas encore de photo — cette section assume le repli
+  // premium, c'est sa raison d'être de montrer le tout-frais avant tout le monde.
+  const allMerchants = useMemo(() => data ?? [], [data]);
 
   // Parallax TRÈS discret du fond d'ambiance (image d'univers) au scroll.
   const scrollY = useSharedValue(0);
@@ -89,7 +93,7 @@ export default function HomeScreen() {
           <>
             {/* TERRITORY ENGINE (Sprint 1/J3) — le territoire VIVANT en tête : créations
                 récentes prouvées par la date SIRENE. Source interchangeable, UI partagée. */}
-            <TerritoryCarousel source={recentlyOpenedSource} merchants={merchants} delay={30} />
+            <TerritoryCarousel source={recentlyOpenedSource} merchants={allMerchants} delay={30} />
             <MerchantCarousel
               title="Recommandés aujourd'hui"
               subtitle="Les mieux notés près de vous"
