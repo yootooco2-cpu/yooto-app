@@ -1,0 +1,65 @@
+{
+  "_source": "Transcript session 2e24c30e-4d3d-4a27-953f-14e22a8aea3f (11/07/2026) — dry-run panel SPT v1.0, lecture seule. Scores/bandes/raisons copiés verbatim, PAS reconstruits de mémoire.",
+  "_bands_v1_0": { "MISSIONNAIRE": ">=60", "COMPATIBLE": "35-59", "HORS-MISSION": "<35" },
+  "_verdicts": "Classification concordant/écart issue du message final de la même session (revue produit).",
+  "panel": [
+    {
+      "name": "Chez Fabien",
+      "score_v1_0": 67, "band_v1_0": "MISSIONNAIRE", "status": "active",
+      "reasons_v1_0": "1 étab. +25; siège local +10; depuis 2010 +10; NAF compat 47.21Z +12; ★4.8 +10",
+      "verdict": "concordant", "expected_band_v1_1": "MISSIONNAIRE"
+    },
+    {
+      "name": "Le Primeur du Puech",
+      "score_v1_0": 60, "band_v1_0": "MISSIONNAIRE", "status": "active",
+      "reasons_v1_0": "1 étab. +25; siège local +10; depuis 2020 +6; NAF compat 47.21Z +12; ★4.2 +7",
+      "verdict": "concordant (pile au seuil 60 — sensible)", "expected_band_v1_1": "MISSIONNAIRE"
+    },
+    {
+      "name": "Aux Saveurs des Saisons",
+      "score_v1_0": 66, "band_v1_0": "MISSIONNAIRE", "status": "active",
+      "reasons_v1_0": "3 étab. +18; siège local +10; depuis 2018 +6; NAF cœur 01.49Z +25; ★4.2 +7",
+      "verdict": "concordant", "expected_band_v1_1": "MISSIONNAIRE"
+    },
+    {
+      "name": "Jules Herbemont",
+      "score_v1_0": 63, "band_v1_0": "MISSIONNAIRE", "status": "active",
+      "reasons_v1_0": "1 étab. +25; siège local +10; récent 2025 +3; NAF cœur 23.41Z +25",
+      "verdict": "concordant (cas d'école : publié sans note Google)", "expected_band_v1_1": "MISSIONNAIRE"
+    },
+    {
+      "name": "Pizza Italia Au Feu De Bois",
+      "score_v1_0": 23, "band_v1_0": "HORS-MISSION", "status": "pending",
+      "reasons_v1_0": "PME 4 étab. +10; siège local +10; récent 2025 +3; NAF éloigné 56.10C +0",
+      "verdict": "concordant (confinement Cheese Nan confirmé — preuve positive NAF 56.10C)", "expected_band_v1_1": "HORS-MISSION"
+    },
+    {
+      "name": "Chai Nous",
+      "score_v1_0": 50, "band_v1_0": "COMPATIBLE", "status": "active",
+      "reasons_v1_0": "1 étab. +25; siège local +10; récent 2026 +3; NAF compat 56.10A +12",
+      "verdict": "concordant", "expected_band_v1_1": "COMPATIBLE"
+    },
+    {
+      "name": "L'amandine",
+      "score_v1_0": 58, "band_v1_0": "COMPATIBLE", "status": "active",
+      "reasons_v1_0": "PME 9 étab. +10; siège local +10; récent 2026 +3; NAF cœur 10.71C +25; Artisan RM +10",
+      "verdict": "cas frontière assumé (artisan RM mais réseau local 9 étabs) — 9e cas",
+      "expected_band_v1_1": "COMPATIBLE",
+      "contre_exemple": "Entreprise locale multi-établissements : ne doit PAS être pénalisée comme une chaîne nationale."
+    },
+    {
+      "name": "Grand Frais",
+      "score_v1_0": 57, "band_v1_0": "COMPATIBLE", "status": "active",
+      "reasons_v1_0": "2 étab. +18; siège local +10; depuis 2014 +10; NAF compat 47.21Z +12; ★4.3 +7",
+      "verdict": "ÉCART — faille ① : enseigne nationale matchée via son entité franchisée locale (2 étabs)",
+      "expected_v1_1": "score < 45 via une logique généralisable (jamais une règle nominale)"
+    },
+    {
+      "name": "Husser Traiteur Montpellier",
+      "score_v1_0": 31, "band_v1_0": "HORS-MISSION", "status": "active",
+      "reasons_v1_0": "indép. inconnue +8; ancrage ? +5; NAF ? +8; ★4.6 +10",
+      "verdict": "ÉCART — faille ② : puni par absence de rapprochement SIRENE (violation « le silence ne punit pas »)",
+      "expected_v1_1": "bande opérationnelle COMPATIBLE, score opérationnel >= 35 (plancher), score brut conservé pour diagnostic"
+    }
+  ]
+}

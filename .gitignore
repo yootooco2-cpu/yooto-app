@@ -44,3 +44,6 @@ example
 # generated native folders
 /ios
 /android
+
+# SPT — rapports de dry-run (données générées, régénérables)
+scripts/spt/reports/
