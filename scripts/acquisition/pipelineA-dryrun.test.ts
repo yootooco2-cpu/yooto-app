@@ -92,8 +92,9 @@ const displayCase = (s: string): string =>
         insert: sortie === 'PASS' ? {
           name: displayName, siret: c.siret, naf_code: c.naf, sirene_etat: 'A',
           sirene_nb_etablissements: c.nb_etablissements, sirene_date_creation: c.date_creation,
-          latitude: lat, longitude: lng, address: displayCase(c.adresse), city: 'Montpellier',
-          postal_code: (c.adresse.match(/\b(340\d\d)\b/) ?? [])[1] ?? '34000',
+          latitude: lat, longitude: lng, address: displayCase(c.adresse),
+          city: displayCase((c.adresse.match(/\b\d{5}\b\s+(.+?)\s*$/) ?? [, 'Montpellier'])[1]!),
+          postal_code: (c.adresse.match(/\b(\d{5})\b/) ?? [])[1] ?? '34000',
           est_ess: c.est_ess || null, est_bio: c.est_bio || null,
           source: 'sirene_first_pipeline_a', status: 'active', google_place_id: null,
           sirene_synced_at: null as string | null,
