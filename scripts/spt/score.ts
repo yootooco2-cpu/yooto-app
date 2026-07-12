@@ -85,6 +85,20 @@ const CORE_NAF = [
 ];
 /** Anneau COMPATIBLE : alimentaire de proximité, restauration traditionnelle. */
 const COMPAT_NAF = ['56.10A', '47.21', '47.29', '47.81', '56.21', '10.', '47.26'];
+/**
+ * Anneau ÉLOIGNÉ — v1.2, RÈGLE DE CLASSE (arbitrage 12/07, faux rejet 47.23Z) :
+ * « éloigné » ne s'attribue QUE par PREUVE POSITIVE — une liste EXPLICITE d'activités
+ * dont la sémantique INSEE est étrangère au commerce local de proximité. Un NAF
+ * simplement ABSENT des listes n'est jamais une preuve (Loi 3 : le silence ne punit
+ * jamais ; un anneau fourre-tout fabriquait une « preuve » de non-pertinence à partir
+ * d'une absence — 47.23Z poissonneries en a été la victime mesurée : 56 rejets à Sète).
+ * Sections retenues : finance/assurance (64-66), immobilier (68), sièges & conseil
+ * (70), services administratifs aux entreprises (77, 78, 82), organisations et
+ * administrations (84, 94, 99). S'y ajoute 56.10C (restauration rapide) : exclusion
+ * MÉTIER délibérée et documentée — le cas fondateur « Cheese Nan » (volume facile,
+ * hors mission) devient une preuve positive au lieu d'un accident de fourre-tout.
+ */
+const EXCLUDED_NAF = ['64.', '65.', '66.', '68.', '70.', '77.', '78.', '82.', '84.', '94.', '99.', '56.10C'];
 
 export type NafRing = 'coeur' | 'compatible' | 'eloigne' | 'inconnu';
 
@@ -92,7 +106,8 @@ export function classifyNaf(naf: string | null): NafRing {
   if (!naf) return 'inconnu';
   if (CORE_NAF.some((p) => naf.startsWith(p))) return 'coeur';
   if (COMPAT_NAF.some((p) => naf.startsWith(p))) return 'compatible';
-  return 'eloigne';
+  if (EXCLUDED_NAF.some((p) => naf.startsWith(p))) return 'eloigne';
+  return 'inconnu'; // absence de preuve = neutre, jamais un rejet (Loi 3)
 }
 
 function isLocalPostalCode(cp: string | null): boolean {

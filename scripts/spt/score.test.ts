@@ -3,6 +3,7 @@
  * Aucun test ne repose sur un NOM de commerce : uniquement des profils de preuves.
  */
 import {
+  classifyNaf,
   computeSptV10,
   computeSptV11,
   proposeAction,
@@ -265,5 +266,25 @@ describe('Port v1.0 — non-régression de la référence gelée (panel du 11/07
     const h = computeSptV10({ ...base, googleRating: 4.6 });
     expect(h.score).toBe(31);
     expect(h.band).toBe('HORS-MISSION');
+  });
+});
+
+describe('v1.2 — l’anneau éloigné exige une preuve positive (arbitrage 47.23Z)', () => {
+  test('47.23Z (poissonnerie) n’est plus jamais « éloigné » : absence de liste = neutre', () => {
+    expect(classifyNaf('47.23Z')).toBe('inconnu');
+    const r = computeSptV11(verified({ nafCode: '47.23Z', nbEtablissements: 1 }));
+    expect(r.preuvesNonPertinence).toHaveLength(0);
+  });
+
+  test('l’exclusion reste possible, mais par sémantique INSEE explicite (70.10Z siège)', () => {
+    expect(classifyNaf('70.10Z')).toBe('eloigne');
+    const r = computeSptV11(verified({ nafCode: '70.10Z', nbEtablissements: 1 }));
+    expect(r.preuvesNonPertinence).toContain('NAF éloigné vérifié (70.10Z)');
+  });
+
+  test('un NAF hors de toutes les listes est neutre, jamais une preuve (74.10Z design)', () => {
+    expect(classifyNaf('74.10Z')).toBe('inconnu');
+    const r = computeSptV11(verified({ nafCode: '74.10Z', nbEtablissements: 1 }));
+    expect(r.preuvesNonPertinence).toHaveLength(0);
   });
 });
