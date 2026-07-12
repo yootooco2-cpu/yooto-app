@@ -81,7 +81,10 @@ const displayCase = (s: string): string =>
       // Dédup : SIRET, puis nom+proximité contre la base réelle.
       const dupName = base.find((b) => distM(lat, lng, b.lat, b.lng) < 150 && overlap(tokens(displayName), b.tok) >= 0.6);
       const dupNear = base.find((b) => distM(lat, lng, b.lat, b.lng) < 25);
-      if (baseSirets.has(c.siret)) { sortie = 'REJET'; raisons.push('doublon confirmé : SIRET déjà au catalogue'); }
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
+        // Classe « établissement non géocodé » : jamais un pin à (0,0).
+        sortie = 'QUARANTAINE'; raisons.push('coordonnées SIRENE absentes — pas de pin sans localisation prouvée');
+      } else if (baseSirets.has(c.siret)) { sortie = 'REJET'; raisons.push('doublon confirmé : SIRET déjà au catalogue'); }
       else if (dupName) { sortie = 'REJET'; raisons.push(`doublon confirmé : « ${dupName.name} » (#${dupName.id}) au même endroit`); }
       else if (spt.preuvesNonPertinence.length > 0) { sortie = 'REJET'; raisons.push(...spt.preuvesNonPertinence); }
       else if (c.non_diffusible) { sortie = 'QUARANTAINE'; raisons.push('identité protégée [ND]'); }
