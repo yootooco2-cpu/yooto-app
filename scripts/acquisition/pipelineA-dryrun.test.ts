@@ -11,9 +11,14 @@ import type { Merchant } from '@/features/merchants/types';
 import { computeSptV11 } from '../spt/score';
 import { receptionEvidence } from './accueil';
 
-const SCRATCH = '/private/tmp/claude-501/-Users-jasoncombe/2e24c30e-4d3d-4a27-953f-14e22a8aea3f/scratchpad';
-const DATA = `${SCRATCH}/pipelineA-candidats.json`;
-const BASE = `${SCRATCH}/merchants-full.json`;
+// Chemins et zone paramétrés par env — les RÈGLES de gate, elles, ne bougent pas.
+const SCRATCH = process.env.PIPELINE_SCRATCH
+  ?? '/private/tmp/claude-501/-Users-jasoncombe/2e24c30e-4d3d-4a27-953f-14e22a8aea3f/scratchpad';
+const DATA = process.env.PIPELINE_CANDIDATS ?? `${SCRATCH}/pipelineA-candidats.json`;
+const BASE = process.env.PIPELINE_BASE ?? `${SCRATCH}/merchants-full.json`;
+const OUT = process.env.PIPELINE_OUT ?? `${SCRATCH}/pipelineA-dryrun.json`;
+const ZONE_CITY = process.env.ZONE_CITY ?? 'Montpellier';
+const ZONE_CP = process.env.ZONE_CP ?? '34000';
 
 interface Candidat {
   siret: string; nom: string; enseignes: string[] | null; adresse: string; naf: string;
@@ -93,8 +98,8 @@ const displayCase = (s: string): string =>
           name: displayName, siret: c.siret, naf_code: c.naf, sirene_etat: 'A',
           sirene_nb_etablissements: c.nb_etablissements, sirene_date_creation: c.date_creation,
           latitude: lat, longitude: lng, address: displayCase(c.adresse),
-          city: displayCase((c.adresse.match(/\b\d{5}\b\s+(.+?)\s*$/) ?? [, 'Montpellier'])[1]!),
-          postal_code: (c.adresse.match(/\b(\d{5})\b/) ?? [])[1] ?? '34000',
+          city: displayCase((c.adresse.match(/\b\d{5}\b\s+(.+?)\s*$/) ?? [, ZONE_CITY])[1]!),
+          postal_code: (c.adresse.match(/\b(\d{5})\b/) ?? [])[1] ?? ZONE_CP,
           est_ess: c.est_ess || null, est_bio: c.est_bio || null,
           source: 'sirene_first_pipeline_a', status: 'active', google_place_id: null,
           sirene_synced_at: null as string | null,
@@ -102,7 +107,7 @@ const displayCase = (s: string): string =>
       };
     });
     const n = (s: string) => out.filter((x) => x.sortie === s).length;
-    writeFileSync(`${SCRATCH}/pipelineA-dryrun.json`, JSON.stringify({ PASS: n('PASS'), QUARANTAINE: n('QUARANTAINE'), REJET: n('REJET'), lots: out }, null, 1));
+    writeFileSync(OUT, JSON.stringify({ PASS: n('PASS'), QUARANTAINE: n('QUARANTAINE'), REJET: n('REJET'), lots: out }, null, 1));
     console.log(`candidats=${out.length} PASS=${n('PASS')} QUARANTAINE=${n('QUARANTAINE')} REJET=${n('REJET')}`);
     expect(out.length).toBe(cands.length);
   });
