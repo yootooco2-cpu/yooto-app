@@ -27,7 +27,7 @@ export function isDisplayablePhoto(m: Merchant): boolean {
 }
 
 /** Pondérations validées — le site web volontairement bas, la photo volontairement haute. */
-export function presentationScore(m: Merchant): number {
+function computeScore(m: Merchant): number {
   let score = 0;
   if (isDisplayablePhoto(m)) score += 3;
   if (isVerifiedMerchant(m)) score += 3;
@@ -36,6 +36,36 @@ export function presentationScore(m: Merchant): number {
   if (m.openingHours && m.openingHours.length > 0) score += 1;
   if (m.website) score += 1;
   return score; // 0..12
+}
+
+/**
+ * Score effectif : la colonne MATÉRIALISÉE (dérivée, auto-recalculée par Postgres —
+ * jamais désynchronisable) quand elle est là, raffinée par la santé photo du rendu
+ * réel (une URL morte retire ses 3 points) ; calcul local en repli (fixtures, tests).
+ */
+export function presentationScore(m: Merchant): number {
+  if (typeof m.presentationScore === 'number') {
+    const photoDead = Boolean(getMerchantCoverPhoto(m)) && !isDisplayablePhoto(m);
+    return Math.max(0, m.presentationScore - (photoDead ? 3 : 0));
+  }
+  return computeScore(m);
+}
+
+/**
+ * CHECKLIST DE PROGRESSION du commerçant — JAMAIS un chiffre, jamais une fraction,
+ * jamais un pourcentage : un score affiché EST une note, quelle que soit la doctrine.
+ * Uniquement des ACTIONS possibles, ordonnées par impact ; la note Google n'y figure
+ * pas (elle ne se « remplit » pas). Vide = fiche complète (message de félicitations
+ * côté UI, pas 12/12). Consommateur naturel : le futur espace commerçant (claims).
+ */
+export function completionChecklist(m: Merchant): string[] {
+  const actions: string[] = [];
+  if (!isDisplayablePhoto(m)) actions.push('Ajoutez une photo de votre vitrine');
+  if (!isVerifiedMerchant(m)) actions.push('Vérifiez votre établissement (SIRET)');
+  if (!m.phone) actions.push('Ajoutez votre téléphone');
+  if (!m.openingHours || m.openingHours.length === 0) actions.push('Ajoutez vos horaires');
+  if (!m.website) actions.push('Ajoutez votre site web');
+  return actions;
 }
 
 /**

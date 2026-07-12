@@ -58,6 +58,8 @@ export const merchantRowSchema = z.object({
   // Engagements officiels (Ticket 2) — true = prouvé par l'État, NULL = aucune preuve.
   est_ess: z.boolean().nullable().optional(),
   est_bio: z.boolean().nullable().optional(),
+  // Score de complétude MATÉRIALISÉ (generated column — dérivé, jamais saisi).
+  presentation_score: z.coerce.number().nullable().optional(),
   pin_x: z.coerce.number().nullable().optional(),
   pin_y: z.coerce.number().nullable().optional(),
 });
@@ -164,6 +166,7 @@ export function mapMerchantRow(row: MerchantRow): Merchant {
     verificationScore: row.verification_score ?? undefined,
     estEss: row.est_ess ?? undefined,
     estBio: row.est_bio ?? undefined,
+    presentationScore: row.presentation_score ?? undefined,
     status: row.status ?? undefined,
     pin: { x: row.pin_x ?? 0, y: row.pin_y ?? 0 },
   };

@@ -1,4 +1,4 @@
-import { markPhotoFailed, presentationScore, sortForDisplay } from './presentation';
+import { completionChecklist, markPhotoFailed, presentationScore, sortForDisplay } from './presentation';
 import type { Merchant } from './types';
 
 const m = (over: Partial<Merchant>): Merchant =>
@@ -52,6 +52,28 @@ describe('score de complétude — il ordonne, il n’exclut jamais', () => {
     expect(new Set(sorted.map((x) => x.id))).toEqual(new Set(['a', 'b', 'c']));
     expect(sorted[0].id).toBe('b'); // 5 pts
     expect(sorted[1].id).toBe('c'); // 2 pts
+  });
+
+  it('le score MATÉRIALISÉ (colonne générée) prime, raffiné par la santé photo du rendu réel', () => {
+    const db = m({ id: 'db', presentationScore: 10, photoUrl: 'https://x/dead2.jpg' });
+    expect(presentationScore(db)).toBe(10);
+    markPhotoFailed('https://x/dead2.jpg');
+    expect(presentationScore(db)).toBe(7); // la photo morte retire ses 3 points, même matérialisés
+  });
+
+  it("CHECKLIST commerçant : des ACTIONS, jamais un chiffre — un score affiché EST une note", () => {
+    const nue = m({ siret: 'x', sireneEtat: 'A' });
+    const actions = completionChecklist(nue);
+    expect(actions).toContain('Ajoutez une photo de votre vitrine');
+    expect(actions).toContain('Ajoutez vos horaires');
+    expect(actions).not.toContain('Vérifiez votre établissement (SIRET)'); // déjà vérifié
+    // Aucun chiffre, aucune fraction, aucun pourcentage — sous aucune forme.
+    expect(actions.join(' ')).not.toMatch(/\d|\/|%/);
+    // La note Google n'est pas une action de remplissage : jamais dans la liste.
+    expect(actions.join(' ')).not.toMatch(/note|étoile/i);
+    // Fiche complète → liste vide (message de félicitations côté UI, jamais « 12/12 »).
+    const complete = m({ photoUrl: 'https://x/ok2.jpg', siret: 'x', sireneEtat: 'A', phone: '04', openingHours: ['l'], website: 'w' });
+    expect(completionChecklist(complete)).toEqual([]);
   });
 
   it('ordre : complétude → score officiel persisté (proxy SPT) → distance → nom', () => {

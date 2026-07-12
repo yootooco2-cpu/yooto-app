@@ -73,6 +73,8 @@ export interface Merchant {
   /** Engagements officiels prouvés (API d'État) — true = prouvé, absent = aucune preuve. */
   estEss?: boolean;
   estBio?: boolean;
+  /** Score de complétude MATÉRIALISÉ (colonne générée — ordre d'affichage SEULEMENT, jamais une note). */
+  presentationScore?: number;
   /** Décision du moteur Hierarchical Multi-Evidence (calculée au mapping — source unique). */
   classification?: import('./classification/engine').Decision;
   /** Nb d'établissements de l'unité légale — 1 = indépendance prouvée. */
