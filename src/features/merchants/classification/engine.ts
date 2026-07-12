@@ -65,6 +65,9 @@ const NAF_MAP: [prefix: string, target: NafTarget][] = [
   ['47.79', { node: 'reparation-seconde-main' }],
   ['47.81', { node: 'marches' }],
   ['38.31', { node: 'reparation-seconde-main' }],
+  // Mobilité — motos & scooters (45.40Z « commerce et réparation de motocycles »), seul
+  // gisement automobile PROUVÉ de la base (45.20 garages absents). Preuve NAF forte.
+  ['45.40', { node: 'motos' }],
   ['56.10', { node: 'restaurants' }],
   ['56.21', { node: 'traiteurs' }],
   ['56.30', { node: 'bars-cafes' }],
@@ -85,12 +88,26 @@ function resolveNaf(naf: string | null | undefined): { target: NafTarget; prefix
   return null;
 }
 
+// NAF « fourre-tout » : code officiel large qui NE désigne PAS un métier précis (ex. 47.29Z
+// « autres commerces de détail alimentaires en magasin spécialisé » couvre fromagerie, épicerie
+// fine, torréfaction…). Pour ceux-là seulement, une preuve TEXTE forte de MÊME famille affine la
+// feuille (Loi 5 : le complément précise, il ne contredit pas) — jamais pour un NAF spécifique.
+const REFINABLE_NAF = new Set<string>(['47.29']);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Preuve 2a — catégorie Google. Réutilise le registre existant (Loi 7) via
 // cryptogramForMerchant ; « autres » = générique = ABSENCE de preuve, pas une preuve.
 // Les types « bureau » forment une pseudo-catégorie NON-COMMERCE : classe générique
 // des professions de bureau, qui CONTREDIT tout NAF commerçant (jamais une devinette).
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Raffinements Google directs (niveau 2a) : une catégorie Google SPÉCIFIQUE désigne une
+// FEUILLE précise que le registre cryptogramme (générique) ne capte pas. Preuve secondaire
+// (Loi 5) : ne s'applique qu'en l'absence de NAF spécifique, et une contradiction avec le NAF
+// part en quarantaine comme toute autre. `jewelry_store` → Bijouterie & Joaillerie.
+const GOOGLE_REFINE: Record<string, string> = {
+  jewelry_store: 'bijouterie-joaillerie',
+};
 
 const CRYPTO_TO_NODE: Partial<Record<CryptogramId, string>> = {
   boulangerie: 'boulangeries', patisserie: 'patisseries', cafe: 'bars-cafes',
@@ -112,7 +129,9 @@ const OFFICE_RAW = [
 function resolveGoogle(m: Merchant): { node: string; raw: string } | null {
   const raws = [m.rawCategory, m.rawMerchantType].filter(Boolean) as string[];
   for (const raw of raws) {
-    if (OFFICE_RAW.includes(raw.trim().toLowerCase())) return { node: NON_COMMERCE, raw };
+    const key = raw.trim().toLowerCase();
+    if (OFFICE_RAW.includes(key)) return { node: NON_COMMERCE, raw };
+    if (GOOGLE_REFINE[key]) return { node: GOOGLE_REFINE[key], raw };
   }
   const crypto = cryptogramForMerchant(m);
   const node = CRYPTO_TO_NODE[crypto];
@@ -136,7 +155,7 @@ const TEXT_HINTS: [node: string, stems: string[]][] = [
   ['jardineries', ['jardinerie', 'pepiniere']],
   ['reparation-seconde-main', ['cordonn', 'repar', 'retouch', 'ressourcerie', 'recyclerie', 'friperie']],
   ['boucheries', ['boucher']],
-  ['fromageries', ['fromage']],
+  ['fromageries', ['fromage', 'cremerie', 'cremier']],
   ['primeurs', ['primeur']],
   ['cooperatives', ['cooperat']],
 ];
@@ -211,7 +230,14 @@ export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
 
   // ── Preuve 1b : NAF cartographié, non composite.
   if (naf && 'node' in naf.target) {
-    const node = naf.target.node;
+    let node = naf.target.node;
+    // Raffinage NOM d'un NAF fourre-tout (47.29) par une preuve texte forte de MÊME famille :
+    // « Fromagerie… » → fromageries au lieu d'épiceries. N'écrase jamais un NAF spécifique.
+    const refined =
+      REFINABLE_NAF.has(naf.prefix) && text && text.node !== node && familyOf(text.node) === familyOf(node)
+        ? text.node
+        : null;
+    if (refined) node = refined;
     if (level2 && level2.node === NON_COMMERCE) {
       return quarantaine({
         confidence: 'LOW', source: 'contradiction NAF/Google',
@@ -234,9 +260,14 @@ export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
           : '';
     return decide({
       category: node, confidence: 'HIGH',
-      source: level2 && level2.node === node ? 'NAF + concordance' : 'NAF',
-      evidence: [`NAF ${m.nafCode}`, ...(level2 ? [`${level2Label} → ${level2.node}`] : [])],
-      explanation: `Activité prouvée par le registre officiel (NAF ${m.nafCode} → ${node}).${divergence}`,
+      source: refined ? 'NAF fourre-tout + raffinement nom' : level2 && level2.node === node ? 'NAF + concordance' : 'NAF',
+      evidence: [
+        `NAF ${m.nafCode}${refined ? ` (fourre-tout ${naf.prefix}, affiné par le nom)` : ''}`,
+        ...(level2 ? [`${level2Label} → ${level2.node}`] : []),
+      ],
+      explanation: refined
+        ? `NAF fourre-tout ${m.nafCode} (${naf.prefix}) affiné par une preuve nom forte vers ${node} (même famille) : raffinement journalisé, preuve officielle conservée.`
+        : `Activité prouvée par le registre officiel (NAF ${m.nafCode} → ${node}).${divergence}`,
     });
   }
 

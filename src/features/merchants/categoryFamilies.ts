@@ -92,14 +92,29 @@ const kItem = (id: string, label: string, accent: string, keywords: string[]): C
   pictoKey: id,
   accent,
 });
+/**
+ * Feuille HYBRIDE : consomme la décision du MOTEUR (`cls(id)`) EN PLUS du texte. Indispensable
+ * pour surfacer les feuilles que le moteur peuple par NAF (Librairies 47.61/47.62, Disquaires
+ * 47.63, Vélos/Motos 47.64/45.40…) — sinon une feuille purement textuelle rate les fiches
+ * classées par le registre officiel dont le nom ne porte pas le mot-clé.
+ */
+const khItem = (id: string, label: string, accent: string, keywords: string[]): CategoryNode => ({
+  id,
+  label,
+  match: either(cls(id), textMatch(...keywords)),
+  pictoKey: id,
+  accent,
+});
 
 /** Vignerons & Domaines (GATE 1) — décision du moteur (NAF 01.21/11.02 niveau 1, texte en repli). */
 const vigneronsMatch: MerchantPredicate = cls('vignerons-domaines');
 
 const RESTO: MerchantPredicate = clsIn('restaurants', 'bars-cafes');
 const BIENETRE = cls('bienetre');
-const CULTURE = clsIn('culture', 'librairies');
-const MOBILITE = cls('mobilite');
+// Culture consomme les feuilles peuplées par le moteur (librairies 47.61/47.62, disquaires 47.63).
+const CULTURE = clsIn('culture', 'librairies', 'disquaires');
+// Mobilité consomme les feuilles moteur (vélos/trottinettes/skate via 47.64 composite, motos 45.40).
+const MOBILITE = clsIn('mobilite', 'velos', 'trottinettes', 'skate-rollers', 'motos');
 
 /**
  * BIEN-ÊTRE — métiers (soin, mouvement, santé douce, modification corporelle). Structure plate
@@ -270,15 +285,16 @@ const artisanatChildren: CategoryNode[] = ARTISANAT_FAMILIES.map((f) => ({
   label: f.label,
   pictoKey: f.id,
   accent: f.accent,
-  match:
-    f.id === 'reparation-seconde-main'
-      ? either(cls('reparation-seconde-main'), textMatch(...f.metiers.flatMap((mt) => mt[2])))
-      : textMatch(...f.metiers.flatMap((mt) => mt[2])),
+  // Le nœud FAMILLE consomme aussi la décision moteur homonyme (`cls(f.id)`) : les familles
+  // peuplées par NAF (Bijouterie & Joaillerie 47.77, Réparation & Seconde main 95.2x/47.79)
+  // remontent même sans mot-clé dans le nom. Pour les familles sans NAF dédié, `cls(f.id)` est
+  // simplement toujours faux (inoffensif) et le texte reste seul moteur.
+  match: either(cls(f.id), textMatch(...f.metiers.flatMap((mt) => mt[2]))),
   children: f.metiers.map(([id, label, kw]) => item(id, label, textMatch(...kw))),
 }));
 const ARTISANAT_KEYWORDS: string[] = ARTISANAT_FAMILIES.flatMap((f) => f.metiers.flatMap((mt) => mt[2]));
 const artisanatMatch: MerchantPredicate = either(
-  clsIn('artisanat', 'reparation-seconde-main'),
+  clsIn('artisanat', 'reparation-seconde-main', 'bijouterie-joaillerie'),
   textMatch(...ARTISANAT_KEYWORDS),
 );
 
@@ -308,6 +324,9 @@ const cultureMatch: MerchantPredicate = either(CULTURE, textMatch(...CULTURE_KEY
  */
 const MOBILITE_METIERS: { id: string; label: string; accent: string; keywords: string[] }[] = [
   { id: 'velos', label: 'Vélos', accent: '#666633', keywords: ['velo', 'cycle', 'bike', 'cyclable', 'reparation de velo'] },
+  // Motos & scooters — seul gisement automobile PROUVÉ (NAF 45.40Z, décision moteur). Garages
+  // (45.20), taxis, auto-écoles, bornes de recharge : ABSENTS de la base → non créés (Loi 2).
+  { id: 'motos', label: 'Motos & scooters', accent: '#5A5A3C', keywords: ['moto', 'scooter', 'motocycle', 'deux roues', 'motard'] },
   { id: 'trottinettes', label: 'Trottinettes', accent: '#2D6563', keywords: ['trottinette', 'scooter electrique'] },
   { id: 'skate-rollers', label: 'Skate & Rollers', accent: '#AC541E', keywords: ['skate', 'skateboard', 'roller', 'longboard'] },
   { id: 'poussettes', label: 'Poussettes', accent: '#6F4568', keywords: ['poussette', 'puericulture'] },
@@ -423,7 +442,7 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     label: 'Culture',
     icon: 'book-open',
     match: cultureMatch,
-    children: CULTURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
+    children: CULTURE_METIERS.map((m) => khItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
     // Mobilité douce — 9 sous-catégories avec pictogrammes dédiés (référence). Marche à pied /
@@ -432,7 +451,7 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     label: 'Mobilité',
     icon: 'navigation',
     match: mobiliteMatch,
-    children: MOBILITE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
+    children: MOBILITE_METIERS.map((m) => khItem(m.id, m.label, m.accent, m.keywords)),
   },
   {
     // Nature — 10 sous-catégories avec pictogrammes dédiés (référence). Branche multi-niveaux.

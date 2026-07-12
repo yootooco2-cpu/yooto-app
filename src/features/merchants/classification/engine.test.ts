@@ -200,3 +200,51 @@ describe('Extension périmètre 12/07 — rattachement aux catégories EXISTANTE
     expect(d.status).not.toBe('QUARANTAINE');
   });
 });
+
+describe('Rattachement — améliorations qualité (fixes 47.29 / jewelry_store / 45.40)', () => {
+  it('47.29Z (fourre-tout alim.) + nom « Fromagerie » → fromageries, HIGH (raffinement nom)', () => {
+    const d = classifyMerchant(m({ name: 'La Fromagerie du Village', nafCode: '47.29Z' } as Partial<Merchant>));
+    expect(d.category).toBe('fromageries');
+    expect(d.confidence).toBe('HIGH');
+    expect(d.source).toContain('raffinement nom');
+  });
+
+  it('47.29Z + nom « Crémerie » → fromageries', () => {
+    const d = classifyMerchant(m({ name: 'Crémerie Saint-Roch', nafCode: '47.29Z' } as Partial<Merchant>));
+    expect(d.category).toBe('fromageries');
+  });
+
+  it('47.29Z sans indice nom → reste épiceries (aucune sur-refinement)', () => {
+    const d = classifyMerchant(m({ name: 'Le Comptoir Bio', nafCode: '47.29Z' } as Partial<Merchant>));
+    expect(d.category).toBe('epiceries');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('NAF SPÉCIFIQUE (47.22 boucherie) JAMAIS refiné par « fromage » dans le nom', () => {
+    const d = classifyMerchant(m({ name: 'Boucherie Au Bon Fromage', nafCode: '47.22Z' } as Partial<Merchant>));
+    expect(d.category).toBe('boucheries');
+  });
+
+  it('jewelry_store SANS NAF → bijouterie-joaillerie (preuve Google secondaire), MEDIUM', () => {
+    const d = classifyMerchant(m({ name: 'Éclat Bijoux', rawCategory: 'jewelry_store' } as Partial<Merchant>));
+    expect(d.category).toBe('bijouterie-joaillerie');
+    expect(d.confidence).toBe('MEDIUM');
+  });
+
+  it('jewelry_store + NAF 47.77 → concordance, HIGH', () => {
+    const d = classifyMerchant(m({ name: 'Or & Cie', nafCode: '47.77Z', rawCategory: 'jewelry_store' } as Partial<Merchant>));
+    expect(d.category).toBe('bijouterie-joaillerie');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('jewelry_store contredit par un NAF d’une autre famille (56.10 resto) → QUARANTAINE', () => {
+    const d = classifyMerchant(m({ name: 'Le Diamant', nafCode: '56.10A', rawCategory: 'jewelry_store' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+  });
+
+  it('45.40Z (motos & scooters) → motos, HIGH (seul gisement automobile prouvé)', () => {
+    const d = classifyMerchant(m({ name: 'Moto Center', nafCode: '45.40Z' } as Partial<Merchant>));
+    expect(d.category).toBe('motos');
+    expect(d.confidence).toBe('HIGH');
+  });
+});
