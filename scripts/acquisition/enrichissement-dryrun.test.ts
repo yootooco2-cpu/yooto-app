@@ -9,7 +9,7 @@ import { classifyMerchant } from '@/features/merchants/classification/engine';
 import type { Merchant } from '@/features/merchants/types';
 
 const SCRATCH = '/private/tmp/claude-501/-Users-jasoncombe/2e24c30e-4d3d-4a27-953f-14e22a8aea3f/scratchpad';
-const DATA = `${SCRATCH}/enrich-test-100.json`;
+const DATA = process.env.ENRICH_DATA ?? `${SCRATCH}/enrich-test-100.json`;
 
 interface Enriched {
   id: number; name: string; naf: string; lat: number; lng: number; etat: string;
@@ -55,6 +55,11 @@ const overlap = (a: Set<string>, b: Set<string>): number => {
       ) {
         sortie = 'QUARANTAINE';
         raisons.push(`correspondance douteuse : « ${r.g_name} » à ${Math.round(distM(r.lat, r.lng, r.g_lat!, r.g_lng!))} m — pas d'écriture`);
+      } else if (r.g_lat != null && distM(r.lat, r.lng, r.g_lat!, r.g_lng!) > 1000) {
+        // GARDE PERMANENTE (classe « homonyme lointain », validée sur le cas Nine) :
+        // incohérence géographique MANIFESTE → quarantaine, même à nom identique.
+        sortie = 'QUARANTAINE';
+        raisons.push(`incohérence géographique manifeste : homonyme « ${r.g_name} » à ${Math.round(distM(r.lat, r.lng, r.g_lat!, r.g_lng!))} m — quarantaine, jamais d'écrasement`);
       } else if (decision.status === 'QUARANTAINE') {
         sortie = 'QUARANTAINE';
         raisons.push(`contradiction moteur : ${decision.explanation}`);
