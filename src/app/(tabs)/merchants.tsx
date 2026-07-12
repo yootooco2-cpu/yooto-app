@@ -57,6 +57,7 @@ export default function MerchantsScreen() {
           query={query}
           onQueryChange={setQuery}
           onCategoryChange={(m) => setCategoryMatch(() => m)}
+          merchants={results}
           trailing={<FavoritesButton onPress={() => router.push('/explore')} />}
         />
 

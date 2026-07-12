@@ -7,6 +7,7 @@ import { glass } from '@/design/tokens/glass';
 import { spacing } from '@/design/tokens/spacing';
 
 import { type MerchantPredicate } from '../categoryFamilies';
+import type { Merchant } from '../types';
 import { CategoryNavigation } from './CategoryNavigation';
 
 interface Props {
@@ -21,6 +22,9 @@ interface Props {
   subtitle?: string;
   /** Action optionnelle à droite de la recherche (ex. avatar). */
   trailing?: ReactNode;
+  /** Corpus actuellement chargé par l'app (sous-ensemble de la base) — comptes par sous-catégorie
+   *  + masquage des vides, transmis à la navigation. */
+  merchants?: Merchant[];
 }
 
 /**
@@ -31,7 +35,7 @@ interface Props {
  * placeholder, recherche, comportement via `onCategoryChange`). Ne rend qu'un PRÉDICAT ; chaque
  * écran l'applique à sa liste — la mise en page/le fond restent à la charge de l'écran hôte.
  */
-export function SearchMenu({ query, onQueryChange, onCategoryChange, placeholder, title, subtitle, trailing }: Props) {
+export function SearchMenu({ query, onQueryChange, onCategoryChange, placeholder, title, subtitle, trailing, merchants }: Props) {
   return (
     <View style={styles.wrap}>
       {title || subtitle ? (
@@ -48,7 +52,7 @@ export function SearchMenu({ query, onQueryChange, onCategoryChange, placeholder
         {trailing}
       </View>
 
-      <CategoryNavigation onChange={onCategoryChange} />
+      <CategoryNavigation onChange={onCategoryChange} merchants={merchants} />
     </View>
   );
 }

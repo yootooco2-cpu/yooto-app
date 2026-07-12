@@ -403,6 +403,7 @@ export default function MapScreen() {
                   query={query}
                   onQueryChange={setQuery}
                   onCategoryChange={(match) => setMapMatch(() => match)}
+                  merchants={results}
                   trailing={<FavoritesButton onPress={() => setQuickAccessOpen(true)} />}
                 />
                 {nearbyActive && location.status === 'denied' ? (

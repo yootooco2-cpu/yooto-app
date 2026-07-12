@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Platform, ScrollView, StyleSheet, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -12,10 +12,19 @@ import { spacing } from '@/design/tokens/spacing';
 import { CATEGORY_FAMILIES, type CategoryNode, type FeatherName, type MerchantPredicate } from '../categoryFamilies';
 import { cryptogramAsset } from '../cryptogramAssets';
 import { familyPicto } from '../familyPictos';
+import type { Merchant } from '../types';
 
 interface Props {
   /** Émet le prédicat de filtrage résolu (null = aucune catégorie). La carte l'applique sans recharger. */
   onChange: (match: MerchantPredicate | null) => void;
+  /**
+   * Corpus servant à COMPTER les résultats par sous-catégorie. C'est le CORPUS ACTUELLEMENT
+   * CHARGÉ PAR L'APPLICATION (un sous-ensemble de la base Supabase, pas l'ensemble des fiches) —
+   * décision produit : on compte sur tout le corpus chargé, jamais sur la seule zone visible.
+   * Permet « Tout (N) », le nombre réel par ligne et le MASQUAGE des sous-catégories à 0 résultat
+   * (la taxonomie reste intacte : filtrage au rendu).
+   */
+  merchants?: Merchant[];
 }
 
 /**
@@ -26,7 +35,7 @@ interface Props {
  * Générique N niveaux : une sous-catégorie qui a elle-même des enfants (Artisanat) approfondit le
  * panneau avec un retour « ‹ ». Le composant ne remonte qu'un PRÉDICAT ; Discovery non touché.
  */
-export function CategoryNavigation({ onChange }: Props) {
+export function CategoryNavigation({ onChange, merchants = [] }: Props) {
   // Pile du PANNEAU ouvert : [] = fermé ; [famille] = panneau famille ; [famille, sous-famille] = plus profond.
   const [panelPath, setPanelPath] = useState<CategoryNode[]>([]);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
@@ -37,6 +46,21 @@ export function CategoryNavigation({ onChange }: Props) {
   const panelNodes = panelNode?.children ?? [];
   const panelRootId = isOpen ? panelPath[0].id : '';
 
+  // Compte les commerces du corpus CHARGÉ PAR L'APP matchant un nœud (mémoïsé par corpus, calcul
+  // paresseux → seuls les nœuds réellement affichés sont comptés). `hasCounts` false = fallback sûr
+  // (aucun corpus fourni) : on n'affiche ni compte ni masquage, comportement historique préservé.
+  const hasCounts = merchants.length > 0;
+  const countOf = useMemo(() => {
+    const cache = new Map<string, number>();
+    return (node: CategoryNode): number => {
+      const cached = cache.get(node.id);
+      if (cached !== undefined) return cached;
+      const n = node.match ? merchants.reduce((acc, m) => (node.match!(m) ? acc + 1 : acc), 0) : 0;
+      cache.set(node.id, n);
+      return n;
+    };
+  }, [merchants]);
+
   const close = () => setPanelPath([]);
 
   const applyLeaf = (familyId: string, node: CategoryNode) => {
@@ -45,6 +69,16 @@ export function CategoryNavigation({ onChange }: Props) {
     setActiveFamilyId(isActive ? null : familyId);
     onChange(isActive ? null : node.match ?? null);
     setPanelPath([]); // choisir une sous-catégorie referme le panneau
+  };
+
+  // « Tout (N) » : applique le prédicat UNION du nœud de panneau courant (famille ou sous-branche).
+  const applyAll = (node: CategoryNode) => {
+    const allId = `${node.id}::all`;
+    const isActive = activeLeafId === allId;
+    setActiveLeafId(isActive ? null : allId);
+    setActiveFamilyId(isActive ? null : (panelPath[0]?.id ?? node.id));
+    onChange(isActive ? null : node.match ?? null);
+    setPanelPath([]);
   };
 
   const onTapFamily = (node: CategoryNode) => {
@@ -100,16 +134,29 @@ export function CategoryNavigation({ onChange }: Props) {
                 </YText>
               </View>
             ) : null}
-            {/* Hauteur DYNAMIQUE : toutes les sous-catégories affichées d'un coup, aucun scroll interne. */}
+            {/* Hauteur DYNAMIQUE : toutes les sous-catégories NON VIDES affichées d'un coup, aucun
+                scroll interne. « Tout (N) » en tête (union de la famille/sous-branche), puis chaque
+                sous-catégorie avec son compte réel ; celles à 0 résultat sont masquées (référentiel intact). */}
             <View style={styles.list}>
-              {panelNodes.map((node, i) => (
+              {panelNode ? (
+                <MenuRow
+                  key="__all__"
+                  label="Tout"
+                  count={hasCounts ? countOf(panelNode) : undefined}
+                  active={activeLeafId === `${panelNode.id}::all`}
+                  first
+                  onPress={() => applyAll(panelNode)}
+                />
+              ) : null}
+              {(hasCounts ? panelNodes.filter((n) => countOf(n) > 0) : panelNodes).map((node) => (
                 <MenuRow
                   key={node.id}
                   label={node.label}
+                  count={hasCounts ? countOf(node) : undefined}
                   imageIcon={picto(node, panelRootId)}
                   hasChildren={!!(node.children && node.children.length)}
                   active={activeLeafId === node.id}
-                  first={i === 0}
+                  first={false}
                   onPress={() => onTapSub(node)}
                 />
               ))}
@@ -189,6 +236,7 @@ function Capsule({
  */
 function MenuRow({
   label,
+  count,
   imageIcon,
   hasChildren = false,
   active = false,
@@ -196,6 +244,8 @@ function MenuRow({
   onPress,
 }: {
   label: string;
+  /** Nombre réel de résultats (corpus global) — masqué si absent. */
+  count?: number;
   imageIcon?: ImageSourcePropType;
   hasChildren?: boolean;
   active?: boolean;
@@ -223,6 +273,11 @@ function MenuRow({
       <YText variant="body" numberOfLines={1} style={[styles.menuLabel, { color: active ? ACTIVE_GREEN : glass.onDark }]}>
         {label}
       </YText>
+      {typeof count === 'number' ? (
+        <YText variant="caption" style={[styles.menuCount, { color: active ? ACTIVE_GREEN : glass.onDarkMuted }]}>
+          {count}
+        </YText>
+      ) : null}
       {active ? (
         <Feather name="check" size={18} color={ACTIVE_GREEN} />
       ) : hasChildren ? (
@@ -284,6 +339,8 @@ const styles = StyleSheet.create({
   menuRowActive: { backgroundColor: 'rgba(106,155,99,0.16)' },
   menuPicto: { width: 24, height: 24 },
   menuLabel: { flex: 1, fontWeight: '600' },
+  // Compte réel aligné à droite, avant la coche/chevron — discret (variante muette).
+  menuCount: { fontWeight: '700', marginLeft: spacing.sm, minWidth: 22, textAlign: 'right' },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
