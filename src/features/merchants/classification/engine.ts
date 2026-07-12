@@ -52,8 +52,16 @@ const NAF_MAP: [prefix: string, target: NafTarget][] = [
   ['47.25', { node: 'cavistes' }],
   ['47.29', { node: 'epiceries' }],
   ['47.61', { node: 'librairies' }],
+  // Extension périmètre 12/07 (décision : rattacher aux catégories EXISTANTES, jamais
+  // en créer — « le moteur s'adapte à l'application, jamais l'inverse ») :
+  ['47.62', { node: 'librairies' }], // presse & papeterie → Librairies (plusieurs NAF par catégorie = assumé)
+  ['47.63', { node: 'disquaires' }],
+  // 47.64Z : « articles de sport » couvre cycles/glisse ET sport généraliste → COMPOSITE,
+  // résolu seulement par une preuve niveau 2 (texte/Google), sinon quarantaine — le tri voulu.
+  ['47.64', { composite: ['velos', 'skate-rollers', 'trottinettes', 'mobilite'] }],
   // 47.76Z : « fleurs, plantes, graines, engrais, ANIMAUX de compagnie et leurs aliments ».
   ['47.76', { composite: ['fleuristes', 'jardineries', 'animaleries'] }],
+  ['47.77', { node: 'bijouterie-joaillerie' }],
   ['47.79', { node: 'reparation-seconde-main' }],
   ['47.81', { node: 'marches' }],
   ['38.31', { node: 'reparation-seconde-main' }],

@@ -171,3 +171,32 @@ describe('Invariants du moteur', () => {
     expect(classifyMerchant(input)).toEqual(classifyMerchant(input));
   });
 });
+
+describe('Extension périmètre 12/07 — rattachement aux catégories EXISTANTES uniquement', () => {
+  it('47.62Z (presse-papeterie) → Librairies, HIGH par NAF', () => {
+    const d = classifyMerchant(m({ name: 'Maison de la Presse', nafCode: '47.62Z' } as Partial<Merchant>));
+    expect(d.category).toBe('librairies');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('47.63Z (disques) → Disquaires', () => {
+    const d = classifyMerchant(m({ name: 'Vinyle Shop', nafCode: '47.63Z' } as Partial<Merchant>));
+    expect(d.category).toBe('disquaires');
+  });
+
+  it('47.77Z (bijouterie de détail) → Bijouterie & Joaillerie', () => {
+    const d = classifyMerchant(m({ name: 'Bijouterie du Centre', nafCode: '47.77Z' } as Partial<Merchant>));
+    expect(d.category).toBe('bijouterie-joaillerie');
+  });
+
+  it('47.64Z (sport, COMPOSITE) sans preuve niveau 2 → jamais résolu seul', () => {
+    const d = classifyMerchant(m({ name: 'Espace Sport 2000', nafCode: '47.64Z' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+  });
+
+  it('47.64Z + preuve Google bicycle_store → Mobilité (composite résolu par niveau 2)', () => {
+    const d = classifyMerchant(m({ name: 'Culture Vélo', nafCode: '47.64Z', rawCategory: 'bicycle_store' } as Partial<Merchant>));
+    expect(d.category).toBe('mobilite'); // famille existante — les feuilles UNION raffinent par texte
+    expect(d.status).not.toBe('QUARANTAINE');
+  });
+});
