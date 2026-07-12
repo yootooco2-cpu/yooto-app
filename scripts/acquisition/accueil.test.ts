@@ -13,7 +13,7 @@ describe('accueil intrinsèque (pipeline A — la nomenclature décrit un lieu p
   });
 
   it.each([
-    ['01.21Z', 'viticulture'], ['01.49Z', 'élevage'], ['10.71C', 'fournil (production)'],
+    ['01.21Z', 'viticulture'], ['01.49Z', 'élevage'], ['10.71A', 'boulangerie industrielle'],
     ['11.02B', 'vinification'], ['02.10Z', 'sylviculture'], ['46.34Z', 'commerce de gros'],
   ])('NAF %s (%s) → activité, pas un lieu : preuve indépendante requise', (naf) => {
     expect(hasIntrinsicReception(naf)).toBe(false);
@@ -27,24 +27,32 @@ describe('preuve indépendante (pipeline B — production)', () => {
     expect(v.missing).toContain('enrichissement requis');
   });
 
-  it('enseigne déclarée au répertoire → prouvé (tout métier)', () => {
-    expect(receptionEvidence({ naf: '01.49Z', nom: 'ERIC RAMOS', enseignes: ['LA CHEVRERIE DU PIC'], adresse: 'ROUTE DE X' }).proven).toBe(true);
+  it("INVARIANT : l'identité commerciale (enseigne OU dénomination) seule ne démontre JAMAIS la localisation", () => {
+    const enseigneSeule = receptionEvidence({ naf: '01.49Z', nom: 'ERIC RAMOS', enseignes: ['LA CHEVRERIE DU PIC'], adresse: '12 RUE DE LA REPUBLIQUE' });
+    expect(enseigneSeule.proven).toBe(false);
+    expect(enseigneSeule.missing).toContain('identité commerciale existe');
+    const denomSeule = receptionEvidence({ naf: '01.21Z', nom: "MAS D'EMBOUYS", enseignes: null, adresse: '25 RUE X' });
+    expect(denomSeule.proven).toBe(false);
+    expect(denomSeule.missing).toContain('Pipeline B');
   });
 
-  it("l'adresse porte le lieu d'exploitation → prouvé (château, ferme, moulin…)", () => {
+  it("preuve LOCALISÉE : l'adresse ouvre sur le lieu d'exploitation → prouvé (château, ferme, rucher…)", () => {
     expect(receptionEvidence({ naf: '01.21Z', nom: 'PIERRE DE COLBERT', enseignes: null, adresse: 'CHATEAU FLAUGERGUES 1744 AVENUE ALBERT EINSTEIN' }).proven).toBe(true);
     expect(receptionEvidence({ naf: '01.41Z', nom: 'JEAN DUPONT', enseignes: null, adresse: 'FERME DES OLIVIERS ROUTE DE NIMES' }).proven).toBe(true);
+    expect(receptionEvidence({ naf: '01.49Z', nom: 'ERIC RAMOS', enseignes: null, adresse: 'RUCHERS DU TRENTAL ROUTE DE GANGES' }).proven).toBe(true);
   });
 
-  it('dénomination commerciale de LIEU → prouvé ; structure patrimoniale → jamais', () => {
-    expect(receptionEvidence({ naf: '01.21Z', nom: 'MAS D\'EMBOUYS', enseignes: null, adresse: '25 RUE X' }).proven).toBe(true);
+  it('structures patrimoniales → jamais une identité, encore moins un lieu', () => {
     expect(receptionEvidence({ naf: '01.21Z', nom: 'GFA LA COSTE', enseignes: null, adresse: '36 BD DES ARCEAUX' }).proven).toBe(false);
     expect(receptionEvidence({ naf: '01.21Z', nom: 'INDIVISION BRISSAC', enseignes: null, adresse: '5 RUE DES HOSPICES' }).proven).toBe(false);
   });
 
-  it('générique multi-métiers : apiculteur avec RUCHER, fromager avec BERGERIE → prouvés', () => {
-    expect(receptionEvidence({ naf: '01.49Z', nom: 'LES RUCHERS DU TRENTAL', enseignes: null, adresse: 'X' }).proven).toBe(true);
-    expect(receptionEvidence({ naf: '10.51C', nom: 'BERGERIE DE LOZERE', enseignes: null, adresse: 'X' }).proven).toBe(true);
+  it('sémantique INSEE : boulangerie/pâtisserie/charcuterie artisanales = vente sur place (pipeline A)', () => {
+    expect(hasIntrinsicReception('10.71C')).toBe(true);
+    expect(hasIntrinsicReception('10.71D')).toBe(true);
+    expect(hasIntrinsicReception('10.13B')).toBe(true);
+    expect(hasIntrinsicReception('10.71A')).toBe(false); // industriel : pas un lieu public
+    expect(hasIntrinsicReception('10.51C')).toBe(false); // fabrication fromagère : pipeline B
   });
 
   it("classe « odonyme de voirie » : le toponyme dans le nom de la RUE n'est pas un lieu-dit", () => {

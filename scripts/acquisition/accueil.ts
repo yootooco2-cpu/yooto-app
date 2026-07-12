@@ -22,8 +22,13 @@
  *  3. la dénomination commerciale est un nom de LIEU (et non une structure patrimoniale).
  */
 
-/** Divisions NAF dont la sémantique EST un lieu recevant du public. */
-const INTRINSIC_RECEPTION_PREFIXES = ['47', '55', '56', '95.2', '96'];
+/**
+ * Divisions et codes NAF dont la sémantique EST un lieu recevant du public.
+ * Les codes 10.71B/C/D et 10.13B sont inclus par DÉFINITION INSEE : la nomenclature
+ * y décrit une fabrication AVEC vente au détail sur place (boulangerie/pâtisserie/
+ * charcuterie artisanales) — sémantique du code, pas exception métier.
+ */
+const INTRINSIC_RECEPTION_PREFIXES = ['47', '55', '56', '95.2', '96', '10.71B', '10.71C', '10.71D', '10.13B'];
 
 export function hasIntrinsicReception(naf: string | null | undefined): boolean {
   if (!naf) return false;
@@ -63,24 +68,28 @@ export function receptionEvidence(c: ReceptionCandidate): ReceptionVerdict {
       evidence: [`accueil intrinsèque à la nomenclature (NAF ${c.naf} = lieu de vente/service au public)`],
     };
   }
+  // ── INVARIANT (Loi 8, validé scientifiquement sur 10 observations + Fontanès) :
+  //    « Une preuve d'accueil n'est valide que si elle est RATTACHÉE AU LIEU accueillant
+  //      réellement le public. Une identité commerciale, une enseigne ou une dénomination
+  //      seules ne démontrent JAMAIS la localisation du lieu d'accueil. »
+  //    Corrélation mesurée : adresse portant le lieu → 7/7 plausibles ;
+  //    nom/enseigne seuls sur voirie → 3/3 (+ Fontanès) non démontrables.
   const evidence: string[] = [];
-  const enseigne = c.enseignes?.[0];
-  if (enseigne && !BUREAU_RE.test(enseigne)) {
-    evidence.push(`enseigne déclarée au répertoire : « ${enseigne} »`);
-  }
   if (c.adresse && LIEU_EN_TETE_RE.test(c.adresse) && !CHEZ_RE.test(c.adresse)) {
-    evidence.push(`l'adresse OUVRE sur le lieu d'exploitation (« ${c.adresse} »)`);
-  }
-  const nom = c.nom ?? '';
-  if (LIEU_RE.test(nom) && !PATRIMONIAL_RE.test(nom)) {
-    evidence.push(`dénomination commerciale de lieu (« ${nom} »)`);
+    evidence.push(`preuve d'accueil LOCALISÉE : l'adresse ouvre sur le lieu d'exploitation (« ${c.adresse} »)`);
   }
   if (evidence.length > 0) return { proven: true, evidence };
+  const enseigne = c.enseignes?.[0];
+  const nom = c.nom ?? '';
+  const identite =
+    (enseigne && !BUREAU_RE.test(enseigne)) || (LIEU_RE.test(nom) && !PATRIMONIAL_RE.test(nom))
+      ? ' Une identité commerciale existe (enseigne/dénomination) mais ne démontre pas la localisation.'
+      : '';
   return {
     proven: false,
     evidence: [],
     missing:
-      'activité de production : aucune preuve indépendante d’accueil du public — ' +
-      'enrichissement requis (Google, site web, office de tourisme) avant publication',
+      'localisation du lieu d’accueil non démontrée — file Pipeline B, enrichissement requis ' +
+      `(géocodage par nom de lieu, Google Places de base, BAN, office de tourisme).${identite}`,
   };
 }
