@@ -16,8 +16,8 @@ import { YText } from '@/components/ui/YText';
 import { spacing } from '@/design/tokens/spacing';
 import {
   SearchMenu,
+  sortForDisplay,
   useMerchantSearch,
-  withPhotoForDemo,
   type Merchant,
   type MerchantPredicate,
 } from '@/features/merchants';
@@ -31,10 +31,11 @@ export default function MerchantsScreen() {
 
   // Filtre catégorie (prédicat) émis par le MENU OFFICIEL PARTAGÉ → post-filtre local de la grille.
   const [categoryMatch, setCategoryMatch] = useState<MerchantPredicate | null>(null);
-  // Démo : uniquement les commerces avec une vraie photo, puis filtre catégorie.
+  // Décision produit 12/07 : TOUTES les fiches sont visibles — le score de complétude
+  // ORDONNE (les plus riches d'abord), il n'exclut jamais. Les discrètes restent présentes.
   const displayed = useMemo(() => {
-    const base = withPhotoForDemo(results);
-    return categoryMatch ? base.filter(categoryMatch) : base;
+    const base = categoryMatch ? results.filter(categoryMatch) : results;
+    return sortForDisplay(base);
   }, [results, categoryMatch]);
 
   const numColumns = 3;

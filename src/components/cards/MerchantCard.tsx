@@ -8,7 +8,7 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { shadows } from '@/design/tokens/shadows';
 import { spacing } from '@/design/tokens/spacing';
-import { formatCityName, getMerchantCoverPhoto, type Merchant } from '@/features/merchants';
+import { formatCityName, getMerchantCoverPhoto, markPhotoFailed, type Merchant } from '@/features/merchants';
 import { cryptogramColor, cryptogramForMerchant } from '@/features/merchants/cryptograms';
 
 type Props = {
@@ -43,7 +43,14 @@ export function MerchantCard({ merchant, selected = false, onPress }: Props) {
         pressed && styles.pressed,
       ]}>
       <View style={styles.imageWrap}>
-        <MerchantPhoto uri={getMerchantCoverPhoto(merchant)} height={IMAGE_HEIGHT} rounded={0} recyclingKey={merchant.id} />
+        <MerchantPhoto
+          uri={getMerchantCoverPhoto(merchant)}
+          height={IMAGE_HEIGHT}
+          rounded={0}
+          recyclingKey={merchant.id}
+          // Santé photo : une URL qui ne CHARGE pas cesse de compter dans le score de complétude.
+          onError={() => markPhotoFailed(getMerchantCoverPhoto(merchant) ?? undefined)}
+        />
 
         {/* Pictogramme de famille dans une pastille givrée sombre → intégré, jamais posé « dessus ». */}
         <View style={styles.cryptoBadge} pointerEvents="none">

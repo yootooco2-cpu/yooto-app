@@ -4,6 +4,7 @@ import type { MapMarker } from '@/features/map';
 import { cryptogramForMerchant } from './cryptograms';
 import { getMerchantCoverPhoto } from './photos';
 import type { Merchant } from './types';
+import { isVerifiedMerchant } from './verification';
 
 /**
  * Adapter domaine → moteur : convertit des commerces en marqueurs génériques.
@@ -23,6 +24,8 @@ export function merchantsToMapMarkers(merchants: Merchant[]): MapMarker<Merchant
     rating: merchant.rating,
     open: merchant.isOpenNow,
     producer: merchant.isProducer,
+    // Axe VÉRIFICATION (indépendant de la complétude) : le sceau vit jusque sur la carte.
+    verified: isVerifiedMerchant(merchant),
     // État éditorial intrinsèque (Discovery) → anneau/halo du marqueur (Design System).
     state: markerState(merchant),
     // `pin` n'est significatif que pour les données de démo. Pour les données réelles

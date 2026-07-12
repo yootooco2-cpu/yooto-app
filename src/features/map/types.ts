@@ -62,6 +62,8 @@ export interface MapMarker<TData = unknown> {
   rating?: number;
   open?: boolean;
   producer?: boolean;
+  /** Identité vérifiée par une preuve officielle — axe visuel INDÉPENDANT de la photo. */
+  verified?: boolean;
   /**
    * État éditorial INTRINSÈQUE (Design System) — pilote l'anneau/halo du marqueur.
    * Fourni par l'adaptateur via `markerState`. La sélection est un état transitoire, à part.

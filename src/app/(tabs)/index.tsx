@@ -11,7 +11,7 @@ import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
-import { SearchMenu, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
+import { SearchMenu, sortForDisplay, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
 import { recentlyOpenedSource, verifiedProducersSource } from '@/features/territory/sources';
 
 // Bande d'ambiance ≈ une hauteur d'écran : l'image d'univers se dissout TRÈS progressivement vers
@@ -55,12 +55,14 @@ export default function HomeScreen() {
   const [query, setQuery] = useState('');
   const [categoryMatch, setCategoryMatch] = useState<MerchantPredicate | null>(null);
   const q = query.trim().toLowerCase();
+  // Résultats de catégorie/recherche : TOUT le corpus (les fiches sans photo comprises),
+  // ordonné par complétude — le score ordonne, il n'exclut jamais (décision 12/07).
   const filtered = useMemo(() => {
-    let list = merchants;
+    let list = allMerchants;
     if (categoryMatch) list = list.filter(categoryMatch);
     if (q) list = list.filter((m) => `${m.name} ${m.description}`.toLowerCase().includes(q));
-    return list;
-  }, [merchants, categoryMatch, q]);
+    return sortForDisplay(list);
+  }, [allMerchants, categoryMatch, q]);
   const filtering = q.length > 0 || categoryMatch !== null;
 
   // Accueil ÉPURÉ, orienté action : on conserve le FOND D'AMBIANCE image de l'univers (discret,

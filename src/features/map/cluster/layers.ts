@@ -117,11 +117,14 @@ export function unclusteredHitLayerSpec() {
     source: SOURCE_ID,
     filter: ['!', ['has', 'point_count']],
     paint: {
-      'circle-radius': 6,
+      // AXE VÉRIFICATION (décision produit 12/07) : un commerce VÉRIFIÉ sans photo ne tombe
+      // jamais au rang de point anonyme — son point est plus présent et porte le LISERÉ OR
+      // du sceau. Couleur = axe catégorie/producteur (inchangé) ; liseré = axe preuve d'État.
+      'circle-radius': ['case', ['>', ['get', 'verified'], 0], 8, 6],
       'circle-color': ['case', ['>', ['get', 'producer'], 0], colors.primary, colors.accent],
-      'circle-stroke-width': 2,
-      'circle-stroke-color': '#FFFFFF',
-      'circle-opacity': 0.9,
+      'circle-stroke-width': ['case', ['>', ['get', 'verified'], 0], 2.5, 2],
+      'circle-stroke-color': ['case', ['>', ['get', 'verified'], 0], '#C9A227', '#FFFFFF'],
+      'circle-opacity': ['case', ['>', ['get', 'verified'], 0], 0.98, 0.9],
     },
   };
 }

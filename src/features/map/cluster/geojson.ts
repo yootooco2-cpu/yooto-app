@@ -24,6 +24,8 @@ export interface MerchantFeatureProperties {
   rating: number;
   open: number; // 0 | 1
   producer: number; // 0 | 1
+  /** Vérifié SIRENE (0 | 1) — axe du SCEAU, indépendant de la photo (liseré or du point). */
+  verified: number;
   /** État éditorial intrinsèque (pilote l'anneau/halo au rendu du marqueur photo). */
   state: MarkerImportance;
 }
@@ -62,6 +64,7 @@ export function buildMerchantFeatureCollection(markers: MapMarker[]): MerchantFe
         rating: m.rating ?? 0,
         open: m.open ? 1 : 0,
         producer: m.producer ? 1 : 0,
+        verified: m.verified ? 1 : 0,
         state: m.state ?? 'standard',
       },
     }));
