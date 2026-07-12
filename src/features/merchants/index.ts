@@ -45,4 +45,4 @@ export type {
   MerchantRepository,
 } from './types';
 export type { QuickFilter, QuickFilterId } from './filters';
-export { presentationScore, sortForDisplay, compareForDisplay, markPhotoFailed, isDisplayablePhoto } from './presentation';
+export { presentationScore, sortForDisplay, compareForDisplay, markPhotoFailed, isDisplayablePhoto, completionChecklist } from './presentation';
