@@ -3,12 +3,14 @@
 // Filtre STRICTEMENT côté ÉTABLISSEMENT (piège connu : matching_etablissements
 // contient le siège même quand son activité diffère — ex. holding 70.10Z à Alès).
 
-const FACADE = new Set([
+// Liste NAF surchargée par env NAF_LIST (ex. gisement « détail spécialisé » GO 12/07) —
+// défaut = façade historique.
+const FACADE = new Set((process.env.NAF_LIST ?? [
   '10.71B', '10.71C', '10.71D', '10.13B',
   '47.21Z', '47.22Z', '47.23Z', '47.24Z', '47.25Z', '47.26Z', '47.29Z',
   '47.61Z', '47.76Z',
   '95.21Z', '95.22Z', '95.23Z', '95.24Z', '95.25Z', '95.29Z',
-]);
+].join(',')).split(','));
 
 const [commune, out] = process.argv.slice(2);
 if (!commune || !out) { console.error('usage: fetch-candidats.mjs <code_commune> <sortie.json>'); process.exit(1); }
