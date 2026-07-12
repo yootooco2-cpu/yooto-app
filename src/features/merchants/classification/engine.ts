@@ -205,6 +205,55 @@ const quarantaine = (partial: Omit<Decision, 'status' | 'category'> & { category
   ({ category: partial.category ?? null, confidence: partial.confidence, source: partial.source,
      evidence: partial.evidence, explanation: partial.explanation, status: 'QUARANTAINE' });
 
+// ── NAF 85.51Z « enseignement de disciplines sportives » : rattachement Bien-être CONTRÔLÉ ──
+// Le NAF prouve le DOMAINE (sport/loisir), PAS une sous-catégorie Bien-être. On n'attache que si
+// un signal discipline « bien-être » explicite existe (nom, catégorie Google, activité, spécialité,
+// tags) ET qu'aucun sport spécifique ne le contredit. Sinon : jamais de rattachement forcé.
+const WELLNESS_85_51: [node: string, stems: string[]][] = [
+  ['yoga', ['yoga', 'hatha', 'vinyasa', 'yin yoga', 'kundalini', 'ashtanga']],
+  ['pilates', ['pilates', 'reformer', 'methode pilates']],
+  ['coaching-sportif', ['coach sportif', 'coaching sportif', 'personal trainer', 'preparation physique', 'preparateur physique', 'remise en forme']],
+  ['fitness', ['fitness', 'salle de sport', 'gym', 'cross training', 'crossfit', 'musculation']],
+  // Bien-être corporel sans feuille dédiée → repli documenté sur la famille « bienetre ».
+  ['bienetre', ['qi gong', 'qigong', 'tai chi', 'stretching', 'mobilite corporelle', 'respiration', 'relaxation', 'sophrologie', 'meditation']],
+];
+const SPORT_EXCL_85_51 = [
+  'football', 'rugby', 'tennis', 'natation', 'piscine', 'equitation', 'equestre', 'danse competitive',
+  'judo', 'karate', 'boxe', 'escrime', 'basket', 'handball', 'club sportif', 'association sportive',
+  'multisport', 'multi sport', 'ecole multisport', 'arts martiaux', 'athletisme', 'gymnastique',
+  'volley', 'padel', 'squash', 'stadium', 'sports_club',
+];
+
+function classifySportTeaching(m: Merchant): Decision {
+  const hay = norm(
+    [m.name, m.description, m.rawCategory, m.rawMerchantType, ...(m.tags ?? [])].filter(Boolean).join(' '),
+  );
+  // Exclusion PRIORITAIRE : un sport spécifique / club généraliste l'emporte sur tout signal bien-être.
+  const excl = SPORT_EXCL_85_51.find((s) => stem(norm(s)).test(hay));
+  if (excl) {
+    return quarantaine({
+      confidence: 'LOW', source: 'NAF 85.51Z + sport spécifique',
+      evidence: [`NAF ${m.nafCode} (enseignement sportif)`, `signal sport spécifique « ${excl} »`],
+      explanation: `Enseignement sportif dont le signal désigne un sport spécifique (${excl}) : hors Bien-être, aucun rattachement forcé — la fiche reste visible (Loi 3).`,
+    });
+  }
+  for (const [node, stems] of WELLNESS_85_51) {
+    const hit = stems.find((s) => stem(norm(s)).test(hay));
+    if (hit) {
+      return decide({
+        category: node, confidence: 'HIGH', source: 'NAF 85.51Z + signal discipline',
+        evidence: [`NAF ${m.nafCode} (enseignement sportif, officiel)`, `signal discipline bien-être « ${hit} »`],
+        explanation: `Enseignement sportif (NAF ${m.nafCode}) confirmé comme discipline Bien-être par un signal explicite « ${hit} » → ${node}.`,
+      });
+    }
+  }
+  return quarantaine({
+    confidence: 'LOW', source: 'NAF 85.51Z seul',
+    evidence: [`NAF ${m.nafCode} (enseignement sportif)`, 'aucun signal discipline Bien-être'],
+    explanation: `NAF 85.51Z prouve un enseignement sportif mais aucun signal ne désigne une discipline Bien-être précise : pas de rattachement forcé — la fiche reste visible.`,
+  });
+}
+
 export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
   // ── Preuve 1a : engagement officiel. Le cas La Cagette a prouvé que la catégorie
   //    Coopératives est INVISIBLE au NAF (SAS coopérative) : l'ESS prime.
@@ -215,6 +264,12 @@ export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
       evidence: [`flag ESS de l'API d'État${naf}`],
       explanation: `Acteur de l'économie sociale et solidaire prouvé par l'État : classé Coopératives${naf}.`,
     });
+  }
+
+  // NAF 85.51Z — enseignement sportif : rattachement Bien-être CONTRÔLÉ (jamais forcé), avant la
+  // résolution NAF générique (85.51Z n'est volontairement PAS dans NAF_MAP).
+  if ((m.nafCode ?? '').toUpperCase().replace(/\s/g, '').startsWith('85.51')) {
+    return classifySportTeaching(m);
   }
 
   const naf = resolveNaf(m.nafCode);

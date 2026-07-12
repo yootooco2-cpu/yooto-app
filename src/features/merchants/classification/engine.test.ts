@@ -248,3 +248,51 @@ describe('Rattachement — améliorations qualité (fixes 47.29 / jewelry_store 
     expect(d.confidence).toBe('HIGH');
   });
 });
+
+describe('NAF 85.51Z — enseignement sportif : rattachement Bien-être CONTRÔLÉ', () => {
+  // Positifs : signal discipline explicite → sous-catégorie Bien-être précise.
+  it('Studio Yoga Montpellier + 85.51Z → yoga', () => {
+    expect(classifyMerchant(m({ name: 'Studio Yoga Montpellier', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBe('yoga');
+  });
+  it('Pilates Reformer Center + 85.51Z → pilates', () => {
+    expect(classifyMerchant(m({ name: 'Pilates Reformer Center', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBe('pilates');
+  });
+  it('Coach sportif Jean Dupont + 85.51Z → coaching-sportif', () => {
+    expect(classifyMerchant(m({ name: 'Coach sportif Jean Dupont', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBe('coaching-sportif');
+  });
+  it('Fitness Club Centre + 85.51Z → fitness', () => {
+    expect(classifyMerchant(m({ name: 'Fitness Club Centre', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBe('fitness');
+  });
+  it('Association Qi Gong + 85.51Z → repli Bien-être documenté (bienetre)', () => {
+    expect(classifyMerchant(m({ name: 'Association Qi Gong', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBe('bienetre');
+  });
+  it('signal via catégorie Google cohérente (yoga_studio) + 85.51Z → yoga', () => {
+    expect(classifyMerchant(m({ name: 'Le Studio', nafCode: '85.51Z', rawCategory: 'yoga_studio' } as Partial<Merchant>)).category).toBe('yoga');
+  });
+
+  // Négatifs : sport spécifique ou signal absent → jamais de rattachement forcé.
+  it('Montpellier Football Academy + 85.51Z → PAS Bien-être (quarantaine)', () => {
+    const d = classifyMerchant(m({ name: 'Montpellier Football Academy', nafCode: '85.51Z' } as Partial<Merchant>));
+    expect(d.category).toBeNull();
+    expect(d.status).toBe('QUARANTAINE');
+  });
+  it('Tennis Club + 85.51Z → PAS Bien-être', () => {
+    expect(classifyMerchant(m({ name: 'Tennis Club', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBeNull();
+  });
+  it('École de judo + 85.51Z → PAS Bien-être', () => {
+    expect(classifyMerchant(m({ name: 'École de judo', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBeNull();
+  });
+  it('nom générique sans signal + 85.51Z → aucun rattachement forcé', () => {
+    const d = classifyMerchant(m({ name: 'Association Sportive du Grand Sud', nafCode: '85.51Z' } as Partial<Merchant>));
+    expect(d.category).toBeNull();
+    expect(d.source).toMatch(/85\.51Z/);
+  });
+  it('exclusion l’emporte : « Fitness & Boxe Club » + 85.51Z → PAS Bien-être (contradiction sport)', () => {
+    expect(classifyMerchant(m({ name: 'Fitness & Boxe Club', nafCode: '85.51Z' } as Partial<Merchant>)).category).toBeNull();
+  });
+
+  // Priorité : un NAF plus spécifique n’est jamais écrasé par la logique 85.51Z.
+  it('NAF spécifique 47.24Z (pâtisserie) + « yoga » dans le nom → patisseries (jamais 85.51Z)', () => {
+    expect(classifyMerchant(m({ name: 'Le Yoga Gourmand', nafCode: '47.24Z' } as Partial<Merchant>)).category).toBe('patisseries');
+  });
+});
