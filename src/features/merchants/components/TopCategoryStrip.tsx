@@ -35,6 +35,7 @@ export function TopCategoryStrip({ merchants, onSelect }: Props) {
     <Animated.View
       entering={FadeInUp.duration(240)}
       exiting={FadeOutDown.duration(180)}
+      testID="top-category-strip"
       style={styles.wrap}>
       {/* AUCUN titre (décision UX) : les images des commerçants parlent d'elles-mêmes —
           pas d'effet « bloc marketing », l'interface reste au service de la carte. */}

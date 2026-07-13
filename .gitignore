@@ -47,3 +47,8 @@ example
 
 # SPT — rapports de dry-run (données générées, régénérables)
 scripts/spt/reports/
+
+# Playwright — artefacts E2E générés (rapports, traces, vidéos, captures), jamais versionnés
+/test-results/
+/playwright-report/
+/playwright/.cache/
