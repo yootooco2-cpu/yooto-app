@@ -21,6 +21,12 @@ interface Props {
   scrollY?: SharedValue<number>;
   /** Amplitude du parallax (px). */
   parallax?: number;
+  /**
+   * `true` = le fond DÉFILE avec le contenu (1:1) : l'immersif appartient à la page — un héro
+   * qu'on dépasse — et ne réapparaît jamais dans les interstices une fois la page défilée.
+   * `false` (défaut) = fond fixe au viewport avec parallax discret (comportement historique).
+   */
+  scrollAway?: boolean;
 }
 
 /**
@@ -29,13 +35,19 @@ interface Props {
  * d'écran et apparition douce au changement d'onglet. La lecture n'est jamais gênée.
  * Les univers sans image retombent sur le dégradé d'ambiance (`SectionAmbient`).
  */
-export function SectionBackground({ scrollY, parallax = 22 }: Props) {
+export function SectionBackground({ scrollY, parallax = 22, scrollAway = false }: Props) {
   const section = useSectionTheme();
   const { scheme } = useTheme();
   const bg = SECTION_BACKGROUNDS[section.key];
 
   const imgStyle = useAnimatedStyle(() => {
     if (!scrollY) return {};
+    if (scrollAway) {
+      // Défilement 1:1 avec le contenu ; l'overscroll (tirer vers le bas) est amorti par le
+      // débord PAD de l'image — jamais de bord révélé.
+      const ty = scrollY.value < -PAD ? PAD : -scrollY.value;
+      return { transform: [{ translateY: ty }] };
+    }
     const ty = interpolate(scrollY.value, [0, 240], [0, -parallax], Extrapolation.CLAMP);
     const scale = interpolate(scrollY.value, [0, 240], [1.06, 1.12], Extrapolation.CLAMP);
     return { transform: [{ translateY: ty }, { scale }] };
@@ -43,9 +55,11 @@ export function SectionBackground({ scrollY, parallax = 22 }: Props) {
 
   if (!bg) return <SectionAmbient />;
 
+  // En mode « scrollAway », c'est le BLOC ENTIER (image + flou + voile + fondu) qui défile :
+  // le fondu bas du BackgroundOverlay se termine sur la couleur d'écran → couture invisible.
   return (
-    <Animated.View entering={FadeIn.duration(500)} style={StyleSheet.absoluteFill}>
-      <Animated.View style={[styles.imgWrap, imgStyle]}>
+    <Animated.View entering={FadeIn.duration(500)} style={[StyleSheet.absoluteFill, scrollAway ? imgStyle : null]}>
+      <Animated.View style={[styles.imgWrap, scrollAway ? null : imgStyle]}>
         <ExpoImage
           source={bg.background}
           style={StyleSheet.absoluteFill}

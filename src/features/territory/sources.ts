@@ -41,7 +41,7 @@ const CAROUSEL_CAP = 10;
  */
 export const verifiedProducersSource: TerritorySource = {
   id: 'verified-producers',
-  title: '🌾 Producteurs vérifiés',
+  title: 'Producteurs vérifiés',
   subtitle: 'Activité agricole prouvée par le registre officiel.',
   select: (merchants) =>
     merchants
@@ -52,7 +52,7 @@ export const verifiedProducersSource: TerritorySource = {
 
 export const recentlyOpenedSource: TerritorySource = {
   id: 'recently-opened',
-  title: '🆕 Ils viennent d’ouvrir',
+  title: 'Ils viennent d’ouvrir',
   subtitle: 'Ouverts récemment près de chez vous.',
   select: (merchants, { now }) =>
     merchants

@@ -16,7 +16,8 @@ type Props = Omit<TextInputProps, 'style'> & {
 
 /** Barre de recherche YOOTOO. `ref` transmis au `TextInput` → focus programmatique possible. */
 export const YSearchBar = forwardRef<TextInput, Props>(function YSearchBar(
-  { value, onChangeText, placeholder = 'Rechercher un commerce, un produit…', variant = 'default', ...props },
+  // Placeholder court : il doit rester ENTIER dans la barre, même sur écran étroit (390 px).
+  { value, onChangeText, placeholder = 'Rechercher un commerce…', variant = 'default', ...props },
   ref,
 ) {
   const { colors } = useTheme();

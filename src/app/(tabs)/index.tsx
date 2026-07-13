@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Dimensions } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 import { useAnimatedScrollHandler, useSharedValue } from 'react-native-reanimated';
 
 import { FavoritesButton } from '@/components/favorites/FavoritesButton';
@@ -10,13 +10,16 @@ import { SectionScreen } from '@/components/theme/SectionScreen';
 import { SupportContactFooter } from '@/components/ui/SupportContactFooter';
 import { YScreen } from '@/components/ui/YScreen';
 import { YText } from '@/components/ui/YText';
+import { glass } from '@/design/tokens/glass';
+import { spacing } from '@/design/tokens/spacing';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
 import { SearchMenu, sortForDisplay, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
 import { recentlyOpenedSource, verifiedProducersSource } from '@/features/territory/sources';
 
-// Bande d'ambiance ≈ une hauteur d'écran : l'image d'univers se dissout TRÈS progressivement vers
-// le fond sombre (fondu du BackgroundOverlay) et se prolonge sous la 1re section → aucune rupture.
-const AMBIENT_HEIGHT = Math.round(Dimensions.get('window').height);
+// HÉRO immersif BORNÉ (≈ 55 % de l'écran, plafonné) : l'image d'univers porte la salutation,
+// la recherche et les catégories, puis se dissout vers le fond crème — le reste de la page
+// respire sur fond neutre (l'immersif est un héro, jamais un papier peint).
+const AMBIENT_HEIGHT = Math.min(Math.round(Dimensions.get('window').height * 0.55), 560);
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -69,10 +72,19 @@ export default function HomeScreen() {
   // blur + voile) mais SANS aucun texte héro par-dessus. La page démarre directement par la
   // recherche → catégories → recommandations.
   return (
-    <SectionScreen section="accueil" scrollY={scrollY} height={AMBIENT_HEIGHT}>
+    <SectionScreen section="accueil" scrollY={scrollY} height={AMBIENT_HEIGHT} scrollAway>
       <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
-        {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories + favoris). */}
+        {/* Header de marque : le logotype seul, posé sur le héro — identité immédiate, zéro bruit
+            (pas de cloche ni de localisation tant que ces données réelles n'existent pas). */}
+        <YText accessibilityRole="header" style={styles.brand}>
+          YOOTOO
+        </YText>
+
+        {/* PREMIER élément fort : le MENU OFFICIEL PARTAGÉ (recherche + catégories + favoris),
+            coiffé de la salutation — l'accueil accueille, puis invite à découvrir. */}
         <SearchMenu
+          title="Bonjour 👋"
+          subtitle="Que voulez-vous découvrir aujourd'hui ?"
           query={query}
           onQueryChange={setQuery}
           onCategoryChange={(m) => setCategoryMatch(() => m)}
@@ -94,30 +106,36 @@ export default function HomeScreen() {
           )
         ) : (
           <>
-            {/* TERRITORY ENGINE (Sprint 1/J3) — le territoire VIVANT en tête : créations
-                récentes prouvées par la date SIRENE. Source interchangeable, UI partagée. */}
-            <TerritoryCarousel source={recentlyOpenedSource} merchants={allMerchants} delay={30} />
+            {/* IMAGE FIRST : la première section vue est TOUJOURS photographique (principe
+                DESIGN.md). Les recommandations ouvrent la page ; le Territory Engine suit. */}
             <MerchantCarousel
               title="Recommandés aujourd'hui"
               subtitle="Les mieux notés près de vous"
               merchants={sections.recommendedToday}
-              delay={60}
+              seeAllHref="/merchants"
+              delay={30}
             />
             <MerchantCarousel
               title="À proximité"
               subtitle="Les commerces les plus proches de vous"
               merchants={sections.nearby}
-              delay={120}
+              seeAllHref="/merchants"
+              delay={90}
             />
+            {/* TERRITORY ENGINE (Sprint 1/J3) — créations récentes prouvées par la date SIRENE.
+                Placé après les sections photographiques : son repli sans photo est assumé,
+                mais il ne fait plus la première impression de l'application. */}
+            <TerritoryCarousel source={recentlyOpenedSource} merchants={allMerchants} delay={150} />
             <MerchantCarousel
               title="À découvrir"
               subtitle="Une sélection à explorer"
               merchants={sections.toDiscover}
-              delay={180}
+              seeAllHref="/merchants"
+              delay={210}
             />
             {/* 2e source territoriale (jalon A-light) : la mission rendue visible —
                 les producteurs dont l'activité agricole est PROUVÉE par le NAF. */}
-            <TerritoryCarousel source={verifiedProducersSource} merchants={merchants} delay={240} />
+            <TerritoryCarousel source={verifiedProducersSource} merchants={merchants} delay={270} />
           </>
         )}
         <SupportContactFooter />
@@ -125,3 +143,19 @@ export default function HomeScreen() {
     </SectionScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  // Logotype YOOTOO (même wordmark texte que le rail desktop), posé sur le héro : blanc cassé
+  // de la DA verre + ombre douce (lisible sur les zones claires du ciel), rapproché de la
+  // salutation pour former UN header (le gap d'écran est compensé, pas d'espacement arbitraire).
+  brand: {
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 3,
+    color: glass.onDark,
+    marginBottom: -spacing.md,
+    textShadowColor: 'rgba(23,32,26,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+});

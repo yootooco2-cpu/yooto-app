@@ -63,9 +63,27 @@ const styles = StyleSheet.create({
   // ces frères, plus bas dans le DOM, se peignent par-dessus le rideau. On élève tout le sous-arbre
   // du menu ; le rideau interne suit sa pile locale. `position:'relative'` rend le zIndex effectif.
   wrap: { gap: spacing.sm, position: 'relative', zIndex: 20 },
-  head: { gap: 2, paddingHorizontal: spacing.xs },
-  title: { fontSize: 24, fontWeight: '800', letterSpacing: -0.4 },
-  subtitle: { fontSize: 14, lineHeight: 19 },
+  // La salutation coiffe le menu avec un peu d'air avant la recherche (hiérarchie du héro).
+  head: { gap: 2, paddingHorizontal: spacing.xs, marginBottom: spacing.xs },
+  // Ombre de texte très douce : lisibilité garantie sur les zones claires du héro d'ambiance,
+  // invisible en tant qu'effet (jamais un contour).
+  title: {
+    fontSize: 28,
+    lineHeight: 33,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(23,32,26,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  subtitle: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: '500',
+    textShadowColor: 'rgba(23,32,26,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
+  },
   searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   searchFlex: { flex: 1 },
 });
