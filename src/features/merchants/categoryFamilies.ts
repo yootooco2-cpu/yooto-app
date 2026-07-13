@@ -115,8 +115,10 @@ const RESTO: MerchantPredicate = clsIn('restaurants', 'bars-cafes');
 const BIENETRE = clsIn('bienetre', 'yoga', 'pilates', 'coaching-sportif', 'fitness');
 // Culture consomme les feuilles peuplées par le moteur (librairies 47.61/47.62, disquaires 47.63).
 const CULTURE = clsIn('culture', 'librairies', 'disquaires');
-// Mobilité consomme les feuilles moteur (vélos/trottinettes/skate via 47.64 composite, motos 45.40).
-const MOBILITE = clsIn('mobilite', 'velos', 'trottinettes', 'skate-rollers', 'motos');
+// Mobilité consomme les feuilles moteur (vélos/trottinettes/skate via 47.64 composite). 'motos'
+// (45.40) est volontairement EXCLU de l'union : le moteur classe toujours ces fiches, mais elles ne
+// sont plus exposées dans la famille Mobilité (décision produit — les fiches restent en base).
+const MOBILITE = clsIn('mobilite', 'velos', 'trottinettes', 'skate-rollers');
 
 /**
  * BIEN-ÊTRE — métiers (soin, mouvement, santé douce, modification corporelle). Structure plate
@@ -338,16 +340,18 @@ const cultureMatch: MerchantPredicate = either(CULTURE, textMatch(...CULTURE_KEY
  */
 const MOBILITE_METIERS: { id: string; label: string; accent: string; keywords: string[] }[] = [
   { id: 'velos', label: 'Vélos', accent: '#666633', keywords: ['velo', 'cycle', 'bike', 'cyclable', 'reparation de velo'] },
-  // Motos & scooters — seul gisement automobile PROUVÉ (NAF 45.40Z, décision moteur). Garages
-  // (45.20), taxis, auto-écoles, bornes de recharge : ABSENTS de la base → non créés (Loi 2).
-  { id: 'motos', label: 'Motos & scooters', accent: '#5A5A3C', keywords: ['moto', 'scooter', 'motocycle', 'deux roues', 'motard'] },
   { id: 'trottinettes', label: 'Trottinettes', accent: '#2D6563', keywords: ['trottinette', 'scooter electrique'] },
-  { id: 'skate-rollers', label: 'Skate & Rollers', accent: '#AC541E', keywords: ['skate', 'skateboard', 'roller', 'longboard'] },
-  { id: 'poussettes', label: 'Poussettes', accent: '#6F4568', keywords: ['poussette', 'puericulture'] },
+  // Bus & Tramway — exposé sur décision produit. Prédicat TEXTE volontairement restrictif : JAMAIS
+  // le radical 'bus' seul (il matcherait 'local_business', Loi 8) → uniquement des termes multi-mots
+  // ou 'tramway'. Aucun gisement NAF commerçant : la sous-catégorie reste vide/atténuée tant qu'aucune
+  // fiche réelle ne la remplit.
+  { id: 'bus-tramway', label: 'Bus & Tramway', accent: '#4A6274', keywords: ['tramway', 'reseau de bus', 'gare routiere', 'transport en commun', 'ligne de tram', 'arret de tramway'] },
   { id: 'velos-cargo', label: 'Vélos cargo', accent: '#797844', keywords: ['velo cargo', 'triporteur', 'biporteur', 'cargo bike'] },
   { id: 'mobilite-pmr', label: 'Mobilité PMR', accent: '#C27D1C', keywords: ['pmr', 'fauteuil roulant', 'mobilite reduite', 'materiel medical', 'handicap'] },
-  // Bus / Tramway / Covoiturage RETIRÉS (GATE 1) : aucune famille NAF commerçante, aucun
-  // « acteur » à découvrir, impossibles à peupler — et 'bus' matchait local_business (Loi 8).
+  { id: 'skate-rollers', label: 'Skate & Rollers', accent: '#AC541E', keywords: ['skate', 'skateboard', 'roller', 'longboard'] },
+  { id: 'poussettes', label: 'Poussettes', accent: '#6F4568', keywords: ['poussette', 'puericulture'] },
+  // « Motos & scooters » (NAF 45.40Z) N'EST PLUS exposé dans Mobilité (décision produit) : le moteur
+  // continue de classer ces fiches ('motos'), elles restent en base mais hors de la famille.
 ];
 const MOBILITE_KEYWORDS: string[] = MOBILITE_METIERS.flatMap((m) => m.keywords);
 const mobiliteMatch: MerchantPredicate = either(MOBILITE, textMatch(...MOBILITE_KEYWORDS));
@@ -357,15 +361,18 @@ const mobiliteMatch: MerchantPredicate = either(MOBILITE, textMatch(...MOBILITE_
  * couleur d'accent (référence validée). Structure plate extensible ; reconnaissance TEXTE
  * transversale + catégorie « nature » existante.
  */
+// Ordre d'affichage VALIDÉ : top-5 (voies vertes, parcs, jardineries, animaleries, lacs/pêche fusionnés),
+// puis les autres sous-catégories transversales. Fleuristes est inséré après le top-5 (cf. children).
 const NATURE_METIERS: { id: string; label: string; accent: string; keywords: string[] }[] = [
-  { id: 'parcs-jardins', label: 'Parcs & Jardins', accent: '#596827', keywords: ['parc', 'jardin public', 'square', 'arboretum', 'espace vert', 'jardin botanique'] },
-  { id: 'randonnees', label: 'Randonnées', accent: '#777140', keywords: ['randonnee', 'sentier', 'rando', 'trek', 'balade nature'] },
   { id: 'voies-vertes', label: 'Voies vertes & pistes cyclables', accent: '#487B58', keywords: ['voie verte', 'piste cyclable', 'veloroute', 'chemin cyclable'] },
-  { id: 'lacs-rivieres', label: 'Lacs & Rivières', accent: '#316E7C', keywords: ['lac', 'riviere', 'plan d eau', 'etang', 'base nautique'] },
-  { id: 'reserves-naturelles', label: 'Réserves naturelles', accent: '#8E8E47', keywords: ['reserve naturelle', 'parc naturel', 'zone protegee', 'espace naturel'] },
+  { id: 'parcs-jardins', label: 'Parcs & Jardins', accent: '#596827', keywords: ['parc', 'jardin public', 'square', 'arboretum', 'espace vert', 'jardin botanique'] },
   { id: 'jardineries', label: 'Jardineries & Pépinières', accent: '#7B8B2C', keywords: ['jardinerie', 'pepiniere', 'horticulture', 'graineterie'] },
   { id: 'animaleries', label: 'Animaleries & services animaliers', accent: '#C57522', keywords: ['animalerie', 'toilettage', 'veterinaire', 'pension pour animaux', 'education canine'] },
-  { id: 'peche', label: 'Pêche', accent: '#386382', keywords: ['peche', 'articles de peche', 'etang de peche', 'pisciculture'] },
+  // Fusion « Lacs, rivières & pêche » (décision produit) : réunit les anciennes sous-catégories
+  // Lacs & Rivières + Pêche. Conserve l'id 'lacs-rivieres' (donc son pictogramme) et TOUS les mots-clés.
+  { id: 'lacs-rivieres', label: 'Lacs, rivières & pêche', accent: '#316E7C', keywords: ['lac', 'riviere', 'plan d eau', 'etang', 'base nautique', 'peche', 'articles de peche', 'etang de peche', 'pisciculture'] },
+  { id: 'randonnees', label: 'Randonnées', accent: '#777140', keywords: ['randonnee', 'sentier', 'rando', 'trek', 'balade nature'] },
+  { id: 'reserves-naturelles', label: 'Réserves naturelles', accent: '#8E8E47', keywords: ['reserve naturelle', 'parc naturel', 'zone protegee', 'espace naturel'] },
   { id: 'equitation', label: 'Équitation', accent: '#84501E', keywords: ['equitation', 'centre equestre', 'ecurie', 'poney', 'manege', 'haras'] },
   { id: 'plein-air', label: 'Activités de plein air', accent: '#6D7576', keywords: ['plein air', 'escalade', 'via ferrata', 'accrobranche', 'canoe', 'parapente'] },
 ];
@@ -474,8 +481,11 @@ export const CATEGORY_FAMILIES: CategoryNode[] = [
     icon: 'feather',
     match: natureMatch,
     children: [
+      // Ordre validé : top-5 (voies vertes, parcs, jardineries, animaleries, lacs/pêche), puis
+      // Fleuristes et les autres sous-catégories transversales (Randonnées, Réserves, Équitation, Plein air).
+      ...NATURE_METIERS.slice(0, 5).map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
       catItem('fleuristes', 'Fleuristes'),
-      ...NATURE_METIERS.map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
+      ...NATURE_METIERS.slice(5).map((m) => kItem(m.id, m.label, m.accent, m.keywords)),
     ],
   },
 ];

@@ -84,16 +84,23 @@ describe('categoryFamilies — arbre cible GATE 1', () => {
     expect(CATEGORY_FAMILIES.every((f) => (f.children?.length ?? 0) > 0 || typeof f.match === 'function')).toBe(true);
   });
 
-  it('Nature = Fleuristes (GATE 1) + 10 sous-catégories transversales', () => {
+  it('Nature = 10 sous-catégories (ordre validé) ; Fleuristes conservé ; Lacs/rivières/pêche fusionnés', () => {
     const nature = categoryFamilyById('nature');
-    expect(nature?.children?.length).toBe(11);
-    expect(nature?.children?.[0]?.id).toBe('fleuristes');
+    // Fusion Lacs & Rivières + Pêche → 11 - 1 = 10 sous-catégories.
+    expect(nature?.children?.length).toBe(10);
+    // Ordre validé : top-5 en tête (Voies vertes d'abord), Fleuristes conservé après.
+    expect(nature?.children?.[0]?.id).toBe('voies-vertes');
     // Chaque enfant porte un visuel : cryptogramme (iconId) ou pictogramme dédié (pictoKey).
     expect(nature?.children?.every((i) => i.iconId !== undefined || i.pictoKey !== undefined)).toBe(true);
     const equitation = nature?.children?.find((i) => i.id === 'equitation');
     expect(equitation?.match?.(merchant({ name: 'Centre équestre du Lez' }))).toBe(true);
     const fleuristes = nature?.children?.find((i) => i.id === 'fleuristes');
     expect(fleuristes?.match?.(merchant({ rawCategory: 'florist' } as Partial<Merchant>))).toBe(true);
+    // Le leaf fusionné couvre les deux univers (lacs/rivières ET pêche), avec le libellé combiné.
+    const lacs = nature?.children?.find((i) => i.id === 'lacs-rivieres');
+    expect(lacs?.label).toBe('Lacs, rivières & pêche');
+    expect(lacs?.match?.(merchant({ name: 'Base nautique du lac du Salagou' }))).toBe(true);
+    expect(lacs?.match?.(merchant({ name: 'Étang de pêche de Lunel' }))).toBe(true);
   });
 
   it('Bien-être = 8 métiers, chacun avec pictogramme dédié + couleur d’accent', () => {
@@ -118,12 +125,14 @@ describe('categoryFamilies — arbre cible GATE 1', () => {
     expect(musees?.match?.(merchant({ name: 'Musée Fabre' }))).toBe(true);
   });
 
-  it('Mobilité = 7 sous-catégories (dont Motos & scooters, gisement NAF 45.40Z prouvé) ; Bus / Tramway / Covoiturage RETIRÉES', () => {
+  it('Mobilité = 7 sous-catégories (ordre validé) ; Motos retiré de la famille ; Bus & Tramway exposé', () => {
     const mob = categoryFamilyById('mobilite');
     expect(mob?.children?.map((i) => i.id)).toEqual([
-      'velos', 'motos', 'trottinettes', 'skate-rollers', 'poussettes', 'velos-cargo', 'mobilite-pmr',
+      'velos', 'trottinettes', 'bus-tramway', 'velos-cargo', 'mobilite-pmr', 'skate-rollers', 'poussettes',
     ]);
-    ['bus', 'tramway', 'covoiturage', 'parking', 'autopartage', 'transports'].forEach((old) =>
+    // Motos & scooters n'est PLUS exposé dans la famille (les fiches restent en base, classées par le moteur).
+    expect(mob?.children?.map((i) => i.id)).not.toContain('motos');
+    ['covoiturage', 'parking', 'autopartage', 'transports'].forEach((old) =>
       expect(mob?.children?.map((i) => i.id)).not.toContain(old),
     );
   });

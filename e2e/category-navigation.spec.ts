@@ -11,7 +11,7 @@ const EXPECTED_SUBCATEGORIES: Record<string, number> = {
   'Bien-être': 8,
   Mobilité: 7,
   Culture: 10,
-  Nature: 11,
+  Nature: 10,
   Artisanat: 12,
 };
 
