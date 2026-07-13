@@ -118,10 +118,10 @@ describe('categoryFamilies — arbre cible GATE 1', () => {
     expect(musees?.match?.(merchant({ name: 'Musée Fabre' }))).toBe(true);
   });
 
-  it('Mobilité = 6 sous-catégories ; Bus / Tramway / Covoiturage RETIRÉES (GATE 1)', () => {
+  it('Mobilité = 7 sous-catégories (dont Motos & scooters, gisement NAF 45.40Z prouvé) ; Bus / Tramway / Covoiturage RETIRÉES', () => {
     const mob = categoryFamilyById('mobilite');
     expect(mob?.children?.map((i) => i.id)).toEqual([
-      'velos', 'trottinettes', 'skate-rollers', 'poussettes', 'velos-cargo', 'mobilite-pmr',
+      'velos', 'motos', 'trottinettes', 'skate-rollers', 'poussettes', 'velos-cargo', 'mobilite-pmr',
     ]);
     ['bus', 'tramway', 'covoiturage', 'parking', 'autopartage', 'transports'].forEach((old) =>
       expect(mob?.children?.map((i) => i.id)).not.toContain(old),
