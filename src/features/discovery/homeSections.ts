@@ -42,41 +42,57 @@ export interface HomeSections {
 }
 
 /**
+ * Vrai si le corpus porte des distances réellement calculées (position utilisateur + haversine
+ * via `withDistance`). C'est la SEULE condition qui autorise un tri « proximité » : sans elle,
+ * un tri par `distanceKm` absent (∞ partout) dégénérerait en ordre alphabétique déguisé en
+ * proximité — interdit (décision produit 13/07).
+ */
+export function hasRealDistances(merchants: readonly Merchant[]): boolean {
+  return merchants.some((m) => typeof m.distanceKm === 'number' && Number.isFinite(m.distanceKm))
+}
+
+/**
  * Build the three Home sections from the SAME merchant list, deduped across sections.
- * Editorial ordering everywhere; « Recommandés » keeps the Discovery Engine relevance as a
- * base pool, then re-ranked editorially so the first impression is always premium.
+ *
+ * PRIMEUR À LA PROXIMITÉ (décision produit 13/07) — « Autour de vous » ouvre la page, donc
+ * elle choisit ses commerces EN PREMIER ; « Recommandé aujourd'hui » sélectionne ensuite les
+ * meilleurs restants ; « À découvrir » diversifie hors des deux premières.
+ *
+ * REPLI SANS GÉOLOCALISATION : si aucune distance réelle n'existe, la première section rend
+ * un classement ÉDITORIAL (même moteur que le reste de l'app) — jamais un ordre alphabétique
+ * présenté comme de la proximité. L'écran adapte alors son intitulé (« Dans votre secteur »).
  */
 export function buildHomeSections(merchants: Merchant[], opts: BuildHomeSectionsOptions = {}): HomeSections {
   const limitR = opts.limits?.recommendedToday ?? 8
   const limitN = opts.limits?.nearby ?? 8
   const limitD = opts.limits?.toDiscover ?? 8
 
-  // « Recommandés » : MÊME moteur que Carte/Commerçants — ranking éditorial sur TOUT le corpus
-  // (la pertinence ne sert qu'à départager les ex æquo), PUIS diversification LÉGÈRE de la vitrine.
-  // Plus de pré-filtre `limit` (ancien pipeline parallèle qui remontait des traiteurs hors éditorial).
-  const relevanceBase = opts.context
-    ? recommendCached(merchants, opts.context).map((s) => s.merchant)
-    : merchants
+  // 1) « Autour de vous » — PREMIER choix. Distances réelles → tri par distance croissante
+  //    (nom en tie-break stable). Sans position → repli éditorial assumé.
+  const nearby = hasRealDistances(merchants)
+    ? [...merchants]
+        .sort((a, b) => {
+          const da = a.distanceKm ?? Number.POSITIVE_INFINITY
+          const db = b.distanceKm ?? Number.POSITIVE_INFINITY
+          return da !== db ? da - db : a.name.localeCompare(b.name)
+        })
+        .slice(0, limitN)
+    : rankMerchantsEditorially(merchants).slice(0, limitN)
+
+  // 2) « Recommandé aujourd'hui » : MÊME moteur que Carte/Commerçants — ranking éditorial
+  //    (la pertinence ne sert qu'à départager les ex æquo), diversification LÉGÈRE, hors
+  //    « Autour de vous » pour ne jamais dupliquer une carte entre les deux premières sections.
+  const usedN = new Set<string>(nearby.map((m) => m.id))
+  const relevanceBase = (
+    opts.context ? recommendCached(merchants, opts.context).map((s) => s.merchant) : merchants
+  ).filter((m) => !usedN.has(m.id))
   const recommendedToday = editorialDiversification(rankMerchantsEditorially(relevanceBase), {
     window: limitR,
   }).slice(0, limitR)
 
-  // « À proximité » : les commerces les PLUS PROCHES, tous commerces confondus (plus de filtre
-  // producteurs). Tri par distance croissante (nom en tie-break), hors « Recommandés » pour ne
-  // jamais dupliquer une carte entre les deux premières sections.
-  const usedR = new Set<string>(recommendedToday.map((m) => m.id))
-  const nearby = [...merchants]
-    .filter((m) => !usedR.has(m.id))
-    .sort((a, b) => {
-      const da = a.distanceKm ?? Number.POSITIVE_INFINITY
-      const db = b.distanceKm ?? Number.POSITIVE_INFINITY
-      return da !== db ? da - db : a.name.localeCompare(b.name)
-    })
-    .slice(0, limitN)
-
-  // « À découvrir » : la suite éditoriale (helper unique), hors sections ci-dessus, avec un cap
-  // de diversité (max 2 par bucket) pour éviter la monopolisation par les domaines premium.
-  const used = new Set<string>([...recommendedToday, ...nearby].map((m) => m.id))
+  // 3) « À découvrir » : la suite éditoriale (helper unique), hors sections ci-dessus, avec un
+  // cap de diversité (max 2 par bucket) pour éviter la monopolisation par les domaines premium.
+  const used = new Set<string>([...nearby, ...recommendedToday].map((m) => m.id))
   const candidates = rankMerchantsEditorially(merchants).filter((m) => !used.has(m.id))
   const MAX_PER_BUCKET = 2
   const bucketCount = new Map<Merchant['category'], number>()

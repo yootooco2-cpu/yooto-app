@@ -13,7 +13,7 @@ import { YText } from '@/components/ui/YText';
 import { glass } from '@/design/tokens/glass';
 import { spacing } from '@/design/tokens/spacing';
 import { buildDiscoveryContext, buildHomeSections, usePreferences } from '@/features/discovery';
-import { SearchMenu, sortForDisplay, useMerchants, useMerchantSearchStore, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
+import { SearchMenu, sortForDisplay, useMerchants, useMerchantSearchStore, withDistance, withPhotoForDemo, type MerchantPredicate } from '@/features/merchants';
 import { recentlyOpenedSource, verifiedProducersSource } from '@/features/territory/sources';
 
 // HÉRO immersif BORNÉ (≈ 55 % de l'écran, plafonné) : l'image d'univers porte la salutation,
@@ -24,12 +24,21 @@ const AMBIENT_HEIGHT = Math.min(Math.round(Dimensions.get('window').height * 0.5
 export default function HomeScreen() {
   const router = useRouter();
   const { data } = useMerchants();
+  const userLocation = useMerchantSearchStore((s) => s.userLocation);
+  // Position réelle → distances réelles (haversine, helper partagé). Sans position, `withDistance`
+  // rend la liste inchangée : AUCUNE distance n'existe alors, et les intitulés/tris de proximité
+  // se replient sur un mode neutre (voir `hasLocation` plus bas). Jamais de distance inventée.
+  const located = useMemo(
+    () => withDistance(data ?? [], userLocation ?? undefined),
+    [data, userLocation],
+  );
+  const hasLocation = userLocation != null;
   // Démo : ne garder que les commerces avec une vraie photo (aucun repli visible dans les cartes).
-  const merchants = useMemo(() => withPhotoForDemo(data ?? []), [data]);
+  const merchants = useMemo(() => withPhotoForDemo(located), [located]);
   // « Ils viennent d'ouvrir » reçoit le corpus COMPLET (décision produit Sprint 2) : les
   // créations SIRENE-first n'ont pas encore de photo — cette section assume le repli
   // premium, c'est sa raison d'être de montrer le tout-frais avant tout le monde.
-  const allMerchants = useMemo(() => data ?? [], [data]);
+  const allMerchants = located;
 
   // Parallax TRÈS discret du fond d'ambiance (image d'univers) au scroll.
   const scrollY = useSharedValue(0);
@@ -37,7 +46,6 @@ export default function HomeScreen() {
     scrollY.value = event.contentOffset.y;
   });
 
-  const userLocation = useMerchantSearchStore((s) => s.userLocation);
   const preferences = usePreferences();
   const discoveryContext = useMemo(
     () => buildDiscoveryContext({ userLocation, preferences }),
@@ -106,33 +114,39 @@ export default function HomeScreen() {
           )
         ) : (
           <>
-            {/* IMAGE FIRST : la première section vue est TOUJOURS photographique (principe
-                DESIGN.md). Les recommandations ouvrent la page ; le Territory Engine suit. */}
+            {/* ORDRE OFFICIEL (13/07) : proximité → recommandation → découverte → territoire.
+                IMAGE FIRST préservé : la première section reste photographique. Les intitulés
+                de proximité ne s'affichent QUE si la position est réelle — repli neutre sinon
+                (jamais de proximité simulée). */}
             <MerchantCarousel
-              title="Recommandés aujourd'hui"
-              subtitle="Les mieux notés près de vous"
-              merchants={sections.recommendedToday}
+              title={hasLocation ? 'Autour de vous' : 'Dans votre secteur'}
+              subtitle={
+                hasLocation
+                  ? 'Les commerces les plus proches de vous'
+                  : 'Les commerces de votre territoire'
+              }
+              merchants={sections.nearby}
               seeAllHref="/merchants"
               delay={30}
             />
             <MerchantCarousel
-              title="À proximité"
-              subtitle="Les commerces les plus proches de vous"
-              merchants={sections.nearby}
+              title="Recommandé aujourd'hui"
+              subtitle={hasLocation ? 'Les mieux notés près de vous' : 'Les mieux notés de votre territoire'}
+              merchants={sections.recommendedToday}
               seeAllHref="/merchants"
               delay={90}
             />
-            {/* TERRITORY ENGINE (Sprint 1/J3) — créations récentes prouvées par la date SIRENE.
-                Placé après les sections photographiques : son repli sans photo est assumé,
-                mais il ne fait plus la première impression de l'application. */}
-            <TerritoryCarousel source={recentlyOpenedSource} merchants={allMerchants} delay={150} />
             <MerchantCarousel
               title="À découvrir"
               subtitle="Une sélection à explorer"
               merchants={sections.toDiscover}
               seeAllHref="/merchants"
-              delay={210}
+              delay={150}
             />
+            {/* TERRITORY ENGINE (Sprint 1/J3) — créations récentes prouvées par la date SIRENE.
+                En bas de parcours : son repli sans photo est assumé, mais il ne fait plus la
+                première impression de l'application. */}
+            <TerritoryCarousel source={recentlyOpenedSource} merchants={allMerchants} delay={210} />
             {/* 2e source territoriale (jalon A-light) : la mission rendue visible —
                 les producteurs dont l'activité agricole est PROUVÉE par le NAF. */}
             <TerritoryCarousel source={verifiedProducersSource} merchants={merchants} delay={270} />
