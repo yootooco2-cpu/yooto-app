@@ -45,6 +45,10 @@ for (const o of todo) {
   }
   const cover = urls[0] ?? null;
   const before = (await (await fetch(`${URL_}/rest/v1/merchants?select=id,google_place_id,photo_url,cover_photo_url,phone,website,opening_hours,google_rating,reviews_count,category,gallery_photos&id=eq.${o.id}`, { headers: H })).json())[0];
+  if (!before) { // fiche retirée entre-temps (rollback ciblé) — jamais recréée ici
+    journal.echecs.push({ id: o.id, status: 'ABSENTE', body: 'fiche retirée (rollback ciblé) — skip' });
+    continue;
+  }
   const payload = {
     google_place_id: o.place_id,
     category: o.gType ?? null,
