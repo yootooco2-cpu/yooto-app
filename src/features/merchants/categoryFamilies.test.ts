@@ -143,6 +143,28 @@ describe('categoryFamilies — arbre cible GATE 1', () => {
   });
 });
 
+describe('Bien-être — la famille RESPECTE la décision moteur pour 85.51Z (exclusion effective)', () => {
+  const be = () => categoryFamilyById('bienetre')!;
+  const naf = (name: string, extra: Partial<Merchant> = {}) => merchant({ name, nafCode: '85.51Z', ...extra } as Partial<Merchant>);
+
+  // Positifs : discipline bien-être explicite → dans la famille.
+  it('Studio Yoga Montpellier 85.51Z → Bien-être', () => expect(be().match?.(naf('Studio Yoga Montpellier'))).toBe(true));
+  it('Pilates Reformer Center 85.51Z → Bien-être', () => expect(be().match?.(naf('Pilates Reformer Center'))).toBe(true));
+  it('Coach sportif Jean Dupont 85.51Z → Bien-être', () => expect(be().match?.(naf('Coach sportif Jean Dupont'))).toBe(true));
+  it('Fitness Club Centre 85.51Z → Bien-être', () => expect(be().match?.(naf('Fitness Club Centre'))).toBe(true));
+
+  // Exclusions : le mot-clé ne réintègre PLUS un cas exclu/ambigu par le moteur.
+  it('Fitness Boxe Academy 85.51Z → PAS Bien-être (exclu « boxe », malgré « fitness »)', () => expect(be().match?.(naf('Fitness Boxe Academy'))).toBe(false));
+  it('O Tennis Academy 85.51Z → PAS Bien-être', () => expect(be().match?.(naf('O Tennis Academy'))).toBe(false));
+  it('CREPS 85.51Z sans signal → PAS Bien-être (ambigu non forcé)', () => expect(be().match?.(naf('CREPS'))).toBe(false));
+
+  // Non-régression : sous-catégories historiques via NAF spécifique ou texte hors 85.51Z.
+  it('Coiffure 96.02A → Bien-être (NAF, inchangé)', () => expect(be().match?.(merchant({ name: 'Salon X', nafCode: '96.02A' } as Partial<Merchant>))).toBe(true));
+  it('Institut de beauté 96.02B → Bien-être', () => expect(be().match?.(merchant({ name: 'Institut Y', nafCode: '96.02B' } as Partial<Merchant>))).toBe(true));
+  it('Spa 96.04Z → Bien-être', () => expect(be().match?.(merchant({ name: 'Spa Z', nafCode: '96.04Z' } as Partial<Merchant>))).toBe(true));
+  it('Naturopathie (nom, sans NAF) → Bien-être (fallback texte historique préservé)', () => expect(be().match?.(merchant({ name: 'Cabinet de naturopathie Sainte-Anne' }))).toBe(true));
+});
+
 describe('Loi 8 — classe « faux positifs lexicaux » éliminée (radical en début de mot)', () => {
   it("un radical ne matche jamais au milieu d'un mot ('velo' ≠ developpement)", () => {
     const velos = leafById('velos')!;

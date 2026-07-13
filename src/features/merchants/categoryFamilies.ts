@@ -110,7 +110,9 @@ const khItem = (id: string, label: string, accent: string, keywords: string[]): 
 const vigneronsMatch: MerchantPredicate = cls('vignerons-domaines');
 
 const RESTO: MerchantPredicate = clsIn('restaurants', 'bars-cafes');
-const BIENETRE = cls('bienetre');
+// Bien-être consomme les décisions MOTEUR : famille générique + feuilles produites par le moteur
+// (dont 85.51Z contrôlé → yoga/pilates/coaching-sportif/fitness). Source de vérité = classification.
+const BIENETRE = clsIn('bienetre', 'yoga', 'pilates', 'coaching-sportif', 'fitness');
 // Culture consomme les feuilles peuplées par le moteur (librairies 47.61/47.62, disquaires 47.63).
 const CULTURE = clsIn('culture', 'librairies', 'disquaires');
 // Mobilité consomme les feuilles moteur (vélos/trottinettes/skate via 47.64 composite, motos 45.40).
@@ -139,7 +141,19 @@ const BIENETRE_METIERS: WellnessMetier[] = [
   { id: 'perceur', label: 'Perceur', accent: '#DC648A', keywords: ['perceur', 'piercing', 'percage'] },
 ];
 const BIENETRE_KEYWORDS: string[] = BIENETRE_METIERS.flatMap((m) => m.keywords);
-const bienetreMatch: MerchantPredicate = either(BIENETRE, textMatch(...BIENETRE_KEYWORDS));
+const bienetreTextFallback = textMatch(...BIENETRE_KEYWORDS);
+/**
+ * Rattachement Bien-être — la SOURCE DE VÉRITÉ est la décision du moteur (`BIENETRE` = feuilles
+ * bien-être). Le fallback texte historique ne s'applique QUE si le moteur n'a PAS explicitement
+ * statué sur un 85.51Z (exclusion « sport spécifique » / ambiguïté « 85.51Z seul ») — sinon un
+ * « Fitness Boxe Academy » exclu par le moteur reviendrait à tort via le mot « fitness ». Les
+ * autres branches historiques (nom seul, sans NAF exploitable) restent inchangées → aucune régression.
+ */
+const bienetreMatch: MerchantPredicate = (m) => {
+  if (BIENETRE(m)) return true;
+  if ((m.classification?.source ?? '').startsWith('NAF 85.51Z')) return false;
+  return bienetreTextFallback(m);
+};
 
 /**
  * ARTISANAT — navigation à 3 niveaux : Artisanat → FAMILLES (11, avec cryptogramme dédié) →
