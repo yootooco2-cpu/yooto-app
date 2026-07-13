@@ -40,6 +40,8 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
   const [panelPath, setPanelPath] = useState<CategoryNode[]>([]);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
   const [activeFamilyId, setActiveFamilyId] = useState<string | null>(null);
+  // Message affiché quand on choisit une sous-catégorie SANS résultat (jamais de filtre vide silencieux).
+  const [emptyNotice, setEmptyNotice] = useState<string | null>(null);
 
   const isOpen = panelPath.length > 0;
   const panelNode = isOpen ? panelPath[panelPath.length - 1] : null;
@@ -63,7 +65,22 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
 
   const close = () => setPanelPath([]);
 
+  // Naviguer (ouvrir une famille, descendre, revenir) efface toujours un message « aucun résultat ».
+  useEffect(() => setEmptyNotice(null), [panelPath]);
+
+  // Une sous-catégorie sans résultat NE déclenche PAS un filtre vide : on affiche un message clair
+  // et on garde le panneau ouvert. `true` = géré (message affiché), l'appelant s'arrête.
+  const noticeIfEmpty = (node: CategoryNode): boolean => {
+    if (hasCounts && countOf(node) === 0) {
+      setEmptyNotice(EMPTY_SUBCATEGORY_NOTICE);
+      return true;
+    }
+    return false;
+  };
+
   const applyLeaf = (familyId: string, node: CategoryNode) => {
+    if (noticeIfEmpty(node)) return;
+    setEmptyNotice(null);
     const isActive = activeLeafId === node.id;
     setActiveLeafId(isActive ? null : node.id);
     setActiveFamilyId(isActive ? null : familyId);
@@ -73,6 +90,8 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
 
   // « Tout (N) » : applique le prédicat UNION du nœud de panneau courant (famille ou sous-branche).
   const applyAll = (node: CategoryNode) => {
+    if (noticeIfEmpty(node)) return;
+    setEmptyNotice(null);
     const allId = `${node.id}::all`;
     const isActive = activeLeafId === allId;
     setActiveLeafId(isActive ? null : allId);
@@ -125,6 +144,7 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
           <Animated.View
             key={panelPath.map((p) => p.id).join('/')}
             entering={FadeInDown.duration(160)}
+            testID="category-panel"
             style={[styles.panel, glass.panel, styles.panelShadow]}>
             {panelPath.length > 1 ? (
               <View style={styles.panelHead}>
@@ -134,25 +154,27 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
                 </YText>
               </View>
             ) : null}
-            {/* Hauteur DYNAMIQUE : toutes les sous-catégories NON VIDES affichées d'un coup, aucun
-                scroll interne. « Tout (N) » en tête (union de la famille/sous-branche), puis chaque
-                sous-catégorie avec son compte réel ; celles à 0 résultat sont masquées (référentiel intact). */}
+            {/* Référentiel INTÉGRAL : toutes les sous-catégories restent visibles (aucun masquage des
+                0). Celles sans résultat sont atténuées avec leur compteur « 0 » et, au clic, affichent
+                un message clair au lieu d'un filtre vide silencieux (categoryFamilies.ts = source unique). */}
             <View style={styles.list}>
               {panelNode ? (
                 <MenuRow
                   key="__all__"
                   label="Tout"
                   count={hasCounts ? countOf(panelNode) : undefined}
+                  empty={hasCounts && countOf(panelNode) === 0}
                   active={activeLeafId === `${panelNode.id}::all`}
                   first
                   onPress={() => applyAll(panelNode)}
                 />
               ) : null}
-              {(hasCounts ? panelNodes.filter((n) => countOf(n) > 0) : panelNodes).map((node) => (
+              {panelNodes.map((node) => (
                 <MenuRow
                   key={node.id}
                   label={node.label}
                   count={hasCounts ? countOf(node) : undefined}
+                  empty={hasCounts && countOf(node) === 0}
                   imageIcon={picto(node, panelRootId)}
                   hasChildren={!!(node.children && node.children.length)}
                   active={activeLeafId === node.id}
@@ -160,6 +182,14 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
                   onPress={() => onTapSub(node)}
                 />
               ))}
+              {emptyNotice ? (
+                <View testID="category-empty-notice" style={styles.emptyNotice}>
+                  <Feather name="info" size={14} color={glass.onDarkMuted} />
+                  <YText variant="caption" style={[styles.emptyNoticeText, { color: glass.onDarkMuted }]}>
+                    {emptyNotice}
+                  </YText>
+                </View>
+              ) : null}
             </View>
           </Animated.View>
         </>
@@ -237,6 +267,7 @@ function Capsule({
 function MenuRow({
   label,
   count,
+  empty = false,
   imageIcon,
   hasChildren = false,
   active = false,
@@ -246,12 +277,15 @@ function MenuRow({
   label: string;
   /** Nombre réel de résultats (corpus global) — masqué si absent. */
   count?: number;
+  /** Sous-catégorie sans résultat : atténuée + compteur « 0 » conservé, cliquable (message au clic). */
+  empty?: boolean;
   imageIcon?: ImageSourcePropType;
   hasChildren?: boolean;
   active?: boolean;
   first?: boolean;
   onPress: () => void;
 }) {
+  const labelColor = active ? ACTIVE_GREEN : empty ? glass.onDarkMuted : glass.onDark;
   return (
     <Pressable
       onPress={onPress}
@@ -261,16 +295,17 @@ function MenuRow({
       style={({ pressed, hovered }) => [
         styles.menuRow,
         !first && styles.menuRowBorder,
+        empty && !active && styles.menuRowEmpty,
         hovered && !active ? styles.menuRowHover : null,
         active && styles.menuRowActive,
         pressed && styles.menuRowPressed,
       ]}>
       {imageIcon ? (
-        <Image source={imageIcon} style={styles.menuPicto} contentFit="contain" />
+        <Image source={imageIcon} style={[styles.menuPicto, empty && !active && styles.pictoEmpty]} contentFit="contain" />
       ) : (
         <View style={styles.menuPicto} />
       )}
-      <YText variant="body" numberOfLines={1} style={[styles.menuLabel, { color: active ? ACTIVE_GREEN : glass.onDark }]}>
+      <YText variant="body" numberOfLines={1} style={[styles.menuLabel, { color: labelColor }]}>
         {label}
       </YText>
       {typeof count === 'number' ? (
@@ -289,6 +324,9 @@ function MenuRow({
 
 // Vert principal YOOTOO (capsule active) — aligné sur la DA sombre (token fixe car verre hors thème).
 const ACTIVE_GREEN = '#6A9B63';
+
+// Message affiché au clic d'une sous-catégorie sans résultat (jamais de filtre vide silencieux).
+const EMPTY_SUBCATEGORY_NOTICE = 'Aucun commerce disponible actuellement dans cette sous-catégorie.';
 
 /** Halo de couleur TRÈS DISCRET dérivé de l'accent de la sous-catégorie (states actif / hover). */
 const accentGlow = (color: string): ViewStyle =>
@@ -337,6 +375,21 @@ const styles = StyleSheet.create({
   menuRowHover: { backgroundColor: 'rgba(255,255,255,0.06)' },
   menuRowPressed: { backgroundColor: 'rgba(255,255,255,0.12)' },
   menuRowActive: { backgroundColor: 'rgba(106,155,99,0.16)' },
+  // Sous-catégorie sans résultat : atténuée (reste lisible et cliquable, jamais masquée).
+  menuRowEmpty: { opacity: 0.42 },
+  pictoEmpty: { opacity: 0.6 },
+  // Bannière « aucun résultat » sous la liste (au clic d'une sous-catégorie vide).
+  emptyNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    paddingVertical: 10,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  emptyNoticeText: { flex: 1 },
   menuPicto: { width: 24, height: 24 },
   menuLabel: { flex: 1, fontWeight: '600' },
   // Compte réel aligné à droite, avant la coche/chevron — discret (variante muette).
