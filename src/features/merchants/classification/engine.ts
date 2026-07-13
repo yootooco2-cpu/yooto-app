@@ -12,6 +12,14 @@ import type { Merchant } from '../types';
 export type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
 export type DecisionStatus = 'CLASSIFIED' | 'QUARANTAINE';
 
+/**
+ * Version du moteur — incrémentée à CHAQUE évolution de mapping ou de règle, pour savoir
+ * quelles décisions persistées recalculer (une fiche classée en v1 se rejoue en v2).
+ * v2 (13/07) : refinements Google structurés (animaleries, jardineries, vélos/motos),
+ * 45.40 composite, 23.41 → terre-ceramique, catégories Google génériques ≠ preuve.
+ */
+export const CLASSIFICATION_VERSION = 2;
+
 export interface OfficialFlags {
   /** Économie sociale et solidaire (complément officiel de l'API d'État). */
   estEss?: boolean;
@@ -24,6 +32,8 @@ export interface Decision {
   evidence: string[];
   explanation: string;
   status: DecisionStatus;
+  /** Version du moteur ayant produit la décision (recalcul ciblé du corpus). */
+  version: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -65,16 +75,19 @@ const NAF_MAP: [prefix: string, target: NafTarget][] = [
   ['47.79', { node: 'reparation-seconde-main' }],
   ['47.81', { node: 'marches' }],
   ['38.31', { node: 'reparation-seconde-main' }],
-  // Mobilité — motos & scooters (45.40Z « commerce et réparation de motocycles »), seul
-  // gisement automobile PROUVÉ de la base (45.20 garages absents). Preuve NAF forte.
-  ['45.40', { node: 'motos' }],
+  // 45.40Z « commerce et réparation de motocycles » : COMPOSITE mesuré (13/07) — les 3 seules
+  // fiches du corpus sous ce code sont des VÉLOCISTES (immatriculation réelle ≠ intitulé INSEE).
+  // Le NAF seul ne départage donc pas motos/vélos : une preuve niveau 2 tranche, sinon revue.
+  ['45.40', { composite: ['motos', 'velos'] }],
   ['56.10', { node: 'restaurants' }],
   ['56.21', { node: 'traiteurs' }],
   ['56.30', { node: 'bars-cafes' }],
   ['95.2', { node: 'reparation-seconde-main' }],
   ['96.02', { node: 'bienetre' }],
   ['96.04', { node: 'bienetre' }],
-  ['23.41', { node: 'artisanat' }],
+  // 23.41Z « articles céramiques à usage domestique et ornemental » = la feuille exacte
+  // Terre & Céramique (même famille artisanat, précision accrue — v2).
+  ['23.41', { node: 'terre-ceramique' }],
   ['32.12', { node: 'artisanat' }],
   ['16.29', { node: 'artisanat' }],
   ['13.92', { node: 'artisanat' }],
@@ -107,7 +120,33 @@ const REFINABLE_NAF = new Set<string>(['47.29']);
 // part en quarantaine comme toute autre. `jewelry_store` → Bijouterie & Joaillerie.
 const GOOGLE_REFINE: Record<string, string> = {
   jewelry_store: 'bijouterie-joaillerie',
+  // C1 (13/07) — groupes structurés mesurés sur le corpus (24 fiches pet, 1 jardinerie,
+  // 24 vélos) : catégories Google SPÉCIFIQUES → feuille canonique EXISTANTE (jamais de
+  // nouvelle feuille). Les élevages NAF 01.x avec signal animalier partent en revue
+  // (contradiction inter-familles) — c'est voulu (garde Elevage EDEN).
+  pet_store: 'animaleries',
+  pet_care: 'animaleries',
+  pet_boarding_service: 'animaleries',
+  veterinary_care: 'animaleries',
+  garden_center: 'jardineries',
+  plant_nursery: 'jardineries',
+  bicycle_store: 'velos',
+  bike_shop: 'velos',
+  bike_repair: 'velos',
+  local_bike: 'velos',
+  motorcycle_dealer: 'motos',
+  motorcycle_shop: 'motos',
+  motorcycle_repair: 'motos',
 };
+
+/**
+ * Catégories Google GÉNÉRIQUES : elles couvrent plusieurs familles à la fois ('food' =
+ * chocolatier, traiteur ou restaurant) → ABSENCE de preuve, jamais une preuve ni une
+ * contradiction (Loi 3). Sans ce filtre, le repli bucket fabriquait une preuve
+ * « restaurant » à partir de 'food' et envoyait des chocolatiers NAF 10.71/10.82 en
+ * fausse quarantaine (mesuré : 7 fiches, 13/07).
+ */
+const GENERIC_RAW = new Set(['food', 'food_experience']);
 
 const CRYPTO_TO_NODE: Partial<Record<CryptogramId, string>> = {
   boulangerie: 'boulangeries', patisserie: 'patisseries', cafe: 'bars-cafes',
@@ -128,15 +167,29 @@ const OFFICE_RAW = [
 
 function resolveGoogle(m: Merchant): { node: string; raw: string } | null {
   const raws = [m.rawCategory, m.rawMerchantType].filter(Boolean) as string[];
-  for (const raw of raws) {
+  const usable = raws.filter((raw) => !GENERIC_RAW.has(raw.trim().toLowerCase()));
+  for (const raw of usable) {
     const key = raw.trim().toLowerCase();
     if (OFFICE_RAW.includes(key)) return { node: NON_COMMERCE, raw };
     if (GOOGLE_REFINE[key]) return { node: GOOGLE_REFINE[key], raw };
   }
-  const crypto = cryptogramForMerchant(m);
+  // Tout le signal Google est générique → absence de preuve : ne JAMAIS laisser le repli
+  // bucket (dérivé de cette même valeur générique) fabriquer une preuve.
+  if (usable.length === 0 && raws.length > 0) return null;
+  const clean = (raw: string | undefined): string | undefined =>
+    raw && !GENERIC_RAW.has(raw.trim().toLowerCase()) ? raw : undefined;
+  // Le bucket `m.category` est NORMALISÉ depuis ces mêmes valeurs brutes : si l'une était
+  // générique, le bucket est contaminé ('food' → restaurant) et se neutralise ('shop' →
+  // « autres ») — mesuré sur la fiche réelle Chocolats Papereux (food + local_business).
+  const hadGeneric = usable.length !== raws.length;
+  const crypto = cryptogramForMerchant({
+    rawCategory: clean(m.rawCategory),
+    rawMerchantType: clean(m.rawMerchantType),
+    category: hadGeneric ? 'shop' : m.category,
+  });
   const node = CRYPTO_TO_NODE[crypto];
   if (!node) return null; // « autres » et non-mappés : générique, pas une preuve.
-  return { node, raw: raws[0] ?? m.category };
+  return { node, raw: usable[0] ?? m.category };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,6 +211,10 @@ const TEXT_HINTS: [node: string, stems: string[]][] = [
   ['fromageries', ['fromage', 'cremerie', 'cremier']],
   ['primeurs', ['primeur']],
   ['cooperatives', ['cooperat']],
+  // v2 : radicaux vélo VOLONTAIREMENT sans « velo » nu — il capturait « Velours » (2 cavistes
+  // réels en fausse quarantaine, mesuré 13/07 ; même leçon que les radicaux trop courts).
+  // « cycles »/« bicyclette » en début de mot : jamais « recyclerie » ni « motocycles ».
+  ['velos', ['bicyclette', 'cycles']],
 ];
 
 function resolveText(m: Merchant): { node: string; hit: string } | null {
@@ -198,12 +255,13 @@ const familyOf = (node: string): string | undefined => NODE_FAMILY[node];
 // Décision
 // ─────────────────────────────────────────────────────────────────────────────
 
-const decide = (partial: Omit<Decision, 'status'>, status: DecisionStatus = 'CLASSIFIED'): Decision =>
-  ({ ...partial, status });
+const decide = (partial: Omit<Decision, 'status' | 'version'>, status: DecisionStatus = 'CLASSIFIED'): Decision =>
+  ({ ...partial, status, version: CLASSIFICATION_VERSION });
 
-const quarantaine = (partial: Omit<Decision, 'status' | 'category'> & { category?: string | null }): Decision =>
+const quarantaine = (partial: Omit<Decision, 'status' | 'category' | 'version'> & { category?: string | null }): Decision =>
   ({ category: partial.category ?? null, confidence: partial.confidence, source: partial.source,
-     evidence: partial.evidence, explanation: partial.explanation, status: 'QUARANTAINE' });
+     evidence: partial.evidence, explanation: partial.explanation, status: 'QUARANTAINE',
+     version: CLASSIFICATION_VERSION });
 
 // ── NAF 85.51Z « enseignement de disciplines sportives » : rattachement Bien-être CONTRÔLÉ ──
 // Le NAF prouve le DOMAINE (sport/loisir), PAS une sous-catégorie Bien-être. On n'attache que si

@@ -194,9 +194,10 @@ describe('Extension périmètre 12/07 — rattachement aux catégories EXISTANTE
     expect(d.status).toBe('QUARANTAINE');
   });
 
-  it('47.64Z + preuve Google bicycle_store → Mobilité (composite résolu par niveau 2)', () => {
+  it('47.64Z + preuve Google bicycle_store → velos (composite résolu par niveau 2, feuille exacte v2)', () => {
     const d = classifyMerchant(m({ name: 'Culture Vélo', nafCode: '47.64Z', rawCategory: 'bicycle_store' } as Partial<Merchant>));
-    expect(d.category).toBe('mobilite'); // famille existante — les feuilles UNION raffinent par texte
+    // v2 : bicycle_store désigne la FEUILLE velos (précision accrue), plus la famille brute.
+    expect(d.category).toBe('velos');
     expect(d.status).not.toBe('QUARANTAINE');
   });
 });
@@ -242,10 +243,112 @@ describe('Rattachement — améliorations qualité (fixes 47.29 / jewelry_store 
     expect(d.status).toBe('QUARANTAINE');
   });
 
-  it('45.40Z (motos & scooters) → motos, HIGH (seul gisement automobile prouvé)', () => {
-    const d = classifyMerchant(m({ name: 'Moto Center', nafCode: '45.40Z' } as Partial<Merchant>));
+  // DOCTRINE v2 (13/07) : 45.40Z est devenu COMPOSITE — le test « 45.40Z seul → motos HIGH »
+  // est remplacé, car le domaine réel l'a falsifié (3/3 fiches sous ce code = vélocistes).
+  it('45.40Z + motorcycle_dealer → motos, HIGH (composite résolu par Google)', () => {
+    const d = classifyMerchant(m({ name: 'Moto Center', nafCode: '45.40Z', rawCategory: 'motorcycle_dealer' } as Partial<Merchant>));
     expect(d.category).toBe('motos');
     expect(d.confidence).toBe('HIGH');
+  });
+
+  it('45.40Z + bicycle_store → velos, HIGH (immatriculation réelle ≠ intitulé INSEE, mesuré)', () => {
+    const d = classifyMerchant(m({ name: 'Les Cycles D’Uzès', nafCode: '45.40Z', rawCategory: 'bicycle_store' } as Partial<Merchant>));
+    expect(d.category).toBe('velos');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('45.40Z SEUL → QUARANTAINE (composite jamais résolu par devinette)', () => {
+    const d = classifyMerchant(m({ name: 'Garage du Pont', nafCode: '45.40Z' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+    expect(d.source).toBe('NAF composite seul');
+  });
+});
+
+describe('Mappings v2 (13/07) — groupes structurés, génériques, version', () => {
+  it('pet_care SANS NAF → animaleries, MEDIUM (groupe pet mesuré : 24 fiches)', () => {
+    const d = classifyMerchant(m({ name: 'Happy Dog Pension', rawCategory: 'pet_care' } as Partial<Merchant>));
+    expect(d.category).toBe('animaleries');
+    expect(d.confidence).toBe('MEDIUM');
+  });
+
+  it('veterinary_care / pet_boarding_service → animaleries', () => {
+    expect(classifyMerchant(m({ name: 'Clinique Vétérinaire du Lez', rawCategory: 'veterinary_care' } as Partial<Merchant>)).category).toBe('animaleries');
+    expect(classifyMerchant(m({ name: 'Pension des 4 Pattes', rawCategory: 'pet_boarding_service' } as Partial<Merchant>)).category).toBe('animaleries');
+  });
+
+  it('élevage NAF 01.x + pet_care → QUARANTAINE (garde Elevage EDEN : jamais producteur par défaut)', () => {
+    const d = classifyMerchant(m({ name: 'Elevage des Garrigues', nafCode: '01.45Z', rawCategory: 'pet_care' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+    expect(d.source).toBe('contradiction NAF/Google');
+  });
+
+  it('47.76Z (composite) + pet_store → animaleries, HIGH (concordance)', () => {
+    const d = classifyMerchant(m({ name: 'De prés en fermes', nafCode: '47.76Z', rawCategory: 'pet_store' } as Partial<Merchant>));
+    expect(d.category).toBe('animaleries');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('47.76Z (composite) + garden_center + nom « Jardinerie » → jardineries, HIGH', () => {
+    const d = classifyMerchant(m({ name: 'Jardinerie du Levant', nafCode: '47.76Z', rawCategory: 'garden_center' } as Partial<Merchant>));
+    expect(d.category).toBe('jardineries');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('« food » SEUL n’est PAS une preuve → QUARANTAINE aucune (jamais restaurant par défaut)', () => {
+    const d = classifyMerchant(m({ name: 'Courtin Chocolaterie', rawCategory: 'food' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+    expect(d.source).toBe('aucune');
+  });
+
+  it('NAF 10.71D + « food » → boulangeries, HIGH (le générique ne contredit plus l’officiel)', () => {
+    const d = classifyMerchant(m({ name: 'Chocolats Thierry Papereux', nafCode: '10.71D', rawCategory: 'food' } as Partial<Merchant>));
+    expect(d.category).toBe('boulangeries');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('NAF 56.21Z + food_experience → traiteurs, HIGH (générique ignoré)', () => {
+    const d = classifyMerchant(m({ name: 'Grazing Montpellier', nafCode: '56.21Z', rawMerchantType: 'food_experience' } as Partial<Merchant>));
+    expect(d.category).toBe('traiteurs');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('23.41Z → terre-ceramique (feuille exacte, même famille artisanat)', () => {
+    expect(classifyMerchant(m({ name: 'Atelier Poterie', nafCode: '23.41Z' } as Partial<Merchant>)).category).toBe('terre-ceramique');
+  });
+
+  it('bicycle_store classé velos (précision feuille, plus jamais la famille brute)', () => {
+    expect(classifyMerchant(m({ name: 'Vélo & Oxygen', rawCategory: 'bicycle_store' } as Partial<Merchant>)).category).toBe('velos');
+  });
+
+  it('atelier vélo dont le nom dit « réparation » : indices croisés → QUARANTAINE assumée', () => {
+    const d = classifyMerchant(m({ name: 'La Fabr’hic à vélo - Atelier de réparation', rawMerchantType: 'soft_mobility' } as Partial<Merchant>));
+    // Vente/mobilité ET réparation sont toutes deux vraies : sans arbitre officiel (NAF),
+    // le doute part en revue — jamais tranché au jugé (gate à trois sorties).
+    expect(d.status).toBe('QUARANTAINE');
+  });
+
+  it('radical « velo » nu retiré : « La Culotte de Velours » (caviste 47.25Z) reste cavistes, HIGH', () => {
+    const d = classifyMerchant(m({ name: 'La Culotte de Velours', nafCode: '47.25Z' } as Partial<Merchant>));
+    expect(d.category).toBe('cavistes');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('« Cycles Betty » (NAF 95.29Z réparation) : indice cycles vs NAF → revue (vrai doute)', () => {
+    const d = classifyMerchant(m({ name: 'Cycles Betty', nafCode: '95.29Z' } as Partial<Merchant>));
+    expect(d.status).toBe('QUARANTAINE');
+  });
+
+  it('fiche réelle Papereux : NAF 10.71D + food + local_business → boulangeries, HIGH (bucket neutralisé)', () => {
+    const d = classifyMerchant(m({ name: 'Chocolats Thierry Papereux', nafCode: '10.71D', rawCategory: 'food', rawMerchantType: 'local_business', category: 'restaurant' } as Partial<Merchant>));
+    expect(d.category).toBe('boulangeries');
+    expect(d.confidence).toBe('HIGH');
+  });
+
+  it('toute décision porte la version du moteur (recalcul ciblé du corpus)', () => {
+    const classified = classifyMerchant(m({ name: 'Boulangerie', nafCode: '10.71C' } as Partial<Merchant>));
+    const quarantined = classifyMerchant(m({ name: 'X' } as Partial<Merchant>));
+    expect(classified.version).toBe(2);
+    expect(quarantined.version).toBe(2);
   });
 });
 
