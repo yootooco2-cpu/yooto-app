@@ -1,0 +1,209 @@
+# E2E natif — barre de navigation inférieure (GlassTabBar), dev build iOS, jamais Expo Go.
+# Preuve « vraie carte » : l'id `mapbox-map-view` est porté par le MapView RÉEL de
+# @rnmapbox/maps (MapEngine natif) — et le placeholder historique est asserté ABSENT.
+appId: com.yootoo.yootoo
+name: tab-nav-barre-inferieure
+tags:
+  - navigation
+---
+- launchApp
+- openLink: "yootoo://"
+- extendedWaitUntil:
+    visible:
+      id: "screen-home"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000
+
+# ── A. Parcours séquentiel : Accueil → Carte → Commerçants → Chat → Profil → Accueil
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "screen-map"
+    timeout: 10000
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 20000
+- assertNotVisible: "Aucun lieu sur cette zone"        # le placeholder n'est PAS rendu
+- assertNotVisible: "Carte native à venir.*"           # ni l'ancien fallback transit
+- tapOn:
+    id: "tab-merchants"
+- extendedWaitUntil:
+    visible:
+      id: "screen-merchants"
+    timeout: 10000
+- tapOn:
+    id: "tab-chat"
+- extendedWaitUntil:
+    visible:
+      id: "screen-chat"
+    timeout: 10000
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "screen-profile"
+    timeout: 10000
+- tapOn:
+    id: "tab-index"
+- extendedWaitUntil:
+    visible:
+      id: "screen-home"
+    timeout: 10000
+
+# ── B. Navigation non séquentielle : Carte → Profil → Commerçants → Accueil → Chat → Carte
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "screen-profile"
+    timeout: 10000
+- tapOn:
+    id: "tab-merchants"
+- extendedWaitUntil:
+    visible:
+      id: "screen-merchants"
+    timeout: 10000
+- tapOn:
+    id: "tab-index"
+- extendedWaitUntil:
+    visible:
+      id: "screen-home"
+    timeout: 10000
+- tapOn:
+    id: "tab-chat"
+- extendedWaitUntil:
+    visible:
+      id: "screen-chat"
+    timeout: 10000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000
+- assertNotVisible: "Aucun lieu sur cette zone"
+
+# ── C. Clics répétés : stabilité, pas d'écran vide ni de blocage
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: "tab-explore"
+      - assertVisible:
+          id: "screen-map"
+- assertVisible:
+    id: "mapbox-map-view"
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: "tab-chat"
+      - assertVisible:
+          id: "screen-chat"
+- repeat:
+    times: 3
+    commands:
+      - tapOn:
+          id: "tab-profile"
+      - assertVisible:
+          id: "screen-profile"
+- assertVisible:
+    id: "tab-index"                                    # la barre reste rendue et adressable
+
+# ── D. Retour vers la VRAIE Carte depuis chacun des quatre autres onglets
+- tapOn:
+    id: "tab-index"
+- extendedWaitUntil:
+    visible:
+      id: "screen-home"
+    timeout: 10000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000
+- tapOn:
+    id: "tab-merchants"
+- extendedWaitUntil:
+    visible:
+      id: "screen-merchants"
+    timeout: 10000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000
+- tapOn:
+    id: "tab-chat"
+- extendedWaitUntil:
+    visible:
+      id: "screen-chat"
+    timeout: 10000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000
+- tapOn:
+    id: "tab-profile"
+- extendedWaitUntil:
+    visible:
+      id: "screen-profile"
+    timeout: 10000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000
+- assertNotVisible: "Aucun lieu sur cette zone"
+
+# ── E. État complexe : clavier + panneau catégories, puis la barre fonctionne toujours
+- tapOn:
+    id: "tab-index"
+- extendedWaitUntil:
+    visible:
+      id: "screen-home"
+    timeout: 10000
+- tapOn: "Rechercher un commerce…"
+# Fermeture du clavier par tap hors champ (un simulateur en clavier matériel n'affiche pas
+# toujours le clavier logiciel — `hideKeyboard` n'est alors pas fiable) :
+- tapOn: "Dans votre secteur"
+- tapOn:
+    id: "category-family-alimentation"
+- extendedWaitUntil:
+    visible:
+      id: "category-panel"
+    timeout: 8000
+# Fermeture par TOGGLE de la capsule (le backdrop plein écran est recouvert par le panneau
+# au point de tap central — le re-tap famille est le geste produit équivalent) :
+- tapOn:
+    id: "category-family-alimentation"
+- waitForAnimationToEnd:
+    timeout: 3000
+- assertNotVisible:
+    id: "category-panel"
+- tapOn:
+    id: "tab-chat"
+- extendedWaitUntil:
+    visible:
+      id: "screen-chat"
+    timeout: 10000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 15000

@@ -114,7 +114,7 @@ function ChatBody() {
   };
 
   return (
-    <YScreen transparent gap="sm" padding="lg">
+    <YScreen testID="screen-chat" transparent gap="sm" padding="lg">
       {/* En-tête volontairement SANS titre « Chat » : on est déjà dans l'onglet Chat → l'écran
           démarre directement sur la barre de recherche premium, comme la Carte (plus immersif). */}
       {/* BARRE DE RECHERCHE PARTAGÉE AVEC LA CARTE — même YSearchBar (variant glass) + même bouton

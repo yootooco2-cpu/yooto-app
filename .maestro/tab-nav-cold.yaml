@@ -1,0 +1,27 @@
+# E2E natif — SCÉNARIO F : démarrage à froid, puis ouverture de la VRAIE Carte depuis l'Accueil.
+appId: com.yootoo.yootoo
+name: tab-nav-demarrage-a-froid
+tags:
+  - navigation
+---
+- launchApp:
+    stopApp: true          # relance complète (processus tué puis relancé)
+- openLink: "yootoo://"
+- extendedWaitUntil:
+    visible:
+      id: "screen-home"
+    timeout: 30000
+- waitForAnimationToEnd:
+    timeout: 4000
+- tapOn:
+    id: "tab-explore"
+- extendedWaitUntil:
+    visible:
+      id: "screen-map"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "mapbox-map-view"
+    timeout: 25000
+- assertNotVisible: "Aucun lieu sur cette zone"
+- assertNotVisible: "Carte momentanément indisponible.*"

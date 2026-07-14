@@ -276,7 +276,7 @@ export default function MapScreen() {
 
   return (
     <SectionThemeProvider section="carte">
-      <View style={styles.root}>
+      <View testID="screen-map" style={styles.root}>
       <View style={styles.screenWrap}>
       {/* Immersion : la carte est le FOND plein écran ; tout le chrome flotte au-dessus (voile
           dégradé + verre) → plus aucune rupture « carte / barre / catégories ». */}

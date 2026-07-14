@@ -169,7 +169,7 @@ export default function ProfileScreen() {
 
   return (
     <SectionScreen section="profil">
-      <View style={styles.root}>
+      <View testID="screen-profile" style={styles.root}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* ---------- HEADER ---------- */}
         <View style={styles.header}>

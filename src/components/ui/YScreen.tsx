@@ -24,6 +24,8 @@ type Props = PropsWithChildren<{
   footer?: ReactNode;
   /** Handler de scroll Reanimated (active un Animated.ScrollView pour la parallaxe). */
   onScroll?: AnimatedScrollProps['onScroll'];
+  /** Identifiant E2E stable (Maestro) posé sur la racine de l'écran. */
+  testID?: string;
   style?: ViewStyle;
 }>;
 
@@ -36,6 +38,7 @@ export function YScreen({
   center = false,
   footer,
   onScroll,
+  testID,
   style,
 }: Props) {
   const { colors } = useTheme();
@@ -45,7 +48,7 @@ export function YScreen({
   };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: transparent ? 'transparent' : colors.background }]}>
+    <SafeAreaView testID={testID} style={[styles.screen, { backgroundColor: transparent ? 'transparent' : colors.background }]}>
       {scroll ? (
         onScroll ? (
           <Animated.ScrollView

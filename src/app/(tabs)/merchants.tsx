@@ -51,7 +51,7 @@ export default function MerchantsScreen() {
 
   return (
     <SectionScreen section="commerce">
-      <YScreen transparent gap="sm" padding="lg">
+      <YScreen testID="screen-merchants" transparent gap="sm" padding="lg">
         {/* MENU OFFICIEL PARTAGÉ (identique à Carte & Accueil) : recherche + catégories + profil. */}
         <SearchMenu
           query={query}

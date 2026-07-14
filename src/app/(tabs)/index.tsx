@@ -81,7 +81,7 @@ export default function HomeScreen() {
   // recherche → catégories → recommandations.
   return (
     <SectionScreen section="accueil" scrollY={scrollY} height={AMBIENT_HEIGHT} scrollAway>
-      <YScreen transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
+      <YScreen testID="screen-home" transparent scroll gap="lg" padding="lg" onScroll={scrollHandler}>
         {/* Header de marque : le logotype seul, posé sur le héro — identité immédiate, zéro bruit
             (pas de cloche ni de localisation tant que ces données réelles n'existent pas). */}
         <YText accessibilityRole="header" style={styles.brand}>
