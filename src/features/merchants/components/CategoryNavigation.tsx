@@ -1,5 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Platform, ScrollView, StyleSheet, View, type ImageSourcePropType, type ViewStyle } from 'react-native';
 import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -36,6 +37,7 @@ interface Props {
  * panneau avec un retour « ‹ ». Le composant ne remonte qu'un PRÉDICAT ; Discovery non touché.
  */
 export function CategoryNavigation({ onChange, merchants = [] }: Props) {
+  const router = useRouter();
   // Pile du PANNEAU ouvert : [] = fermé ; [famille] = panneau famille ; [famille, sous-famille] = plus profond.
   const [panelPath, setPanelPath] = useState<CategoryNode[]>([]);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(null);
@@ -79,6 +81,14 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
   };
 
   const applyLeaf = (familyId: string, node: CategoryNode) => {
+    // Bus & Tram n'est PAS un filtre de commerces : la feuille ouvre l'écran transport
+    // (données GTFS officielles, tables dédiées) — aucune catégorie créée ni détournée.
+    if (node.id === 'bus-tramway') {
+      setPanelPath([]);
+      setEmptyNotice(null);
+      router.push('/transport/bus-tram');
+      return;
+    }
     if (noticeIfEmpty(node)) return;
     setEmptyNotice(null);
     const isActive = activeLeafId === node.id;
