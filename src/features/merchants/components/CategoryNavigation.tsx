@@ -183,8 +183,10 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
                 <MenuRow
                   key={node.id}
                   label={node.label}
-                  count={hasCounts ? countOf(node) : undefined}
-                  empty={hasCounts && countOf(node) === 0}
+                  // Bus & Tramway ouvre l'écran transport (données GTFS) : le compteur de
+                  // COMMERCES n'a aucun sens ici et l'atténuait comme « vide » à tort.
+                  count={hasCounts && node.id !== 'bus-tramway' ? countOf(node) : undefined}
+                  empty={hasCounts && node.id !== 'bus-tramway' && countOf(node) === 0}
                   imageIcon={picto(node, panelRootId)}
                   hasChildren={!!(node.children && node.children.length)}
                   active={activeLeafId === node.id}
