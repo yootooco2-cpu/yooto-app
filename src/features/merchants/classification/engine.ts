@@ -17,8 +17,9 @@ export type DecisionStatus = 'CLASSIFIED' | 'QUARANTAINE';
  * quelles décisions persistées recalculer (une fiche classée en v1 se rejoue en v2).
  * v2 (13/07) : refinements Google structurés (animaleries, jardineries, vélos/motos),
  * 45.40 composite, 23.41 → terre-ceramique, catégories Google génériques ≠ preuve.
+ * v3 (14/07) : preuve 0 — vérifications humaines validées (11 ateliers textile → textile-cuir).
  */
-export const CLASSIFICATION_VERSION = 2;
+export const CLASSIFICATION_VERSION = 3;
 
 export interface OfficialFlags {
   /** Économie sociale et solidaire (complément officiel de l'API d'État). */
@@ -312,7 +313,44 @@ function classifySportTeaching(m: Merchant): Decision {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Preuve 0 — VÉRIFICATIONS HUMAINES VALIDÉES (décision fondateur 14/07).
+// Chaque entrée a été vérifiée individuellement sur le web (site officiel, annuaires
+// spécialisés, SIRENE — ≥2 sources concordantes, identité contrôlée par SIRET) PUIS
+// validée explicitement. Elle prime sur toute autre preuve : c'est un constat, pas une
+// inférence. Périmètre STRICT par id — cette table ne s'étend JAMAIS par règle textuelle
+// (leçon « Velours ») ni sans nouvelle décision explicite. Le NAF source reste intact,
+// conservé en trace dans l'évidence.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const VERIFIED_BY_ID: Record<string, { node: string; activite: string }> = {
+  '1433': { node: 'textile-cuir', activite: 'atelier couture-retouches (Lunel-Viel)' },
+  '3345': { node: 'textile-cuir', activite: 'retoucherie Bella Couture (Nîmes)' },
+  '3404': { node: 'textile-cuir', activite: 'couture-retouches Chez Denise (Montpellier)' },
+  '3676': { node: 'textile-cuir', activite: 'retoucherie Mademoiselle Couture' },
+  '4364': { node: 'textile-cuir', activite: 'retoucherie Cham Retouche et Repassage (Nîmes)' },
+  '4368': { node: 'textile-cuir', activite: 'tapissier-décorateur Geynet (réfection de sièges)' },
+  '4479': { node: 'textile-cuir', activite: 'couturière-retoucheuse diplômée Sandra' },
+  '4551': { node: 'textile-cuir', activite: 'tapissier-sellier Artisan d’Art C Cuirs et Tissus' },
+  '4705': { node: 'textile-cuir', activite: 'couture-retouches Marie Balaguer' },
+  '4805': { node: 'textile-cuir', activite: 'atelier Retouch’Rapid (Ines Thomas)' },
+  '4885': { node: 'textile-cuir', activite: 'haute couture sur mesure Isabelle Dupéré (Frontignan)' },
+};
+
 export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {
+  // ── Preuve 0 : vérification humaine validée — prime sur tout (constat, pas inférence).
+  const verified = VERIFIED_BY_ID[m.id];
+  if (verified) {
+    return decide({
+      category: verified.node, confidence: 'HIGH', source: 'vérification humaine (14/07)',
+      evidence: [
+        `activité vérifiée multi-sources : ${verified.activite}`,
+        ...(m.nafCode ? [`NAF ${m.nafCode} conservé en trace (non modifié)`] : []),
+      ],
+      explanation: `Activité vérifiée individuellement (web, ≥2 sources concordantes) et validée : ${verified.activite} → ${verified.node}.`,
+    });
+  }
+
   // ── Preuve 1a : engagement officiel. Le cas La Cagette a prouvé que la catégorie
   //    Coopératives est INVISIBLE au NAF (SAS coopérative) : l'ESS prime.
   if (flags?.estEss) {

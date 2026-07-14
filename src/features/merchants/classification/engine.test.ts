@@ -347,8 +347,43 @@ describe('Mappings v2 (13/07) — groupes structurés, génériques, version', (
   it('toute décision porte la version du moteur (recalcul ciblé du corpus)', () => {
     const classified = classifyMerchant(m({ name: 'Boulangerie', nafCode: '10.71C' } as Partial<Merchant>));
     const quarantined = classifyMerchant(m({ name: 'X' } as Partial<Merchant>));
-    expect(classified.version).toBe(2);
-    expect(quarantined.version).toBe(2);
+    expect(classified.version).toBe(3);
+    expect(quarantined.version).toBe(3);
+  });
+});
+
+describe('Preuve 0 — vérifications humaines validées (v3, décision fondateur 14/07)', () => {
+  it('une fiche vérifiée est classée par la table, avec le NAF conservé en trace', () => {
+    // Fiche réelle 4368 : NAF 95.24Z (réparation meubles) mais tapissier-décorateur vérifié.
+    const d = classifyMerchant(m({ id: '4368', name: 'Tapissier Geynet', nafCode: '95.24Z' } as Partial<Merchant>));
+    expect(d.category).toBe('textile-cuir');
+    expect(d.confidence).toBe('HIGH');
+    expect(d.source).toBe('vérification humaine (14/07)');
+    expect(d.evidence.join(' ')).toContain('95.24Z');
+  });
+
+  it('la table couvre EXACTEMENT les 11 ids validés — jamais plus', () => {
+    const verifies = ['1433', '3345', '3404', '3676', '4364', '4368', '4479', '4551', '4705', '4805', '4885'];
+    for (const id of verifies) {
+      expect(classifyMerchant(m({ id, name: 'X', nafCode: '95.29Z' } as Partial<Merchant>)).category).toBe('textile-cuir');
+    }
+  });
+
+  it('GARDE anti-règle-large : une couturière NON validée reste classée par ses preuves normales', () => {
+    // « Joelle Couture » (MEDIUM, non validée) : le nom « couture » ne déplace RIEN —
+    // seul l'id validé compte. NAF 95.29Z → reparation-seconde-main, comme avant.
+    const d = classifyMerchant(m({ id: '4212', name: 'Joelle Couture', nafCode: '95.29Z' } as Partial<Merchant>));
+    expect(d.category).toBe('reparation-seconde-main');
+  });
+
+  it('GARDE cordonneries : 95.23Z inchangé', () => {
+    const d = classifyMerchant(m({ id: '3153', name: 'Cordonnerie Ideale', nafCode: '95.23Z' } as Partial<Merchant>));
+    expect(d.category).toBe('reparation-seconde-main');
+  });
+
+  it('un id vérifié inconnu du corpus de test ne fuit pas sur les autres fiches', () => {
+    const d = classifyMerchant(m({ id: '9999', name: 'Atelier de couture et retouches', nafCode: '95.29Z' } as Partial<Merchant>));
+    expect(d.category).toBe('reparation-seconde-main');
   });
 });
 
