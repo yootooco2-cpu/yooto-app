@@ -1,0 +1,139 @@
+# E2E natif Bus & Tramway — dev build iOS (@rnmapbox/maps), JAMAIS Expo Go.
+# Prérequis : simulateur booté, app com.yootoo.yootoo installée (expo run:ios), Metro actif.
+# Aucune dépendance à une heure exacte : chaque assertion d'horaires accepte SOIT au moins
+# un groupe officiel (transit-schedule-group), SOIT le message honnête (transit-schedule-empty).
+appId: com.yootoo.yootoo
+name: bus-tram-parcours-complet
+tags:
+  - transit
+---
+# ── 1. Ouverture Mobilité → Bus & Tramway (navigation catégories de l'Accueil — parcours réel)
+- launchApp
+- openLink: "yootoo://"            # racine (tabs) quel que soit l'écran conservé par le dev client
+- extendedWaitUntil:
+    visible:
+      id: "category-family-alimentation"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 4000                  # le deep link doit avoir fini de se résoudre avant tout tap
+# La rangée des familles défile HORIZONTALEMENT (~31 % de hauteur) : on amène « Mobilité » à l'écran.
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "category-family-mobilite"
+    commands:
+      - swipe:
+          start: "85%, 31%"
+          end: "15%, 31%"
+          duration: 600
+- tapOn:
+    id: "category-family-mobilite"
+- extendedWaitUntil:
+    visible:
+      id: "category-item-bus-tramway"
+    timeout: 10000
+- tapOn:
+    id: "category-item-bus-tramway"
+- extendedWaitUntil:
+    visible:
+      id: "transit-mode-tous"
+    timeout: 20000
+
+# ── 2. Sélection d'un arrêt (première ligne de la liste des arrêts proches)
+- extendedWaitUntil:
+    visible:
+      id: "transit-stop-row"
+    timeout: 20000
+- tapOn:
+    id: "transit-stop-row"
+    index: 0
+- assertVisible:
+    id: "transit-selected-stop"
+
+# ── 3. Sélection d'une ligne disponible (chip de l'arrêt sélectionné)
+- tapOn:
+    id: "transit-line-btn"
+    index: 0
+
+# ── 4. Ouverture AUTOMATIQUE du panneau complet
+- extendedWaitUntil:
+    visible:
+      id: "transit-schedule-panel"
+    timeout: 8000
+- assertVisible:
+    id: "transit-line-filter"
+
+# ── 5. Présence des horaires : au moins un horaire officiel OU le message honnête
+- runFlow:
+    when:
+      notVisible:
+        id: "transit-schedule-group"
+    commands:
+      - assertVisible:
+          id: "transit-schedule-empty"
+
+# ── 6. Scroll vertical RÉEL dans le panneau des horaires
+- swipe:
+    from:
+      id: "transit-schedule-panel"
+    direction: UP
+- assertVisible:
+    id: "transit-schedule-panel"
+- swipe:
+    from:
+      id: "transit-schedule-panel"
+    direction: DOWN
+
+# ── 7. Réduction puis réouverture
+- tapOn:
+    id: "transit-sheet-collapse"
+- assertVisible:
+    id: "transit-selected-stop"
+- assertNotVisible:
+    id: "transit-schedule-panel"
+- tapOn:
+    id: "transit-sheet-expand"
+- extendedWaitUntil:
+    visible:
+      id: "transit-schedule-panel"
+    timeout: 8000
+
+# ── 8. Conservation de la ligne sélectionnée après réduction/réouverture
+- assertVisible:
+    id: "transit-line-filter"
+
+# ── 9./10. Tous → Tramway → Bus : la sélection et les horaires ne meurent JAMAIS en silence
+- tapOn:
+    id: "transit-mode-tram"
+- assertVisible:
+    id: "transit-selected-stop"
+- runFlow:
+    when:
+      notVisible:
+        id: "transit-schedule-group"
+    commands:
+      - assertVisible:
+          id: "transit-schedule-empty"
+- tapOn:
+    id: "transit-mode-bus"
+- assertVisible:
+    id: "transit-selected-stop"
+- runFlow:
+    when:
+      notVisible:
+        id: "transit-schedule-group"
+    commands:
+      - assertVisible:
+          id: "transit-schedule-empty"
+- tapOn:
+    id: "transit-mode-tous"
+- assertVisible:
+    id: "transit-selected-stop"
+- runFlow:
+    when:
+      notVisible:
+        id: "transit-schedule-group"
+    commands:
+      - assertVisible:
+          id: "transit-schedule-empty"

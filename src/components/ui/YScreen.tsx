@@ -1,6 +1,7 @@
 import { type ComponentProps, type PropsWithChildren, type ReactNode } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/design/theme/ThemeProvider';
 import { shadows } from '@/design/tokens/shadows';

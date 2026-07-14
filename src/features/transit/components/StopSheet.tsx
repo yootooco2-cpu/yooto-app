@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useReducedMotion, withTiming } from 'react-native-reanimated';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -10,7 +10,7 @@ import { haptics } from '@/lib/haptics';
 
 import type { StationWithRoutes, TransitMode } from '../mapModel';
 import { formatDeparture } from '../schedule';
-import { nextSheetState, sheetHeightPx, type SheetState } from '../sheetModel';
+import { filterGroupsByRoute, nextSheetState, sheetHeightPx, type SheetState } from '../sheetModel';
 import type { useStationDepartures } from '../useStationDepartures';
 import { RouteChip } from './RouteChip';
 
@@ -36,6 +36,10 @@ interface Props {
   selected: (StationWithRoutes & { distanceKm?: number }) | null;
   onSelect: (id: number) => void;
   onCloseSelection: () => void;
+  /** Ligne mise en avant dans la fiche (filtre d'affichage, jamais un vide silencieux). */
+  selectedRouteId: string | null;
+  /** Sélection d'une ligne (chip) — `null` pour revenir à toutes les lignes. */
+  onSelectRoute: (routeId: string | null) => void;
   schedule: ReturnType<typeof useStationDepartures>;
   refreshing: boolean;
   onRefreshAll: () => void;
@@ -49,7 +53,9 @@ export function StopSheet(p: Props) {
   // Hauteur cible calculée côté JS : le worklet ne capture qu'un NOMBRE (jamais une
   // fonction JS — crash Reanimated « non-worklet on the UI thread » sur natif).
   const targetHeight = sheetHeightPx(p.state, p.screenHeight);
-  const style = useAnimatedStyle(() => ({ height: withTiming(targetHeight, { duration: 240 }) }), [targetHeight]);
+  const reducedMotion = useReducedMotion(); // Réglage système : transition instantanée, pas de glissement
+  const duration = reducedMotion ? 0 : 240;
+  const style = useAnimatedStyle(() => ({ height: withTiming(targetHeight, { duration }) }), [targetHeight, duration]);
   const move = (dir: 1 | -1) => {
     const next = nextSheetState(p.state, dir, p.selected !== null);
     if (next !== p.state) { haptics.light(); p.onState(next); }
@@ -59,13 +65,13 @@ export function StopSheet(p: Props) {
     <Animated.View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.separator }, style]}>
       {/* Poignée + commandes accessibles (aucun glissement requis). */}
       <View style={styles.headRow}>
-        <Pressable onPress={() => move(-1)} disabled={p.state === 'reduced'} hitSlop={8} accessibilityRole="button" accessibilityLabel="Réduire le panneau" style={styles.headBtn}>
+        <Pressable testID="transit-sheet-collapse" onPress={() => move(-1)} disabled={p.state === 'reduced'} hitSlop={8} accessibilityRole="button" accessibilityLabel="Réduire le panneau" style={styles.headBtn}>
           <Feather name="chevron-down" size={20} color={p.state === 'reduced' ? colors.separator : colors.text} />
         </Pressable>
-        <Pressable onPress={() => move(p.state === 'full' ? -1 : 1)} accessibilityRole="button" accessibilityLabel="Basculer la taille du panneau" style={styles.handleHit}>
+        <Pressable testID="transit-sheet-handle" onPress={() => move(p.state === 'full' ? -1 : 1)} accessibilityRole="button" accessibilityLabel="Basculer la taille du panneau" style={styles.handleHit}>
           <View style={[styles.handle, { backgroundColor: colors.separator }]} />
         </Pressable>
-        <Pressable onPress={() => move(1)} disabled={p.state === 'full'} hitSlop={8} accessibilityRole="button" accessibilityLabel="Agrandir le panneau" style={styles.headBtn}>
+        <Pressable testID="transit-sheet-expand" onPress={() => move(1)} disabled={p.state === 'full'} hitSlop={8} accessibilityRole="button" accessibilityLabel="Agrandir le panneau" style={styles.headBtn}>
           <Feather name="chevron-up" size={20} color={p.state === 'full' ? colors.separator : colors.text} />
         </Pressable>
       </View>
@@ -92,13 +98,13 @@ function Summary({ p }: { p: Props }) {
   if (!p.servesMode) {
     return (
       <View style={styles.summary}>
-        <View style={styles.summaryHead}>
+        <View testID="transit-selected-stop" accessibilityLabel={`Arrêt sélectionné ${s.name}`} style={styles.summaryHead}>
           <YText style={[styles.title, { color: colors.text }]} numberOfLines={1}>{s.name}</YText>
           <Pressable onPress={p.onCloseSelection} hitSlop={10} accessibilityRole="button" accessibilityLabel="Fermer la sélection" style={styles.closeBtn}>
             <Feather name="x" size={16} color={colors.mutedText} />
           </Pressable>
         </View>
-        <YText variant="caption" color="muted">
+        <YText testID="transit-schedule-empty" variant="caption" color="muted">
           Cet arrêt ne dessert pas de {p.mode === 'bus' ? 'bus' : 'tramway'} — repassez sur « Tous » pour voir ses horaires.
         </YText>
       </View>
@@ -106,14 +112,27 @@ function Summary({ p }: { p: Props }) {
   }
   return (
     <View style={styles.summary}>
-      <View style={styles.summaryHead}>
+      <View testID="transit-selected-stop" accessibilityLabel={`Arrêt sélectionné ${s.name}`} style={styles.summaryHead}>
         <YText style={[styles.title, { color: colors.text }]} numberOfLines={1}>{s.name}</YText>
         {fmtDist(s.distanceKm) ? <YText variant="caption" color="muted">{fmtDist(s.distanceKm)}</YText> : null}
         <Pressable onPress={p.onCloseSelection} hitSlop={10} accessibilityRole="button" accessibilityLabel="Fermer la sélection" style={styles.closeBtn}>
           <Feather name="x" size={16} color={colors.mutedText} />
         </Pressable>
       </View>
-      <View style={styles.chips}>{s.routes.slice(0, 8).map((r) => <RouteChip key={r.id} route={r} />)}</View>
+      {/* Chips de lignes PRESSABLES : toucher une ligne ouvre la fiche complète dessus. */}
+      <View style={styles.chips}>
+        {s.routes.slice(0, 8).map((r) => (
+          <Pressable
+            key={r.id}
+            testID="transit-line-btn"
+            accessibilityRole="button"
+            accessibilityLabel={`Ligne ${r.shortName ?? r.routeId} — ouvrir les horaires`}
+            hitSlop={{ top: 11, bottom: 11, left: 6, right: 6 }} // chip 22 px → cible tactile 44 pt
+            onPress={() => p.onSelectRoute(r.routeId)}>
+            <RouteChip route={r} />
+          </Pressable>
+        ))}
+      </View>
       <View style={styles.nextRow}>
         {p.schedule.loading ? <YText variant="caption" color="muted">Chargement des départs…</YText>
           : nextTwo.length === 0 ? <YText variant="caption" color="muted">Aucun départ dans les 2 h (données du jour).</YText>
@@ -142,6 +161,7 @@ function NearbyList({ p }: { p: Props }) {
         const selected = p.selected?.id === item.id;
         return (
           <Pressable
+            testID="transit-stop-row"
             onPress={() => p.onSelect(item.id)}
             accessibilityRole="button"
             accessibilityLabel={`Arrêt ${item.name}`}
@@ -171,13 +191,32 @@ function FullDetail({ p }: { p: Props }) {
   const s = p.selected!;
   const { rtFresh, alerts, loading, error, now, refresh } = p.schedule;
   const modeRouteIds = new Set(s.routes.map((r) => r.routeId));
-  const groups = p.servesMode ? p.schedule.groups.filter((g) => modeRouteIds.has(g.routeId)) : [];
+  const modeGroups = p.servesMode ? p.schedule.groups.filter((g) => modeRouteIds.has(g.routeId)) : [];
+  // Filtre de LIGNE sélectionnée — jamais un vide silencieux : ligne sans départ ⇒ tout + signal.
+  const { groups, active: routeFilterActive, missing: routeMissing } = filterGroupsByRoute(modeGroups, p.selectedRouteId);
+  const selectedRoute = p.selectedRouteId ? s.routes.find((r) => r.routeId === p.selectedRouteId) : undefined;
   return (
-    <ScrollView style={styles.fill} contentContainerStyle={styles.fullContent} refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={() => { refresh(); p.onRefreshAll(); }} />}>
-      <View style={styles.summaryHead}>
+    <ScrollView testID="transit-schedule-panel" style={styles.fill} contentContainerStyle={styles.fullContent} refreshControl={<RefreshControl refreshing={p.refreshing} onRefresh={() => { refresh(); p.onRefreshAll(); }} />}>
+      <View testID="transit-selected-stop" accessibilityLabel={`Arrêt sélectionné ${s.name}`} style={styles.summaryHead}>
         <YText style={[styles.title, { color: colors.text }]} numberOfLines={1}>{s.name}</YText>
         {fmtDist(s.distanceKm) ? <YText variant="caption" color="muted">{fmtDist(s.distanceKm)}</YText> : null}
       </View>
+      {routeFilterActive && selectedRoute ? (
+        <Pressable
+          testID="transit-line-filter"
+          accessibilityRole="button"
+          accessibilityLabel={`Horaires filtrés sur la ligne ${selectedRoute.shortName ?? selectedRoute.routeId} — toucher pour afficher toutes les lignes`}
+          onPress={() => p.onSelectRoute(null)}
+          style={[styles.alert, styles.lineFilter, { borderColor: colors.separator, backgroundColor: colors.background }]}>
+          <RouteChip route={selectedRoute} />
+          <YText variant="caption" color="muted" style={styles.alertText}>Ligne affichée seule — toucher pour toutes les lignes.</YText>
+        </Pressable>
+      ) : null}
+      {routeMissing ? (
+        <YText testID="transit-line-filter-missing" variant="caption" color="muted">
+          La ligne sélectionnée n’a aucun départ dans ce filtre — toutes les lignes sont affichées.
+        </YText>
+      ) : null}
       <View style={styles.badges}>
         <View style={[styles.badge, { backgroundColor: rtFresh ? colors.primary : colors.background, borderColor: colors.separator }]}>
           <YText variant="caption" style={{ color: rtFresh ? '#fff' : colors.mutedText }}>{rtFresh ? 'Temps réel' : 'Horaire théorique'}</YText>
@@ -195,20 +234,20 @@ function FullDetail({ p }: { p: Props }) {
         </View>
       ))}
       {loading ? <YText variant="caption" color="muted">Chargement des horaires…</YText>
-        : error ? <YText variant="caption" color="muted">Horaires indisponibles — tirez pour réessayer.</YText>
-          : !p.servesMode ? <YText variant="caption" color="muted">Cet arrêt ne dessert pas de {p.mode === 'bus' ? 'bus' : 'tramway'} — repassez sur « Tous ».</YText>
-            : groups.length === 0 ? <YText variant="caption" color="muted">Aucun départ prévu dans les 2 prochaines heures (données TaM du jour).</YText>
+        : error ? <YText testID="transit-schedule-empty" variant="caption" color="muted">Horaires indisponibles — tirez pour réessayer.</YText>
+          : !p.servesMode ? <YText testID="transit-schedule-empty" variant="caption" color="muted">Cet arrêt ne dessert pas de {p.mode === 'bus' ? 'bus' : 'tramway'} — repassez sur « Tous ».</YText>
+            : groups.length === 0 ? <YText testID="transit-schedule-empty" variant="caption" color="muted">Aucun départ prévu dans les 2 prochaines heures (données TaM du jour).</YText>
             : groups.map((g) => {
               const route = s.routes.find((r) => r.routeId === g.routeId);
               return (
-                <View key={`${g.routeId}|${g.headsign}`} style={[styles.group, { backgroundColor: colors.background, borderColor: colors.separator }]}>
+                <View key={`${g.routeId}|${g.headsign}`} testID="transit-schedule-group" style={[styles.group, { backgroundColor: colors.background, borderColor: colors.separator }]}>
                   <View style={styles.groupHead}>
                     {route ? <RouteChip route={route} /> : null}
                     <YText style={[styles.headsign, { color: colors.text }]} numberOfLines={1}>→ {g.headsign || route?.longName || ''}</YText>
                   </View>
                   <View style={styles.times}>
                     {g.next.map((d, i) => (
-                      <View key={i}>
+                      <View key={i} testID="transit-departure">
                         <YText style={[styles.timeMain, { color: colors.text }]}>{formatDeparture(d.epochMs, now)}</YText>
                         <YText variant="caption" color="muted">{d.source === 'temps-reel' ? 'temps réel' : 'théorique'}</YText>
                       </View>
@@ -251,6 +290,8 @@ const styles = StyleSheet.create({
   badges: { flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap' },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: radii.md, borderWidth: StyleSheet.hairlineWidth },
   alert: { flexDirection: 'row', gap: spacing.xs, alignItems: 'flex-start', padding: spacing.sm, borderRadius: radii.md, borderWidth: StyleSheet.hairlineWidth },
+  lineFilter: { minHeight: 44, alignItems: 'center' }, // bouton : cible tactile ≥ 44 pt
+
   alertText: { flex: 1 },
   group: { borderRadius: radii.lg, borderWidth: StyleSheet.hairlineWidth, padding: spacing.md, gap: spacing.sm },
   groupHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

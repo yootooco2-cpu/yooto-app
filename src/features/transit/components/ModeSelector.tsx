@@ -30,6 +30,7 @@ export function ModeSelector({ mode, onChange }: { mode: TransitMode; onChange: 
         return (
           <Pressable
             key={opt.mode}
+            testID={`transit-mode-${opt.mode}`}
             accessibilityRole="tab"
             accessibilityLabel={`Filtre ${opt.label}`}
             accessibilityState={{ selected: active }}

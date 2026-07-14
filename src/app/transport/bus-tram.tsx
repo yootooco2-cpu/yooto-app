@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
@@ -29,6 +30,7 @@ export default function BusTramScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets(); // la barre flottante ne passe JAMAIS sous la Dynamic Island
   const userLocation = useMerchantSearchStore((s) => s.userLocation);
   const stops = useTransitStops();
   const routes = useTransitRoutes();
@@ -37,6 +39,7 @@ export default function BusTramScreen() {
   const [mode, setMode] = useState<TransitMode>('tous');
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [sheetState, setSheetState] = useState<SheetState>('mid');
   const defaultCenter = getMapConfig().defaultRegion.center; // Montpellier (sans géoloc)
   const [region, setRegion] = useState(() => ({ center: userLocation ?? defaultCenter, zoom: 15.2 }));
@@ -98,9 +101,16 @@ export default function BusTramScreen() {
   const selectStation = useCallback((id: number) => {
     const st = stations.find((s) => s.id === id);
     setSelectedId(id);
+    setSelectedRouteId((prev) => (id === selectedId ? prev : null)); // autre arrêt → filtre de ligne relâché
     setSheetState('reduced');
     if (st) setFocus({ latitude: st.latitude, longitude: st.longitude, zoom: 15.6, token: focusToken.current++ });
-  }, [stations]);
+  }, [stations, selectedId]);
+
+  // Toucher une LIGNE (chip) ouvre la fiche complète dessus ; `null` relâche le filtre sans bouger.
+  const selectRoute = useCallback((routeId: string | null) => {
+    setSelectedRouteId(routeId);
+    if (routeId) setSheetState('full');
+  }, []);
 
   const onRegionChange = useCallback((center: { latitude: number; longitude: number }, zoom: number) => {
     // Recalculs limités pendant le déplacement : coalescing court après moveend.
@@ -115,7 +125,7 @@ export default function BusTramScreen() {
 
   // Retour : rétablit l'état précédent (sélection → liste), puis quitte l'écran.
   const goBack = useCallback(() => {
-    if (selectedId !== null) { setSelectedId(null); setSheetState('mid'); return; }
+    if (selectedId !== null) { setSelectedId(null); setSelectedRouteId(null); setSheetState('mid'); return; }
     if (router.canGoBack()) router.back(); else router.replace('/');
   }, [selectedId, router]);
 
@@ -142,7 +152,7 @@ export default function BusTramScreen() {
       </View>
 
       {/* Barre supérieure flottante (glassmorphism YOOTOO). */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { top: insets.top + spacing.xs }]}>
         <View style={[styles.searchRow, glass.panel]}>
           <Pressable onPress={goBack} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retour" style={styles.iconBtn}>
             <Feather name="chevron-left" size={22} color={glass.onDark} />
@@ -161,7 +171,11 @@ export default function BusTramScreen() {
           </Pressable>
         </View>
         <ModeSelector mode={mode} onChange={setMode} />
-        {loading ? <YText variant="caption" style={styles.loadingHint}>Chargement des arrêts TaM…</YText> : null}
+        {loading ? (
+          <View style={[glass.panel, styles.loadingHint]}>
+            <YText variant="caption" style={{ color: glass.onDark }}>Chargement des arrêts TaM…</YText>
+          </View>
+        ) : null}
       </View>
 
       <StopSheet
@@ -173,7 +187,9 @@ export default function BusTramScreen() {
         stations={listStations}
         selected={selected}
         onSelect={selectStation}
-        onCloseSelection={() => { setSelectedId(null); setSheetState('mid'); }}
+        onCloseSelection={() => { setSelectedId(null); setSelectedRouteId(null); setSheetState('mid'); }}
+        selectedRouteId={selectedRouteId}
+        onSelectRoute={selectRoute}
         schedule={schedule}
         refreshing={stops.isRefetching || services.isRefetching}
         onRefreshAll={refreshAll}
@@ -186,12 +202,13 @@ export default function BusTramScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   mapLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  topBar: { position: 'absolute', top: 54, left: spacing.md, right: spacing.md, gap: spacing.xs },
+  topBar: { position: 'absolute', left: spacing.md, right: spacing.md, gap: spacing.xs },
   searchRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
     borderRadius: radii.xl, paddingHorizontal: spacing.xs, minHeight: 48,
   },
   iconBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
-  loadingHint: { color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4, paddingHorizontal: spacing.sm },
+  // Pilule glass sombre : texte lisible (AA) quel que soit le fond de carte dessous.
+  loadingHint: { alignSelf: 'flex-start', borderRadius: radii.lg, paddingHorizontal: spacing.sm, paddingVertical: 4 },
 });

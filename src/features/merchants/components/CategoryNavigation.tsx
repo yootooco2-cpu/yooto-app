@@ -138,6 +138,7 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
         {CATEGORY_FAMILIES.map((fam) => (
           <Capsule
             key={fam.id}
+            testID={`category-family-${fam.id}`}
             label={fam.label}
             icon={fam.icon}
             imageIcon={picto(fam, fam.id)}
@@ -182,6 +183,7 @@ export function CategoryNavigation({ onChange, merchants = [] }: Props) {
               {panelNodes.map((node) => (
                 <MenuRow
                   key={node.id}
+                  testID={`category-item-${node.id}`}
                   label={node.label}
                   // Bus & Tramway ouvre l'écran transport (données GTFS) : le compteur de
                   // COMMERCES n'a aucun sens ici et l'atténuait comme « vide » à tort.
@@ -219,6 +221,7 @@ function Capsule({
   back = false,
   onPress,
   accessibilityLabel,
+  testID,
 }: {
   label?: string;
   icon?: FeatherName;
@@ -230,6 +233,8 @@ function Capsule({
   back?: boolean;
   onPress: () => void;
   accessibilityLabel?: string;
+  /** Identifiant E2E stable (Maestro) — `category-family-<id>`. */
+  testID?: string;
 }) {
   const iconColor = back ? '#8EB67B' : glass.onDark;
 
@@ -246,6 +251,7 @@ function Capsule({
   return (
     <Animated.View style={liftStyle}>
       <Pressable
+        testID={testID}
         onPress={onPress}
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
@@ -285,6 +291,7 @@ function MenuRow({
   active = false,
   first = false,
   onPress,
+  testID,
 }: {
   label: string;
   /** Nombre réel de résultats (corpus global) — masqué si absent. */
@@ -296,10 +303,13 @@ function MenuRow({
   active?: boolean;
   first?: boolean;
   onPress: () => void;
+  /** Identifiant E2E stable (Maestro) — `category-item-<id>`. */
+  testID?: string;
 }) {
   const labelColor = active ? ACTIVE_GREEN : empty ? glass.onDarkMuted : glass.onDark;
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}

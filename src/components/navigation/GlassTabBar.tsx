@@ -45,6 +45,7 @@ function TabItem({
   label,
   onPress,
   onLongPress,
+  testID,
 }: {
   active: boolean;
   section: SectionTheme;
@@ -53,6 +54,8 @@ function TabItem({
   label: string;
   onPress: () => void;
   onLongPress: () => void;
+  /** Identifiant E2E stable (Maestro) — `tab-<route>`. */
+  testID?: string;
 }) {
   const p = useSharedValue(active ? 1 : 0);
   useEffect(() => {
@@ -64,6 +67,7 @@ function TabItem({
 
   return (
     <Pressable
+      testID={testID}
       onPress={onPress}
       onLongPress={onLongPress}
       accessibilityRole="button"
@@ -119,6 +123,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
               return (
                 <TabItem
                   key={route.key}
+                  testID={`tab-${route.name}`}
                   active={active}
                   section={section}
                   mutedColor={colors.mutedText}

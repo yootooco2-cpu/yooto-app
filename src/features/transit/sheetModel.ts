@@ -18,6 +18,29 @@ export function sheetHeightPx(state: SheetState, screenHeight: number): number {
   return Math.min(Math.round(screenHeight * SHEET_HEIGHT[state]), screenHeight - TOP_BAR_SPACE);
 }
 
+export interface RouteFilterResult<G> {
+  groups: G[];
+  /** Le filtre de ligne est effectivement appliqué. */
+  active: boolean;
+  /** Ligne sélectionnée sans aucun départ ici (ou hors mode) : on montre TOUT et on le signale. */
+  missing: boolean;
+}
+
+/**
+ * Filtre des groupes d'horaires par ligne sélectionnée. La sélection ne produit JAMAIS un
+ * vide silencieux (même doctrine que resolveSelected) : si la ligne n'a aucun groupe —
+ * aucun départ, ou ligne hors du mode courant — on rend tous les groupes et on le signale.
+ */
+export function filterGroupsByRoute<G extends { routeId: string }>(
+  groups: G[],
+  selectedRouteId: string | null,
+): RouteFilterResult<G> {
+  if (!selectedRouteId) return { groups, active: false, missing: false };
+  const filtered = groups.filter((g) => g.routeId === selectedRouteId);
+  if (filtered.length === 0) return { groups, active: false, missing: groups.length > 0 };
+  return { groups: filtered, active: true, missing: false };
+}
+
 const ORDER: SheetState[] = ['reduced', 'mid', 'full'];
 
 /**
