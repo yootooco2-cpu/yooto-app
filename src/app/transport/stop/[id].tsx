@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
@@ -8,9 +8,9 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { RouteChip } from '@/features/transit/components/RouteChip';
-import { groupStopsIntoStations, useStopSchedule, useTransitCalendar, useTransitRoutes, useTransitStops } from '@/features/transit';
-import { computeNextDepartures, formatDeparture, groupDepartures } from '@/features/transit/schedule';
-import { mergeRealtime, useRealtimeDepartures } from '@/features/transit/realtime';
+import { groupStopsIntoStations, useTransitRoutes, useTransitStops } from '@/features/transit';
+import { formatDeparture } from '@/features/transit/schedule';
+import { useStationDepartures } from '@/features/transit/useStationDepartures';
 
 /**
  * Fiche d'un arrêt : prochains départs par ligne et direction. Le libellé « Temps réel »
@@ -23,28 +23,12 @@ export default function TransitStopScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const stops = useTransitStops();
   const routes = useTransitRoutes();
-  const calendar = useTransitCalendar();
   // La fiche est une STATION : ses horaires agrègent TOUS ses quais (le parent GTFS n'en a aucun).
   const station = useMemo(() => groupStopsIntoStations(stops.data ?? []).find((s) => String(s.id) === id), [stops.data, id]);
-  const schedule = useStopSchedule(station?.stopIds);
-  const realtime = useRealtimeDepartures(station?.stopIds);
-  const [now, setNow] = useState(() => new Date());
+  const { groups, rtFresh, alerts, loading: schedLoading, error, now, refresh } = useStationDepartures(station);
 
   const routesById = useMemo(() => new Map((routes.data ?? []).map((r) => [r.routeId, r])), [routes.data]);
-
-  const groups = useMemo(() => {
-    if (!schedule.data || !calendar.data) return [];
-    const tripsById = new Map(schedule.data.trips.map((t) => [t.tripId, t]));
-    const servicesById = new Map(calendar.data.services.map((s) => [s.serviceId, s]));
-    const exceptions = new Map(calendar.data.exceptions.map((e) => [`${e.serviceId}|${e.date}`, e.exceptionType]));
-    const departures = computeNextDepartures({ stopTimes: schedule.data.stopTimes, tripsById, servicesById, exceptions, now });
-    // Temps réel appliqué UNIQUEMENT si le flux officiel est frais (≤ 300 s) — repli théorique sinon.
-    return groupDepartures(mergeRealtime(departures, realtime.data, station?.stopIds ?? []), 3);
-  }, [schedule.data, calendar.data, now, realtime.data, station?.stopIds]);
-
-  const refresh = () => { setNow(new Date()); void schedule.refetch(); void realtime.refetch(); };
-  const loading = schedule.isLoading || calendar.isLoading || stops.isLoading;
-  const rtFresh = realtime.data?.fresh === true;
+  const loading = schedLoading || stops.isLoading;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -59,6 +43,12 @@ export default function TransitStopScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {alerts.map((a, i) => (
+          <View key={i} style={[styles.alert, { borderColor: colors.separator, backgroundColor: colors.surface }]}>
+            <Feather name="alert-triangle" size={14} color={colors.accent} />
+            <YText variant="caption" style={[styles.alertText, { color: colors.text }]}>{a}</YText>
+          </View>
+        ))}
         <View style={styles.badges}>
           <View style={[styles.badge, { backgroundColor: rtFresh ? colors.primary : colors.surface, borderColor: colors.separator }]}>
             <YText variant="caption" style={{ color: rtFresh ? '#fff' : colors.mutedText }}>
@@ -72,16 +62,9 @@ export default function TransitStopScreen() {
           ) : null}
         </View>
 
-        {(realtime.data?.alerts ?? []).map((a, i) => (
-          <View key={i} style={[styles.alert, { borderColor: colors.separator, backgroundColor: colors.surface }]}>
-            <Feather name="alert-triangle" size={14} color={colors.accent} />
-            <YText variant="caption" style={[styles.alertText, { color: colors.text }]}>{a}</YText>
-          </View>
-        ))}
-
         {loading ? (
           <YText variant="caption" color="muted">Chargement des horaires…</YText>
-        ) : schedule.isError ? (
+        ) : error ? (
           <YText variant="caption" color="muted">Horaires indisponibles — réessayez avec Actualiser.</YText>
         ) : groups.length === 0 ? (
           <YText variant="caption" color="muted">Aucun départ prévu dans les 2 prochaines heures (données TaM du jour).</YText>

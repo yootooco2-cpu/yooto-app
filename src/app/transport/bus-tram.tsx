@@ -1,154 +1,197 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { YText } from '@/components/ui/YText';
 import { useTheme } from '@/design/theme/ThemeProvider';
+import { glass } from '@/design/tokens/glass';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
+import { getMapConfig } from '@/features/map/config';
 import { useMerchantSearchStore } from '@/features/merchants';
-import { RouteChip, routeKind } from '@/features/transit/components/RouteChip';
-import { groupStopsIntoStations, useTransitRoutes, useTransitStops, useTransitStopServices } from '@/features/transit';
-import type { Station, TransitRoute } from '@/features/transit';
+import { ModeSelector } from '@/features/transit/components/ModeSelector';
+import { StopSheet, type SheetState } from '@/features/transit/components/StopSheet';
+import { TransitMap, type TransitMapFocus } from '@/features/transit/components/TransitMap';
+import { clusterForZoom, filterByMode, resolveSelected, visibleStations, type StationWithRoutes, type TransitMode } from '@/features/transit/mapModel';
+import { groupStopsIntoStations } from '@/features/transit/stations';
+import { useStationDepartures } from '@/features/transit/useStationDepartures';
+import { useTransitRoutes, useTransitStops, useTransitStopServices } from '@/features/transit';
+import type { TransitRoute } from '@/features/transit';
 import { haversineKm } from '@/lib/geo/haversine';
 
 /**
- * Mobilité → Bus & Tram : arrêts proches (position ponctuelle, jamais de tracking),
- * recherche d'arrêt ou de ligne, lignes desservies (couleurs officielles), accessibilité
- * PMR officielle. Données : tables transit_* (source GTFS TaM) — jamais merchants.
+ * Bus & Tram — organisation « Carte interactive » : carte Mapbox (style YOOTOO gelé,
+ * AUCUN commerce), barre flottante (recherche + Tous/Tramway/Bus + recentrage),
+ * bottom sheet à trois états. Moteur, horaires, GTFS/GTFS-RT inchangés.
  */
 export default function BusTramScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   const userLocation = useMerchantSearchStore((s) => s.userLocation);
   const stops = useTransitStops();
   const routes = useTransitRoutes();
   const services = useTransitStopServices();
-  const [search, setSearch] = useState('');
 
-  const routesByPk = useMemo(() => new Map((routes.data ?? []).map((r) => [r.id, r])), [routes.data]);
-  const routesByStop = useMemo(() => {
-    const m = new Map<number, TransitRoute[]>();
+  const [mode, setMode] = useState<TransitMode>('tous');
+  const [search, setSearch] = useState('');
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [sheetState, setSheetState] = useState<SheetState>('mid');
+  const defaultCenter = getMapConfig().defaultRegion.center; // Montpellier (sans géoloc)
+  const [region, setRegion] = useState(() => ({ center: userLocation ?? defaultCenter, zoom: 15.2 }));
+  const [focus, setFocus] = useState<TransitMapFocus | null>(
+    () => ({ ...(userLocation ?? defaultCenter), zoom: 15.2, token: 0 }),
+  );
+  const focusToken = useRef(1);
+  const regionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Référentiel : stations (quais fusionnés) + lignes desservies (desserte agrégée 021).
+  const stations: (StationWithRoutes & { distanceKm?: number })[] = useMemo(() => {
+    const routesByPk = new Map((routes.data ?? []).map((r) => [r.id, r]));
+    const byStopPk = new Map<number, TransitRoute[]>();
     for (const s of services.data ?? []) {
       const route = routesByPk.get(s.routePk);
       if (!route) continue;
-      const list = m.get(s.stopPk) ?? [];
+      const list = byStopPk.get(s.stopPk) ?? [];
       if (!list.some((r) => r.id === route.id)) list.push(route);
-      m.set(s.stopPk, list);
+      byStopPk.set(s.stopPk, list);
     }
-    for (const list of m.values()) list.sort((a, b) => (a.shortName ?? '').localeCompare(b.shortName ?? '', 'fr', { numeric: true }));
-    return m;
-  }, [services.data, routesByPk]);
+    return groupStopsIntoStations(stops.data ?? []).map((st) => ({
+      ...st,
+      routes: [...new Map(st.stopPks.flatMap((pk) => byStopPk.get(pk) ?? []).map((r) => [r.id, r])).values()]
+        .sort((a, b) => (a.shortName ?? '').localeCompare(b.shortName ?? '', 'fr', { numeric: true })),
+      distanceKm: userLocation ? haversineKm(userLocation, st) : undefined,
+    })).filter((s) => s.routes.length > 0);
+  }, [stops.data, routes.data, services.data, userLocation]);
 
-  const list = useMemo(() => {
+  // Filtre Tous/Tramway/Bus (carte ET sheet simultanément) puis recherche arrêt/ligne.
+  const filtered = useMemo(() => {
+    const byMode = filterByMode(stations, mode);
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const q = norm(search.trim());
-    // QUAIS → STATIONS : fusion des quais homonymes proches, jamais de doublon « Comédie ×3 ».
-    let items = groupStopsIntoStations(stops.data ?? []).map((station) => ({
-      stop: userLocation
-        ? { ...station, distanceKm: haversineKm(userLocation, { latitude: station.latitude, longitude: station.longitude }) }
-        : (station as Station & { distanceKm?: number }),
-      routes: [...new Map(station.stopPks.flatMap((pk) => routesByStop.get(pk) ?? []).map((r) => [r.id, r])).values()]
-        .sort((a, b) => (a.shortName ?? '').localeCompare(b.shortName ?? '', 'fr', { numeric: true })),
-    }));
-    if (q) {
-      items = items.filter(({ stop, routes: rs }) =>
-        norm(stop.name).includes(q) || rs.some((r) => norm(r.shortName ?? '').startsWith(q)));
-    }
-    // Tri par distance quand la position est connue, sinon alphabétique assumé (libellé neutre).
-    items.sort((a, b) => (a.stop.distanceKm ?? Infinity) - (b.stop.distanceKm ?? Infinity)
-      || a.stop.name.localeCompare(b.stop.name, 'fr'));
-    return items.slice(0, 60);
-  }, [stops.data, routesByStop, userLocation, search]);
+    if (!q) return byMode;
+    // Numéro de ligne exact → UNIQUEMENT les arrêts de cette ligne ; sinon filtre par nom/préfixe.
+    const lineMatches = byMode.filter((s) => s.routes.some((r) => norm(r.shortName ?? '') === q));
+    if (lineMatches.length) return lineMatches;
+    return byMode.filter((s) => norm(s.name).includes(q) || s.routes.some((r) => norm(r.shortName ?? '').startsWith(q)));
+  }, [stations, mode, search]);
+
+  // Liste du sheet : triée par distance (ou nom sans géoloc, assumé et annoncé).
+  const listStations = useMemo(
+    () => [...filtered].sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity) || a.name.localeCompare(b.name, 'fr')),
+    [filtered],
+  );
+
+  // Carte : uniquement le secteur visible (marge incluse) puis regroupement — jamais tout.
+  const mapItems = useMemo(
+    () => clusterForZoom(visibleStations(filtered, region.center, region.zoom), region.zoom),
+    [filtered, region],
+  );
+
+  // BUG corrigé : la sélection est résolue sur le RÉFÉRENTIEL COMPLET — un changement de
+  // ligne/mode/recherche ne la tue jamais ; il restreint seulement les lignes affichées.
+  const selection = useMemo(() => resolveSelected(stations, selectedId, mode), [stations, selectedId, mode]);
+  const selected = selection ? { ...selection.station, routes: selection.servesMode ? selection.routesForMode : selection.station.routes } : null;
+  const schedule = useStationDepartures(selection?.station ?? undefined);
+
+  const selectStation = useCallback((id: number) => {
+    const st = stations.find((s) => s.id === id);
+    setSelectedId(id);
+    setSheetState('reduced');
+    if (st) setFocus({ latitude: st.latitude, longitude: st.longitude, zoom: 15.6, token: focusToken.current++ });
+  }, [stations]);
+
+  const onRegionChange = useCallback((center: { latitude: number; longitude: number }, zoom: number) => {
+    // Recalculs limités pendant le déplacement : coalescing court après moveend.
+    if (regionTimer.current) clearTimeout(regionTimer.current);
+    regionTimer.current = setTimeout(() => setRegion({ center, zoom }), 120);
+  }, []);
+
+  const recenter = useCallback(() => {
+    const c = userLocation ?? defaultCenter;
+    setFocus({ latitude: c.latitude, longitude: c.longitude, zoom: 15.6, token: focusToken.current++ });
+  }, [userLocation, defaultCenter]);
+
+  // Retour : rétablit l'état précédent (sélection → liste), puis quitte l'écran.
+  const goBack = useCallback(() => {
+    if (selectedId !== null) { setSelectedId(null); setSheetState('mid'); return; }
+    if (router.canGoBack()) router.back(); else router.replace('/');
+  }, [selectedId, router]);
+
+  const refreshAll = useCallback(() => {
+    void stops.refetch(); void routes.refetch(); void services.refetch();
+    schedule.refresh();
+  }, [stops, routes, services, schedule]);
 
   const loading = stops.isLoading || routes.isLoading || services.isLoading;
-  const refresh = () => { void stops.refetch(); void routes.refetch(); void services.refetch(); };
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={[styles.header, { borderBottomColor: colors.separator }]}>
-        <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour">
-          <Feather name="chevron-left" size={24} color={colors.text} />
-        </Pressable>
-        <YText style={[styles.headerTitle, { color: colors.text }]}>Bus & Tram</YText>
-        <Pressable onPress={refresh} hitSlop={10} accessibilityRole="button" accessibilityLabel="Actualiser">
-          <Feather name="refresh-cw" size={18} color={colors.text} />
-        </Pressable>
-      </View>
-
-      <View style={[styles.searchBox, { backgroundColor: colors.surface, borderColor: colors.separator }]}>
-        <Feather name="search" size={16} color={colors.mutedText} />
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Arrêt ou ligne (ex. Comédie, T1)…"
-          placeholderTextColor={colors.mutedText}
-          style={[styles.searchInput, { color: colors.text }]}
-          accessibilityLabel="Rechercher un arrêt ou une ligne"
+      {/* Carte plein cadre (le sheet réduit laisse ~60 % de carte visible). */}
+      <View style={styles.mapLayer}>
+        <TransitMap
+          items={mapItems}
+          selectedId={selectedId}
+          onSelectStation={selectStation}
+          onSelectCluster={(c) => setFocus({ latitude: c.latitude, longitude: c.longitude, zoom: region.zoom + 1.6, token: focusToken.current++ })}
+          onRegionChange={onRegionChange}
+          userLocation={userLocation}
+          focus={focus}
         />
       </View>
 
-      {!userLocation ? (
-        <YText variant="caption" color="muted" style={styles.hint}>
-          Position inconnue — arrêts par ordre alphabétique. Activez la localisation pour voir les plus proches.
-        </YText>
-      ) : null}
+      {/* Barre supérieure flottante (glassmorphism YOOTOO). */}
+      <View style={styles.topBar}>
+        <View style={[styles.searchRow, glass.panel]}>
+          <Pressable onPress={goBack} hitSlop={8} accessibilityRole="button" accessibilityLabel="Retour" style={styles.iconBtn}>
+            <Feather name="chevron-left" size={22} color={glass.onDark} />
+          </Pressable>
+          <Feather name="search" size={15} color={glass.onDarkMuted} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Arrêt ou numéro de ligne…"
+            placeholderTextColor={glass.onDarkMuted}
+            style={[styles.searchInput, { color: glass.onDark }]}
+            accessibilityLabel="Rechercher un arrêt ou une ligne"
+          />
+          <Pressable onPress={recenter} hitSlop={8} accessibilityRole="button" accessibilityLabel="Recentrer sur ma position" style={styles.iconBtn}>
+            <Feather name="crosshair" size={18} color={glass.onDark} />
+          </Pressable>
+        </View>
+        <ModeSelector mode={mode} onChange={setMode} />
+        {loading ? <YText variant="caption" style={styles.loadingHint}>Chargement des arrêts TaM…</YText> : null}
+      </View>
 
-      {loading ? (
-        <YText variant="caption" color="muted" style={styles.hint}>Chargement des arrêts TaM…</YText>
-      ) : stops.isError ? (
-        <YText variant="caption" color="muted" style={styles.hint}>Réseau indisponible — réessayez avec Actualiser.</YText>
-      ) : (
-        <FlatList
-          data={list}
-          keyExtractor={({ stop }) => String(stop.id)}
-          contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => <StopRow stop={item.stop} routes={item.routes} onPress={() => router.push({ pathname: '/transport/stop/[id]', params: { id: String(item.stop.id) } })} />}
-        />
-      )}
+      <StopSheet
+        servesMode={selection?.servesMode ?? true}
+        mode={mode}
+        state={sheetState}
+        onState={setSheetState}
+        screenHeight={screenHeight}
+        stations={listStations}
+        selected={selected}
+        onSelect={selectStation}
+        onCloseSelection={() => { setSelectedId(null); setSheetState('mid'); }}
+        schedule={schedule}
+        refreshing={stops.isRefetching || services.isRefetching}
+        onRefreshAll={refreshAll}
+        noGeo={!userLocation}
+      />
     </View>
-  );
-}
-
-function StopRow({ stop, routes, onPress }: { stop: Station & { distanceKm?: number }; routes: TransitRoute[]; onPress: () => void }) {
-  const { colors } = useTheme();
-  const kinds = new Set(routes.map(routeKind));
-  return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Arrêt ${stop.name}`}
-      style={({ pressed }) => [styles.row, { backgroundColor: colors.surface, borderColor: colors.separator, opacity: pressed ? 0.85 : 1 }]}>
-      <View style={styles.rowHead}>
-        <YText style={[styles.stopName, { color: colors.text }]} numberOfLines={1}>{stop.name}</YText>
-        {stop.distanceKm !== undefined ? (
-          <YText variant="caption" color="muted">
-            {stop.distanceKm < 1 ? `${Math.round(stop.distanceKm * 1000)} m` : `${stop.distanceKm.toFixed(1)} km`}
-          </YText>
-        ) : null}
-      </View>
-      <View style={styles.rowMeta}>
-        <YText variant="caption" color="muted">{[...kinds].join(' · ') || '—'}</YText>
-        {stop.wheelchairBoarding === 1 ? <Feather name="user-check" size={13} color={colors.primary} accessibilityLabel="Accessible PMR" /> : null}
-        {stop.wheelchairBoarding === 2 ? <YText variant="caption" color="muted">non accessible PMR</YText> : null}
-      </View>
-      <View style={styles.chips}>
-        {routes.slice(0, 8).map((r) => <RouteChip key={r.id} route={r} />)}
-        {routes.length > 8 ? <YText variant="caption" color="muted">+{routes.length - 8}</YText> : null}
-      </View>
-    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 58, paddingBottom: spacing.sm, paddingHorizontal: spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth },
-  headerTitle: { fontSize: 17, fontWeight: '700' },
-  searchBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, margin: spacing.lg, marginBottom: spacing.sm, paddingHorizontal: spacing.md, borderRadius: radii.lg, borderWidth: StyleSheet.hairlineWidth, height: 42 },
+  mapLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  topBar: { position: 'absolute', top: 54, left: spacing.md, right: spacing.md, gap: spacing.xs },
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
+    borderRadius: radii.xl, paddingHorizontal: spacing.xs, minHeight: 48,
+  },
+  iconBtn: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
-  hint: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xs },
-  listContent: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xl, gap: spacing.sm },
-  row: { borderRadius: radii.lg, borderWidth: StyleSheet.hairlineWidth, padding: spacing.md, gap: 6 },
-  rowHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.sm },
-  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  stopName: { fontSize: 15, fontWeight: '600', flexShrink: 1 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  loadingHint: { color: '#fff', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4, paddingHorizontal: spacing.sm },
 });

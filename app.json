@@ -8,7 +8,8 @@
     "scheme": "yootoo",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.yootoo.yootoo"
     },
     "android": {
       "adaptiveIcon": {
@@ -37,7 +38,8 @@
       ],
       "expo-secure-store",
       "expo-image",
-      "expo-font"
+      "expo-font",
+      "@rnmapbox/maps"
     ],
     "experiments": {
       "typedRoutes": true,

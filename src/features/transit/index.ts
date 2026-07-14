@@ -5,3 +5,6 @@ export { mergeRealtime, useRealtimeDepartures } from './realtime';
 export type { RealtimePayload, RealtimeUpdate } from './realtime';
 export { groupStopsIntoStations } from './stations';
 export type { Station } from './stations';
+export { clusterForZoom, filterByMode, stationKind, visibleStations, CLUSTER_MAX_ZOOM } from './mapModel';
+export type { MapItem, StationCluster, StationWithRoutes, TransitMode } from './mapModel';
+export { useStationDepartures } from './useStationDepartures';
