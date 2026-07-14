@@ -55,6 +55,16 @@ const displayCase = (s: string): string =>
       lat: Number(r.latitude ?? 0), lng: Number(r.longitude ?? 0), tok: tokens(String(r.name ?? '')),
     }));
     const baseSirets = new Set(base.map((b) => b.siret).filter(Boolean));
+    // EXCLUSIONS FONDATEUR (suppression physique 14/07) : les fiches retirées n'étant plus
+    // dans la base, leur SIRET quitte la dédup — cette liste privée (SIRET/place_id/motif/
+    // date/batch UNIQUEMENT, jamais chargée par l'app) les rend définitivement inéligibles
+    // au réimport. Consultée AVANT toute autre sortie.
+    const exclusions = JSON.parse(
+      readFileSync(`${__dirname}/exclusions-removed.json`, 'utf8'),
+    ) as { siret: string | null; motif: string }[];
+    const excludedSirets = new Map(
+      exclusions.filter((e) => e.siret).map((e) => [e.siret as string, e.motif]),
+    );
 
     const out = cands.map((c) => {
       const displayName = displayCase(c.enseignes?.[0] ?? c.nom.replace(/\s*\([^)]*\)\s*$/, ''));
@@ -84,7 +94,8 @@ const displayCase = (s: string): string =>
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || (lat === 0 && lng === 0)) {
         // Classe « établissement non géocodé » : jamais un pin à (0,0).
         sortie = 'QUARANTAINE'; raisons.push('coordonnées SIRENE absentes — pas de pin sans localisation prouvée');
-      } else if (baseSirets.has(c.siret)) { sortie = 'REJET'; raisons.push('doublon confirmé : SIRET déjà au catalogue'); }
+      } else if (excludedSirets.has(c.siret)) { sortie = 'REJET'; raisons.push(`exclusion fondateur : ${excludedSirets.get(c.siret)}`); }
+      else if (baseSirets.has(c.siret)) { sortie = 'REJET'; raisons.push('doublon confirmé : SIRET déjà au catalogue'); }
       else if (dupName) { sortie = 'REJET'; raisons.push(`doublon confirmé : « ${dupName.name} » (#${dupName.id}) au même endroit`); }
       else if (spt.preuvesNonPertinence.length > 0) { sortie = 'REJET'; raisons.push(...spt.preuvesNonPertinence); }
       else if (c.non_diffusible) { sortie = 'QUARANTAINE'; raisons.push('identité protégée [ND]'); }
