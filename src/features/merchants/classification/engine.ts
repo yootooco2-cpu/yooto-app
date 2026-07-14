@@ -18,8 +18,10 @@ export type DecisionStatus = 'CLASSIFIED' | 'QUARANTAINE';
  * v2 (13/07) : refinements Google structurés (animaleries, jardineries, vélos/motos),
  * 45.40 composite, 23.41 → terre-ceramique, catégories Google génériques ≠ preuve.
  * v3 (14/07) : preuve 0 — vérifications humaines validées (11 ateliers textile → textile-cuir).
+ * v4 (14/07) : décision finale fondateur — 10 vérifiés supplémentaires (vélos, bouquinistes,
+ * horlogers/bijoutiers, 1 couturière) quittent reparation-seconde-main.
  */
-export const CLASSIFICATION_VERSION = 3;
+export const CLASSIFICATION_VERSION = 4;
 
 export interface OfficialFlags {
   /** Économie sociale et solidaire (complément officiel de l'API d'État). */
@@ -335,6 +337,17 @@ const VERIFIED_BY_ID: Record<string, { node: string; activite: string }> = {
   '4705': { node: 'textile-cuir', activite: 'couture-retouches Marie Balaguer' },
   '4805': { node: 'textile-cuir', activite: 'atelier Retouch’Rapid (Ines Thomas)' },
   '4885': { node: 'textile-cuir', activite: 'haute couture sur mesure Isabelle Dupéré (Frontignan)' },
+  // v4 — décision finale fondateur 14/07 (10 fiches, chacune vérifiée web multi-sources) :
+  '1507': { node: 'velos', activite: 'atelier vélo BD Cycles Réparations (Anduze)' },
+  '3350': { node: 'velos', activite: 'magasin-atelier vélo Ecoeco Velo (Montpellier)' },
+  '4393': { node: 'velos', activite: 'magasin-atelier vélo Velotrot (Nîmes)' },
+  '5149': { node: 'librairies', activite: 'bouquiniste Librairie Historique F. Teissèdre (Sauve)' },
+  '5151': { node: 'librairies', activite: 'bouquiniste Les Bouquins du Hangar (Sauve)' },
+  '3206': { node: 'bijouterie-joaillerie', activite: 'horloger-réparateur La Clinique du Temps (Montpellier)' },
+  '3209': { node: 'bijouterie-joaillerie', activite: 'horloger Bill l’Horloger (Montpellier, Odysseum)' },
+  '3136': { node: 'bijouterie-joaillerie', activite: 'atelier bijouterie Arnaud Bougette (Montpellier)' },
+  '4817': { node: 'bijouterie-joaillerie', activite: 'bijoutier Stephant Maliges (Mèze)' },
+  '4253': { node: 'textile-cuir', activite: 'couturière-retoucheuse Catherine Bertin (Nîmes, avis clients indépendants)' },
 };
 
 export function classifyMerchant(m: Merchant, flags?: OfficialFlags): Decision {

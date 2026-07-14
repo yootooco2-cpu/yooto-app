@@ -347,8 +347,8 @@ describe('Mappings v2 (13/07) — groupes structurés, génériques, version', (
   it('toute décision porte la version du moteur (recalcul ciblé du corpus)', () => {
     const classified = classifyMerchant(m({ name: 'Boulangerie', nafCode: '10.71C' } as Partial<Merchant>));
     const quarantined = classifyMerchant(m({ name: 'X' } as Partial<Merchant>));
-    expect(classified.version).toBe(3);
-    expect(quarantined.version).toBe(3);
+    expect(classified.version).toBe(4);
+    expect(quarantined.version).toBe(4);
   });
 });
 
@@ -383,6 +383,32 @@ describe('Preuve 0 — vérifications humaines validées (v3, décision fondateu
 
   it('un id vérifié inconnu du corpus de test ne fuit pas sur les autres fiches', () => {
     const d = classifyMerchant(m({ id: '9999', name: 'Atelier de couture et retouches', nafCode: '95.29Z' } as Partial<Merchant>));
+    expect(d.category).toBe('reparation-seconde-main');
+  });
+
+  // v4 — décision finale fondateur 14/07 : 10 vérifiés supplémentaires.
+  it('v4 : les 10 ids validés (vélos, bouquinistes, horlogers/bijoutiers, couturière) sont classés', () => {
+    const attendu: Record<string, string> = {
+      '1507': 'velos', '3350': 'velos', '4393': 'velos',
+      '5149': 'librairies', '5151': 'librairies',
+      '3206': 'bijouterie-joaillerie', '3209': 'bijouterie-joaillerie',
+      '3136': 'bijouterie-joaillerie', '4817': 'bijouterie-joaillerie',
+      '4253': 'textile-cuir',
+    };
+    for (const [id, node] of Object.entries(attendu)) {
+      const d = classifyMerchant(m({ id, name: 'X', nafCode: '95.29Z' } as Partial<Merchant>));
+      expect(d.category).toBe(node);
+      expect(d.confidence).toBe('HIGH');
+    }
+  });
+
+  it('v4 GARDE : un horloger MEDIUM non validé (France Horlogerie) reste en réparation', () => {
+    const d = classifyMerchant(m({ id: '3855', name: 'France Horlogerie', nafCode: '95.25Z' } as Partial<Merchant>));
+    expect(d.category).toBe('reparation-seconde-main');
+  });
+
+  it('v4 GARDE : un atelier pianos (accordeur ≠ luthier, vérifié) reste en réparation', () => {
+    const d = classifyMerchant(m({ id: '2956', name: 'Piano e Forte', nafCode: '95.29Z' } as Partial<Merchant>));
     expect(d.category).toBe('reparation-seconde-main');
   });
 });
