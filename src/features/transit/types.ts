@@ -8,6 +8,8 @@ export interface TransitStop {
   longitude: number;
   /** Accessibilité PMR OFFICIELLE (GTFS wheelchair_boarding : 1 oui, 2 non, 0/null inconnu). */
   wheelchairBoarding: number | null;
+  /** GTFS location_type : 1 = station parente (sans horaire), 0/null = quai. */
+  locationType: number | null;
   /** Dérivé côté client quand la position est connue. */
   distanceKm?: number;
 }
@@ -34,6 +36,8 @@ export interface TransitTrip {
 export interface StopTimeRow {
   tripId: string;
   departureSecs: number;    // secondes depuis le début du jour de service (peut dépasser 86400)
+  /** Quai d'origine (stations multi-quais) — sert la fusion temps réel. */
+  stopId?: string;
 }
 
 export interface TransitService {
@@ -58,6 +62,10 @@ export interface StopService {
 
 /** Un départ calculé, prêt à afficher. */
 export interface Departure {
+  /** Course GTFS — clé de fusion avec les mises à jour temps réel. */
+  tripId?: string;
+  /** Quai de départ (stations multi-quais). */
+  stopId?: string;
   routeId: string;
   headsign: string;
   epochMs: number;          // instant réel du départ

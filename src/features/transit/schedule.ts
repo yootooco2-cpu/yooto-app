@@ -1,4 +1,4 @@
-import type { Departure, ServiceException, StopTimeRow, TransitService, TransitTrip } from './types';
+import type { Departure, StopTimeRow, TransitService, TransitTrip } from './types';
 
 /**
  * Calcul des prochains départs — fonctions PURES (testables sans réseau ni horloge).
@@ -98,7 +98,7 @@ export function computeNextDepartures(params: ComputeParams): Departure[] {
       if (!isActive(trip.serviceId, day.dayKey)) continue;
       const epochMs = day.startMs + st.departureSecs * 1000;
       if (epochMs < nowMs || epochMs > nowMs + windowMs) continue;
-      out.push({ routeId: trip.routeId, headsign: trip.headsign ?? '', epochMs, source: 'theorique' });
+      out.push({ tripId: trip.tripId, stopId: st.stopId, routeId: trip.routeId, headsign: trip.headsign ?? '', epochMs, source: 'theorique' });
     }
   }
   return out.sort((a, b) => a.epochMs - b.epochMs);

@@ -30,12 +30,12 @@ export function useTransitCalendar() {
   return useQuery({ queryKey: transitKeys.calendar, queryFn: fetchCalendar, staleTime: 6 * HOUR });
 }
 
-/** Horaires théoriques d'un arrêt — rafraîchissables (bouton Actualiser → refetch). */
-export function useStopSchedule(stopId: string | undefined) {
+/** Horaires théoriques d'une station (tous quais) — rafraîchissables. */
+export function useStopSchedule(stopIds: string[] | undefined) {
   return useQuery({
-    queryKey: transitKeys.schedule(stopId ?? ''),
-    queryFn: () => fetchStopSchedule(stopId as string),
-    enabled: Boolean(stopId),
+    queryKey: transitKeys.schedule((stopIds ?? []).join(',')),
+    queryFn: () => fetchStopSchedule(stopIds as string[]),
+    enabled: Boolean(stopIds && stopIds.length),
     staleTime: 5 * 60 * 1000,
   });
 }

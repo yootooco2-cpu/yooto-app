@@ -8,8 +8,9 @@ import { useTheme } from '@/design/theme/ThemeProvider';
 import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { RouteChip } from '@/features/transit/components/RouteChip';
-import { useStopSchedule, useTransitCalendar, useTransitRoutes, useTransitStops } from '@/features/transit';
+import { groupStopsIntoStations, useStopSchedule, useTransitCalendar, useTransitRoutes, useTransitStops } from '@/features/transit';
 import { computeNextDepartures, formatDeparture, groupDepartures } from '@/features/transit/schedule';
+import { mergeRealtime, useRealtimeDepartures } from '@/features/transit/realtime';
 
 /**
  * Fiche d'un arrêt : prochains départs par ligne et direction. Le libellé « Temps réel »
@@ -23,8 +24,10 @@ export default function TransitStopScreen() {
   const stops = useTransitStops();
   const routes = useTransitRoutes();
   const calendar = useTransitCalendar();
-  const stop = useMemo(() => (stops.data ?? []).find((s) => String(s.id) === id), [stops.data, id]);
-  const schedule = useStopSchedule(stop?.stopId);
+  // La fiche est une STATION : ses horaires agrègent TOUS ses quais (le parent GTFS n'en a aucun).
+  const station = useMemo(() => groupStopsIntoStations(stops.data ?? []).find((s) => String(s.id) === id), [stops.data, id]);
+  const schedule = useStopSchedule(station?.stopIds);
+  const realtime = useRealtimeDepartures(station?.stopIds);
   const [now, setNow] = useState(() => new Date());
 
   const routesById = useMemo(() => new Map((routes.data ?? []).map((r) => [r.routeId, r])), [routes.data]);
@@ -35,12 +38,13 @@ export default function TransitStopScreen() {
     const servicesById = new Map(calendar.data.services.map((s) => [s.serviceId, s]));
     const exceptions = new Map(calendar.data.exceptions.map((e) => [`${e.serviceId}|${e.date}`, e.exceptionType]));
     const departures = computeNextDepartures({ stopTimes: schedule.data.stopTimes, tripsById, servicesById, exceptions, now });
-    return groupDepartures(departures, 3);
-  }, [schedule.data, calendar.data, now]);
+    // Temps réel appliqué UNIQUEMENT si le flux officiel est frais (≤ 300 s) — repli théorique sinon.
+    return groupDepartures(mergeRealtime(departures, realtime.data, station?.stopIds ?? []), 3);
+  }, [schedule.data, calendar.data, now, realtime.data, station?.stopIds]);
 
-  const refresh = () => { setNow(new Date()); void schedule.refetch(); };
+  const refresh = () => { setNow(new Date()); void schedule.refetch(); void realtime.refetch(); };
   const loading = schedule.isLoading || calendar.isLoading || stops.isLoading;
-  const rtFresh = false; // temps réel branché par l'itération GTFS-RT (commit dédié)
+  const rtFresh = realtime.data?.fresh === true;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
@@ -48,7 +52,7 @@ export default function TransitStopScreen() {
         <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/transport/bus-tram'))} hitSlop={10} accessibilityRole="button" accessibilityLabel="Retour">
           <Feather name="chevron-left" size={24} color={colors.text} />
         </Pressable>
-        <YText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{stop?.name ?? 'Arrêt'}</YText>
+        <YText style={[styles.headerTitle, { color: colors.text }]} numberOfLines={1}>{station?.name ?? 'Arrêt'}</YText>
         <Pressable onPress={refresh} hitSlop={10} accessibilityRole="button" accessibilityLabel="Actualiser">
           <Feather name="refresh-cw" size={18} color={colors.text} />
         </Pressable>
@@ -61,12 +65,19 @@ export default function TransitStopScreen() {
               {rtFresh ? 'Temps réel' : 'Horaire théorique'}
             </YText>
           </View>
-          {stop?.wheelchairBoarding === 1 ? (
+          {station?.wheelchairBoarding === 1 ? (
             <View style={[styles.badge, { backgroundColor: colors.surface, borderColor: colors.separator }]}>
               <YText variant="caption" color="muted">Accessible PMR (donnée officielle)</YText>
             </View>
           ) : null}
         </View>
+
+        {(realtime.data?.alerts ?? []).map((a, i) => (
+          <View key={i} style={[styles.alert, { borderColor: colors.separator, backgroundColor: colors.surface }]}>
+            <Feather name="alert-triangle" size={14} color={colors.accent} />
+            <YText variant="caption" style={[styles.alertText, { color: colors.text }]}>{a}</YText>
+          </View>
+        ))}
 
         {loading ? (
           <YText variant="caption" color="muted">Chargement des horaires…</YText>

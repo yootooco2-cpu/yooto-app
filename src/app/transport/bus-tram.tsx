@@ -9,8 +9,8 @@ import { radii } from '@/design/tokens/radii';
 import { spacing } from '@/design/tokens/spacing';
 import { useMerchantSearchStore } from '@/features/merchants';
 import { RouteChip, routeKind } from '@/features/transit/components/RouteChip';
-import { useTransitRoutes, useTransitStops, useTransitStopServices } from '@/features/transit';
-import type { TransitRoute, TransitStop } from '@/features/transit';
+import { groupStopsIntoStations, useTransitRoutes, useTransitStops, useTransitStopServices } from '@/features/transit';
+import type { Station, TransitRoute } from '@/features/transit';
 import { haversineKm } from '@/lib/geo/haversine';
 
 /**
@@ -44,11 +44,13 @@ export default function BusTramScreen() {
   const list = useMemo(() => {
     const norm = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const q = norm(search.trim());
-    let items = (stops.data ?? []).map((stop) => ({
+    // QUAIS → STATIONS : fusion des quais homonymes proches, jamais de doublon « Comédie ×3 ».
+    let items = groupStopsIntoStations(stops.data ?? []).map((station) => ({
       stop: userLocation
-        ? { ...stop, distanceKm: haversineKm(userLocation, { latitude: stop.latitude, longitude: stop.longitude }) }
-        : stop,
-      routes: routesByStop.get(stop.id) ?? [],
+        ? { ...station, distanceKm: haversineKm(userLocation, { latitude: station.latitude, longitude: station.longitude }) }
+        : (station as Station & { distanceKm?: number }),
+      routes: [...new Map(station.stopPks.flatMap((pk) => routesByStop.get(pk) ?? []).map((r) => [r.id, r])).values()]
+        .sort((a, b) => (a.shortName ?? '').localeCompare(b.shortName ?? '', 'fr', { numeric: true })),
     }));
     if (q) {
       items = items.filter(({ stop, routes: rs }) =>
@@ -109,7 +111,7 @@ export default function BusTramScreen() {
   );
 }
 
-function StopRow({ stop, routes, onPress }: { stop: TransitStop; routes: TransitRoute[]; onPress: () => void }) {
+function StopRow({ stop, routes, onPress }: { stop: Station & { distanceKm?: number }; routes: TransitRoute[]; onPress: () => void }) {
   const { colors } = useTheme();
   const kinds = new Set(routes.map(routeKind));
   return (

@@ -29,10 +29,10 @@ const all = async <T>(query: (from: number, to: number) => PromiseLike<{ data: u
 
 export async function fetchStops(): Promise<TransitStop[]> {
   const c = need();
-  const rows = await all<{ id: number; stop_id: string; name: string; latitude: number; longitude: number; wheelchair_boarding: number | null }>(
-    (from, to) => c.from('transit_stops').select('id,stop_id,name,latitude,longitude,wheelchair_boarding').order('id').range(from, to),
+  const rows = await all<{ id: number; stop_id: string; name: string; latitude: number; longitude: number; wheelchair_boarding: number | null; location_type: number | null }>(
+    (from, to) => c.from('transit_stops').select('id,stop_id,name,latitude,longitude,wheelchair_boarding,location_type').order('id').range(from, to),
   );
-  return rows.map((r) => ({ id: r.id, stopId: r.stop_id, name: r.name, latitude: r.latitude, longitude: r.longitude, wheelchairBoarding: r.wheelchair_boarding }));
+  return rows.map((r) => ({ id: r.id, stopId: r.stop_id, name: r.name, latitude: r.latitude, longitude: r.longitude, wheelchairBoarding: r.wheelchair_boarding, locationType: r.location_type }));
 }
 
 export async function fetchRoutes(): Promise<TransitRoute[]> {
@@ -72,11 +72,11 @@ export async function fetchCalendar(): Promise<{ services: TransitService[]; exc
   };
 }
 
-/** Horaires d'un arrêt (jour de service complet) + courses associées. */
-export async function fetchStopSchedule(stopId: string): Promise<{ stopTimes: StopTimeRow[]; trips: TransitTrip[] }> {
+/** Horaires d'une STATION (tous ses quais) + courses associées. */
+export async function fetchStopSchedule(stopIds: string[]): Promise<{ stopTimes: StopTimeRow[]; trips: TransitTrip[] }> {
   const c = need();
-  const st = await all<{ trip_id: string; departure_secs: number }>(
-    (from, to) => c.from('transit_stop_times').select('trip_id,departure_secs').eq('stop_id', stopId).order('departure_secs').range(from, to),
+  const st = await all<{ trip_id: string; departure_secs: number; stop_id: string }>(
+    (from, to) => c.from('transit_stop_times').select('trip_id,departure_secs,stop_id').in('stop_id', stopIds).order('departure_secs').range(from, to),
   );
   const tripIds = [...new Set(st.map((r) => r.trip_id))];
   const trips: TransitTrip[] = [];
@@ -87,5 +87,5 @@ export async function fetchStopSchedule(stopId: string): Promise<{ stopTimes: St
     if (error) throw new Error(error.message);
     trips.push(...(data ?? []).map((r) => ({ tripId: r.trip_id, routeId: r.route_id, serviceId: r.service_id, headsign: r.headsign, wheelchairAccessible: r.wheelchair_accessible })));
   }
-  return { stopTimes: st.map((r) => ({ tripId: r.trip_id, departureSecs: r.departure_secs })), trips };
+  return { stopTimes: st.map((r) => ({ tripId: r.trip_id, departureSecs: r.departure_secs, stopId: r.stop_id })), trips };
 }
