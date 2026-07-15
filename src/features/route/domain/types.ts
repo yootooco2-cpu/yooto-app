@@ -77,8 +77,15 @@ export interface RouteEvaluation {
   merchantId: string;
   /** Version de la route pour laquelle ce détour a été calculé. */
   routeVersion: number;
-  exitPoint: GeoPoint;
-  rejoinPoint: GeoPoint;
+  /**
+   * Points de sortie/retour sur l'itinéraire. OPTIONNELS et jamais
+   * fabriqués : les fournisseurs réels (Matrix, Directions-waypoint) ne les
+   * produisent pas. Invariant : les deux présents ou les deux absents —
+   * un seul point présent est un payload invalide
+   * (cf. joinPointsCoherent, providers/orsDetourPlanner).
+   */
+  exitPoint?: GeoPoint;
+  rejoinPoint?: GeoPoint;
   /** Heure estimée de passage au commerce (epoch ms). */
   etaAtMerchantMs: number;
   /** Détour réel fourni par le fournisseur de route — jamais inventé ici. */

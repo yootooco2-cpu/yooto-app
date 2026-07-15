@@ -25,9 +25,10 @@ export type {
 
 export {
   createRouteEngineConfig,
+  DEFAULT_ORS_CAPACITY,
   DEFAULT_ROUTE_ENGINE_CONFIG,
 } from './config';
-export type { RouteEngineConfig } from './config';
+export type { ProviderCapacity, RouteEngineConfig } from './config';
 
 export {
   createMissionCatalog,
@@ -207,6 +208,54 @@ export type {
 } from './providers/providerRegistry';
 
 export type { RouteCachePort } from './ports';
+
+export {
+  buildWalkMatrixPlan,
+  buildWheelchairWaypointPlan,
+  guardRoutesWithinCapacity,
+  joinPointsCoherent,
+  parseWalkMatrixResponses,
+  parseWheelchairWaypointResponse,
+  planWheelchairMatrix,
+} from './providers/orsDetourPlanner';
+export type {
+  DetourEvaluationFailure,
+  MatrixRequestKind,
+  OrsMatrixBody,
+  OrsMatrixRequest,
+  OrsWaypointDirectionsRequest,
+  SkippedCandidate,
+  WalkMatrixMeta,
+  WalkMatrixParseResult,
+  WalkMatrixPlan,
+  WalkMatrixPlanResult,
+  WheelchairWaypointMeta,
+  WheelchairWaypointParseResult,
+  WheelchairWaypointPlan,
+  WheelchairWaypointPlanResult,
+} from './providers/orsDetourPlanner';
+
+export {
+  provenanceFromAssertion,
+  verifyServerAssertion,
+} from './providers/serverProvenance';
+export type {
+  AssertionCheck,
+  AssertionMismatch,
+  ExpectedServerParams,
+  ServerRoutingAssertion,
+} from './providers/serverProvenance';
+
+export {
+  checkResponseCurrency,
+  issueRequestTicket,
+} from './providers/requestLifecycle';
+export type {
+  IssueTicketInput,
+  RequestTicket,
+  ResponseCurrency,
+  StaleReason,
+} from './providers/requestLifecycle';
 
 export { changeRoute, startRouteSession } from './orchestrator';
 export type {

@@ -164,8 +164,8 @@ export function createScenarioRouteProvider(
       const evaluations: RouteEvaluation[] = candidates.map((candidate) => ({
         merchantId: candidate.merchantId,
         routeVersion: options.evaluationRouteVersionOverride ?? route.routeVersion,
-        exitPoint: { ...route.polyline[2] },
-        rejoinPoint: { ...route.polyline[3] },
+        // exitPoint/rejoinPoint : jamais fabriqués (contrat Lot 3A) —
+        // absents tous les deux, comme les fournisseurs réels.
         etaAtMerchantMs: nowMs + 480_000,
         detourSeconds: SCENARIO_DETOUR_SECONDS[candidate.merchantId] ?? 120,
         detourMeters: (SCENARIO_DETOUR_SECONDS[candidate.merchantId] ?? 120) * 1.2,
