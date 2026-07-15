@@ -207,3 +207,14 @@ export type {
 } from './providers/providerRegistry';
 
 export type { RouteCachePort } from './ports';
+
+export { changeRoute, startRouteSession } from './orchestrator';
+export type {
+  AccessibilityAudit,
+  OrchestratedSession,
+  OrchestratorDeps,
+  RouteSessionOutcome,
+  RouteSessionRequest,
+  SessionFailureReason,
+  SessionPipelineAudit,
+} from './orchestrator';
