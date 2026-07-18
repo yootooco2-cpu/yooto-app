@@ -1,0 +1,38 @@
+{
+  "baseline": "yootchat-v4",
+  "captured_at": "2026-07-18",
+  "source": {
+    "provider": "supabase",
+    "project_ref": "zdssiposdphjfumsmxaj",
+    "function_slug": "yootchat",
+    "function_id": "eb9d2b93-2a57-4c69-83a9-694125bdaf3e",
+    "version": 4,
+    "status": "ACTIVE",
+    "verify_jwt": true,
+    "ezbr_sha256": "cfb54a4bd9bd0790b0891b1c932e355994cf297a7c175ed96090b03fec110bbd",
+    "created_at": 1784389583322,
+    "updated_at": 1784389755528
+  },
+  "git": {
+    "repository": "yootooco2-cpu/yooto-app",
+    "source_branch": "feat/edit-profile",
+    "source_commit": "7db6f9e3ac6ec86e7d7f8e920e30a72e4a831b55",
+    "baseline_branch": "chore/yootchat-v4-baseline"
+  },
+  "files": [
+    {
+      "path": "supabase/functions/yootchat/index.ts",
+      "deployed_sha256": "f2a0d38fce91ecd1e9f448893a6fc50602f8eb72ef58be086b980cd1f620efc2",
+      "local_sha256": "f2a0d38fce91ecd1e9f448893a6fc50602f8eb72ef58be086b980cd1f620efc2",
+      "exact": true
+    },
+    {
+      "path": "supabase/functions/yootchat/deno.json",
+      "deployed_sha256": "1a34f72bfe343cd7089f9f5680bd349c7b3b8013187b8ad96da096583dafd69c",
+      "local_sha256": "d9d2c11d8c5965380645b32c57202bf40bb6b3cda1d718dfece746bb1c1dd624",
+      "exact": false,
+      "difference": "local file has one additional trailing LF byte"
+    }
+  ],
+  "verdict": "BASELINE_CERTIFIED_WITH_LIMITATIONS"
+}
