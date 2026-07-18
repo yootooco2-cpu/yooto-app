@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "strict": true,
+    "types": ["jest"]
+  },
+  "include": ["src/features/yootchat/**/*.ts"],
+  "exclude": ["src/features/yootchat/**/*.test.ts"]
+}
