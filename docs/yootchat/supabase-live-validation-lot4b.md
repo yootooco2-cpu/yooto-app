@@ -32,35 +32,45 @@ Sources officielles consultees:
 
 ## Type de cle disponible
 
-Aucune cle publique utilisable n'a ete trouvee.
+KEY_TYPE=PUBLISHABLE
 
 Constats sans affichage de valeur:
 
-- environnement courant: aucun nom Supabase public disponible;
-- `.env.example`: noms publics documentes mais valeurs absentes;
-- fichier local hors depot: uniquement des noms de cles privilegiees Supabase et une URL;
-- aucune valeur de cle, aucun JWT et aucun contenu de fichier `.env` n'ont ete affiches.
+- `.env.local` ignore par Git;
+- exactement une URL publique declaree;
+- exactement une cle publique declaree;
+- classification locale de la cle: `PUBLISHABLE`;
+- aucune valeur de cle, aucune URL complete, aucun JWT et aucun contenu de fichier `.env`
+  n'ont ete affiches.
 
-Les cles privilegiees detectees n'ont pas ete utilisees, conformement a la mission.
+Aucune cle privilegiee n'a ete utilisee.
 
 ## Requetes live consommees
 
-Nombre exact de requetes Supabase live consommees: 0.
+Nombre exact de requetes Supabase live consommees: 3.
 
-Aucune des trois lectures autorisees n'a ete lancee, car l'identifiant public requis est absent.
+Les trois tentatives autorisees ont ete lancees une seule fois, sans retry et sans quatrieme
+requete.
 
 ## Resultat agrege des requetes prevues
 
 | Requete | Objectif | Colonnes | Limite | Statut |
 | --- | --- | --- | --- | --- |
-| 1 | Visibilite active minimale | `id,status,is_active` | 5 | Non executee, cle publique absente |
-| 2 | Projection Lot 4 | Projection minimale Lot 4 | 5 | Non executee, cle publique absente |
-| 3 | Controle negatif RLS | `id,status,is_active` | 5 | Non executee, cle publique absente |
+| 1 | Visibilite active minimale | `id,status,is_active` | 5 | Echec agrege `NETWORK_OR_URL`, HTTP indisponible, 0 ligne |
+| 2 | Projection Lot 4 | Projection minimale Lot 4 | 5 | Echec agrege `NETWORK_OR_URL`, HTTP indisponible, 0 ligne |
+| 3 | Controle negatif RLS | `id,status,is_active` | 5 | Echec agrege `NETWORK_OR_URL`, HTTP indisponible, 0 ligne |
+
+Resultats agreges:
+
+- requete 1: aucune ligne retournee; aucune violation des filtres constatee, mais lecture non validee;
+- requete 2: aucune colonne confirmee; 0 projection acceptee; 0 projection mise en quarantaine;
+- requete 3: 0 ligne non publiable observee; controle RLS non valide car la lecture a echoue
+  avant resultat HTTP exploitable.
 
 ## Schema reellement confirme
 
-Aucun schema live n'a ete confirme pendant ce lot, faute de cle publique.
-Le schema reste celui documente par le Lot 4, en attente de validation reelle.
+Aucun schema live n'a ete confirme pendant ce lot. Les trois lectures ont echoue dans la categorie
+`NETWORK_OR_URL` sans statut HTTP exploitable.
 
 ## Ecarts avec l'adaptateur Lot 4
 
@@ -69,8 +79,8 @@ Aucune correction de projection, de type ou d'adaptateur n'est justifiee sans pr
 
 ## Controle RLS
 
-Controle negatif RLS non execute, car aucune cle publique n'est disponible.
-Aucune exposition de fiche non publiable n'a ete observee.
+Controle negatif RLS tente en troisieme requete. Aucune ligne non publiable n'a ete observee,
+mais le controle n'est pas valide car la tentative n'a pas produit de resultat HTTP exploitable.
 
 ## Corrections locales
 
@@ -97,10 +107,10 @@ Seul ce rapport anonymise Lot 4B est ajoute.
 
 ## Verdict
 
-SUPABASE_LIVE_VALIDATION_BLOCKED_PUBLIC_KEY_MISSING
+SUPABASE_LIVE_VALIDATION_BLOCKED
 
 ## Recommandation suivante
 
-Fournir une cle publique Supabase publishable ou `anon` via une variable locale non affichee,
-par exemple un nom deja prevu par le projet. Relancer ensuite exactement les trois SELECT
-bornes du Lot 4B, sans requete corrective, sans RPC, sans ecriture et sans affichage de ligne brute.
+Verifier localement la valeur effective de l'URL publique Supabase sans l'exposer, puis relancer
+la micro-validation dans une nouvelle fenetre de validation explicitement autorisee. Le compteur
+de cette tentative est definitivement consomme: 3 requetes sur 3.
