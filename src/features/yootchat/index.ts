@@ -3,6 +3,8 @@ export * from './contracts';
 export * from './engine';
 export * from './evidence';
 export * from './fallbacks';
+export * from './readPort';
 export * from './scenarioMatrix';
+export * from './supabaseReadAdapter';
 export * from './topics';
 export * from './validators';
