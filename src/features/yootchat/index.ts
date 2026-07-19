@@ -1,5 +1,6 @@
 export * from './actions';
 export * from './contracts';
+export * from './engine';
 export * from './evidence';
 export * from './fallbacks';
 export * from './scenarioMatrix';
