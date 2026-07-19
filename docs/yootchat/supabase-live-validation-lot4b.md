@@ -47,18 +47,23 @@ Aucune cle privilegiee n'a ete utilisee.
 
 ## Requetes live consommees
 
-Nombre exact de requetes Supabase live consommees: 3.
+Fenetre precedente: 3 tentatives consommees, documentees dans le commit
+`bcf70d5bb7178858d1277ec5c94faed97a15c777`.
 
-Les trois tentatives autorisees ont ete lancees une seule fois, sans retry et sans quatrieme
-requete.
+Nouvelle fenetre autorisee:
+
+- pre-verification reseau non metier: 1 tentative, HTTP 401, connectivite confirmee;
+- SELECT metier: 3 tentatives consommees;
+- aucun retry;
+- aucune quatrieme requete SELECT.
 
 ## Resultat agrege des requetes prevues
 
 | Requete | Objectif | Colonnes | Limite | Statut |
 | --- | --- | --- | --- | --- |
-| 1 | Visibilite active minimale | `id,status,is_active` | 5 | Echec agrege `NETWORK_OR_URL`, HTTP indisponible, 0 ligne |
-| 2 | Projection Lot 4 | Projection minimale Lot 4 | 5 | Echec agrege `NETWORK_OR_URL`, HTTP indisponible, 0 ligne |
-| 3 | Controle negatif RLS | `id,status,is_active` | 5 | Echec agrege `NETWORK_OR_URL`, HTTP indisponible, 0 ligne |
+| 1 | Visibilite active minimale | `id,status,is_active` | 5 | HTTP 401, categorie `AUTH_OR_RLS`, 0 ligne |
+| 2 | Projection Lot 4 | Projection minimale Lot 4 | 5 | HTTP 401, categorie `AUTH_OR_RLS`, 0 ligne |
+| 3 | Controle negatif RLS | `id,status,is_active` | 5 | HTTP 401, categorie `AUTH_OR_RLS`, 0 ligne |
 
 Resultats agreges:
 
@@ -69,8 +74,8 @@ Resultats agreges:
 
 ## Schema reellement confirme
 
-Aucun schema live n'a ete confirme pendant ce lot. Les trois lectures ont echoue dans la categorie
-`NETWORK_OR_URL` sans statut HTTP exploitable.
+Aucun schema live n'a ete confirme pendant ce lot. Les trois lectures ont atteint la Data API mais
+ont ete refusees avec HTTP 401 avant toute donnee exploitable.
 
 ## Ecarts avec l'adaptateur Lot 4
 
@@ -80,7 +85,8 @@ Aucune correction de projection, de type ou d'adaptateur n'est justifiee sans pr
 ## Controle RLS
 
 Controle negatif RLS tente en troisieme requete. Aucune ligne non publiable n'a ete observee,
-mais le controle n'est pas valide car la tentative n'a pas produit de resultat HTTP exploitable.
+mais le controle n'est pas valide car la tentative a ete refusee avec HTTP 401 avant resultat
+exploitable.
 
 ## Corrections locales
 
@@ -111,6 +117,6 @@ SUPABASE_LIVE_VALIDATION_BLOCKED
 
 ## Recommandation suivante
 
-Verifier localement la valeur effective de l'URL publique Supabase sans l'exposer, puis relancer
-la micro-validation dans une nouvelle fenetre de validation explicitement autorisee. Le compteur
-de cette tentative est definitivement consomme: 3 requetes sur 3.
+Verifier dans Supabase que la cle publishable locale est autorisee pour le projet cible et que
+la Data API accepte les appels publics attendus. Aucune nouvelle lecture ne doit etre lancee sans
+une nouvelle fenetre explicitement autorisee.
