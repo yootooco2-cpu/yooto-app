@@ -2,6 +2,8 @@ import type { InterfaceAction, YootChatAction } from './actions';
 import type { MerchantClaim } from './evidence';
 import type { YootChatTopic } from './topics';
 
+export const YOOTCHAT_REQUEST_MESSAGE_MAX_LENGTH = 800 as const;
+
 export interface ApproximateLocation {
   readonly latitude: number;
   readonly longitude: number;

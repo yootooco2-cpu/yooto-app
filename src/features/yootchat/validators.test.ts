@@ -67,9 +67,14 @@ describe('YootChat v2 strict domain validators', () => {
     expect(validateRequest({ message: 'Une boulangerie', language: 'fr', city: 'Quissac', radiusKm: 10, location: { latitude: 43.91, longitude: 4, precision: 'APPROXIMATE' }, filters: { categoryIds: ['bakery'], openNow: true, accessibilityRequired: false, maxDistanceKm: 12 } }).ok).toBe(true);
   });
 
+  test('accepts 800 request characters and rejects 801', () => {
+    expect(validateRequest({ message: 'x'.repeat(800), language: 'fr' }).ok).toBe(true);
+    expect(validateRequest({ message: 'x'.repeat(801), language: 'fr' }).ok).toBe(false);
+  });
+
   test.each([
     [{ message: '', language: 'fr' }, 'empty message'],
-    [{ message: 'x'.repeat(2001), language: 'fr' }, 'long message'],
+    [{ message: 'x'.repeat(801), language: 'fr' }, 'long message'],
     [{ message: 'test', language: 'fr', extra: true }, 'extra request property'],
     [{ message: 'test', language: 'fr', city: '' }, 'invalid city'],
     [{ message: 'test', language: 'fr', radiusKm: 101 }, 'radius limit'],
@@ -135,6 +140,14 @@ describe('YootChat v2 strict domain validators', () => {
     expect(validateClaim({ field: 'openNow', value: 'probablement', status: 'UNKNOWN', evidence: { level: 'UNKNOWN', origin: 'YOOTOO_DATABASE', sourceField: 'facts.openNow' } }, candidate).ok).toBe(false);
   });
 
+  test.each([
+    [{ field: 'service', value: 'arbitrary', status: 'FORBIDDEN', evidence: { level: 'FORBIDDEN', origin: 'YOOTOO_DATABASE', sourceField: 'facts.services' } }, 'forbidden status with value'],
+    [{ field: 'service', value: 'Commande en ligne', status: 'VERIFIED', evidence: { level: 'FORBIDDEN', origin: 'YOOTOO_DATABASE', sourceField: 'facts.services' } }, 'forbidden evidence on verified claim'],
+  ])('rejects every publishable form of FORBIDDEN claim: %s (%s)', (input, _description) => {
+    expect(validateClaim(input, candidate).ok).toBe(false);
+    expect(validateRecommendation({ ...recommendation, reasons: [input] }, [candidate]).ok).toBe(false);
+  });
+
   test('rejects invented and duplicated identifiers', () => {
     expect(validateReturnedIds(['merchant-1'], [candidate]).ok).toBe(true);
     expect(validateReturnedIds(['invented'], [candidate]).ok).toBe(false);
@@ -146,6 +159,14 @@ describe('YootChat v2 strict domain validators', () => {
   });
 
   test('validates the full final response', () => expect(validateFinalResponse(response, [candidate]).ok).toBe(true));
+
+  test('requires limitationCount to exactly match limitations when present', () => {
+    expect(validateFinalResponse({ ...response, message: { template: 'RESULTS_FOUND', variables: { resultCount: 1, limitationCount: 1 } } }, [candidate]).ok).toBe(true);
+    for (const limitationCount of [-1, 0, 1.5, 2]) {
+      expect(validateFinalResponse({ ...response, message: { template: 'RESULTS_FOUND', variables: { resultCount: 1, limitationCount } } }, [candidate]).ok).toBe(false);
+    }
+    expect(validateFinalResponse({ ...response, limitations: [], message: { template: 'RESULTS_FOUND', variables: { resultCount: 1, limitationCount: 0 } } }, [candidate]).ok).toBe(false);
+  });
 
   test('rejects duplicated candidate context', () => expect(validateFinalResponse(response, [candidate, candidate]).ok).toBe(false));
 

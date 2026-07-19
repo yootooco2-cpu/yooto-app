@@ -1,11 +1,12 @@
 import { YOOTCHAT_ACTIONS, type YootChatAction } from './actions';
-import type {
-  ActionPlan,
-  FinalResponse,
-  MerchantCandidate,
-  MerchantRecommendation,
-  ValidationResult,
-  YootChatRequest,
+import {
+  YOOTCHAT_REQUEST_MESSAGE_MAX_LENGTH,
+  type ActionPlan,
+  type FinalResponse,
+  type MerchantCandidate,
+  type MerchantRecommendation,
+  type ValidationResult,
+  type YootChatRequest,
 } from './contracts';
 import { CLAIM_FIELDS, EVIDENCE_LEVELS, type MerchantClaim } from './evidence';
 import { isYootChatTopic } from './topics';
@@ -57,7 +58,7 @@ const validateFilters = (value: unknown) => {
 
 export function validateRequest(value: unknown): ValidationResult<YootChatRequest> {
   if (!isRecord(value) || !exactKeys(value, ['message', 'language'], ['location', 'city', 'radiusKm', 'filters'])) return fail('request shape');
-  if (!nonEmptyString(value.message, 2_000)) return fail('message');
+  if (!nonEmptyString(value.message, YOOTCHAT_REQUEST_MESSAGE_MAX_LENGTH)) return fail('message');
   if (!oneOf(value.language, ['fr', 'en'] as const)) return fail('language');
   if ('location' in value && !validateLocation(value.location)) return fail('location');
   if ('city' in value && !nonEmptyString(value.city, 120)) return fail('city');
@@ -164,6 +165,8 @@ export function validateClaim(value: unknown, candidate: MerchantCandidate): Val
   if (!oneOf(value.status, ['VERIFIED', 'UNKNOWN', 'FORBIDDEN'] as const)) return fail('claim status');
   if (!isRecord(value.evidence) || !exactKeys(value.evidence, ['level', 'origin', 'sourceField'], ['observedAt'])) return fail('evidence shape');
   if (!oneOf(value.evidence.level, EVIDENCE_LEVELS) || !oneOf(value.evidence.origin, ['YOOTOO_DATABASE', 'SERVER_CALCULATION', 'OFFICIAL_SOURCE'] as const) || !nonEmptyString(value.evidence.sourceField, 160)) return fail('evidence');
+  // FORBIDDEN is an input quarantine marker, never a publishable claim.
+  if (value.status === 'FORBIDDEN' || value.evidence.level === 'FORBIDDEN') return fail('forbidden claim cannot be published');
   if (value.evidence.sourceField !== expectedSourceField[value.field]) return fail('evidence source field');
   if (value.field === 'distanceKm' && value.evidence.origin !== 'SERVER_CALCULATION') return fail('distance origin');
   if (value.field === 'officialCommitment' && value.evidence.origin !== 'OFFICIAL_SOURCE') return fail('official commitment origin');
@@ -175,7 +178,7 @@ export function validateClaim(value: unknown, candidate: MerchantCandidate): Val
     if (value.field === 'accessibility' && candidate.facts.accessibility === 'UNKNOWN') return fail('unknown accessibility');
   } else if (value.status === 'UNKNOWN') {
     if (value.evidence.level !== 'UNKNOWN' || value.value !== null) return fail('unknown claim must remain null');
-  } else if (value.evidence.level !== 'FORBIDDEN') return fail('forbidden claim requires forbidden evidence');
+  }
   return ok(value as unknown as MerchantClaim);
 }
 
@@ -207,19 +210,23 @@ export function detectForbiddenFields(value: unknown, path = '$'): readonly stri
   ]);
 }
 
-const validateMessage = (value: unknown, recommendationCount: number) => {
+const validateMessage = (value: unknown, recommendationCount: number, limitationCount: number) => {
   if (!isRecord(value) || !exactKeys(value, ['template', 'variables']) || !oneOf(value.template, ['RESULTS_FOUND', 'CLARIFICATION_REQUIRED', 'NO_RESULT', 'OUT_OF_SCOPE', 'SERVICE_UNAVAILABLE'] as const)) return false;
   if (!isRecord(value.variables) || !exactKeys(value.variables, [], ['resultCount', 'limitationCount'])) return false;
   if (value.template === 'RESULTS_FOUND' && !('resultCount' in value.variables)) return false;
   if (value.template !== 'RESULTS_FOUND' && 'resultCount' in value.variables) return false;
   if ('resultCount' in value.variables && (!Number.isInteger(value.variables.resultCount) || value.variables.resultCount !== recommendationCount)) return false;
-  return !('limitationCount' in value.variables) || (Number.isInteger(value.variables.limitationCount) && (value.variables.limitationCount as number) >= 0);
+  if ('limitationCount' in value.variables) {
+    if (limitationCount === 0 || !Number.isInteger(value.variables.limitationCount) || value.variables.limitationCount !== limitationCount) return false;
+  }
+  return true;
 };
 
 export function validateFinalResponse(value: unknown, candidates: readonly MerchantCandidate[]): ValidationResult<FinalResponse> {
   if (!isRecord(value) || !exactKeys(value, ['topic', 'message', 'recommendations', 'limitations', 'interfaceActions'])) return fail('final response shape');
   if (detectForbiddenFields(value).length > 0) return { ok: false, code: 'UNVERIFIABLE_RESULT', errors: ['forbidden output field'] };
-  if (!isYootChatTopic(value.topic) || !Array.isArray(value.recommendations) || value.recommendations.length > 3 || !validateMessage(value.message, value.recommendations.length)) return fail('final response core');
+  if (!Array.isArray(value.limitations)) return fail('limitations');
+  if (!isYootChatTopic(value.topic) || !Array.isArray(value.recommendations) || value.recommendations.length > 3 || !validateMessage(value.message, value.recommendations.length, value.limitations.length)) return fail('final response core');
   const candidateResults = candidates.map(validateCandidate);
   if (candidateResults.some((result) => !result.ok)) return fail('invalid candidate context');
   if (new Set(candidates.map((candidate) => candidate.id)).size !== candidates.length) return fail('duplicate candidate ids');
@@ -230,7 +237,7 @@ export function validateFinalResponse(value: unknown, candidates: readonly Merch
   const messageTemplate = (value.message as { template: string }).template;
   if ((value.recommendations.length > 0) !== (messageTemplate === 'RESULTS_FOUND')) return fail('message/result mismatch');
   if (['CLARIFICATION', 'NO_RESULT', 'OUT_OF_SCOPE'].includes(value.topic as string) && value.recommendations.length > 0) return fail('topic/result mismatch');
-  if (!Array.isArray(value.limitations) || !uniqueStrings(value.limitations) || !value.limitations.every((item) => oneOf(item, ['UNKNOWN_HOURS', 'UNKNOWN_ACCESSIBILITY', 'UNKNOWN_DISTANCE', 'INSUFFICIENT_EVIDENCE'] as const))) return fail('limitations');
+  if (!uniqueStrings(value.limitations) || !value.limitations.every((item) => oneOf(item, ['UNKNOWN_HOURS', 'UNKNOWN_ACCESSIBILITY', 'UNKNOWN_DISTANCE', 'INSUFFICIENT_EVIDENCE'] as const))) return fail('limitations');
   if (!Array.isArray(value.interfaceActions)) return fail('interfaceActions');
   const candidateIds = new Set(candidates.map((candidate) => candidate.id));
   const recommendedIds = new Set(ids);
