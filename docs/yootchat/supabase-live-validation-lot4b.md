@@ -52,7 +52,7 @@ Fenetre precedente: 3 tentatives consommees, documentees dans le commit
 
 Nouvelle fenetre autorisee:
 
-- pre-verification reseau non metier: 1 tentative, HTTP 404, connectivite confirmee;
+- pre-verification reseau non metier: 1 tentative, HTTP 401, connectivite confirmee;
 - SELECT metier: 3 tentatives consommees;
 - aucun retry;
 - aucune quatrieme requete SELECT.
