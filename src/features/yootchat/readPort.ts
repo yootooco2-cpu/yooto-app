@@ -46,7 +46,6 @@ export const YOOTCHAT_SUPABASE_MERCHANT_COLUMNS = [
   'google_rating',
   'category',
   'opening_hours',
-  'is_accessible',
   'est_ess',
   'est_bio',
   'artisan_rm',
@@ -90,7 +89,6 @@ export type SourceMerchantQuarantineReason =
   | 'INVALID_COORDINATES'
   | 'INVALID_RATING'
   | 'INVALID_OPENING_HOURS'
-  | 'INVALID_ACCESSIBILITY'
   | 'INVALID_OFFICIAL_COMMITMENT'
   | 'DUPLICATE_ID';
 

@@ -40,6 +40,9 @@ Constats sans affichage de valeur:
 - exactement une URL publique declaree;
 - exactement une cle publique declaree;
 - classification locale de la cle: `PUBLISHABLE`;
+- ancienne valeur locale publishable incorrecte: 184 caracteres, remplacee;
+- cle publishable finale certifiee: 46 caracteres, empreinte locale conforme a la cle
+  `yootchat-public`;
 - aucune valeur de cle, aucune URL complete, aucun JWT et aucun contenu de fichier `.env`
   n'ont ete affiches.
 
@@ -50,55 +53,82 @@ Aucune cle privilegiee n'a ete utilisee.
 Fenetre precedente: 3 tentatives consommees, documentees dans le commit
 `bcf70d5bb7178858d1277ec5c94faed97a15c777`.
 
-Nouvelle fenetre autorisee:
+Tentatives intermediaires:
 
-- pre-verification reseau non metier: 1 tentative, HTTP 401, connectivite confirmee;
-- SELECT metier: 3 tentatives consommees;
+- la racine `/rest/v1/` a retourne HTTP 401 avec les cles publiques;
+- ce resultat n'est pas utilise comme preuve de rejet public: depuis le changement Supabase
+  de mars 2026, la racine OpenAPI n'est pas un test public fiable;
+- la route metier `/rest/v1/merchants` est le seul chemin retenu pour la validation.
+
+Fenetre finale Lot 4L:
+
+- SELECT live: 1 tentative consommee;
+- projection explicite des 14 colonnes reelles;
+- filtre `status=active` et `is_active=true`;
+- limite 5;
+- header `apikey` avec la cle publishable certifiee;
+- header `Accept-Profile: public`;
+- aucun header `Authorization`;
 - aucun retry;
-- aucune quatrieme requete SELECT.
+- aucun autre SELECT.
 
 ## Resultat agrege des requetes prevues
 
 | Requete | Objectif | Colonnes | Limite | Statut |
 | --- | --- | --- | --- | --- |
-| 1 | Visibilite active minimale | `id,status,is_active` | 5 | HTTP 401, categorie `AUTH_OR_RLS`, 0 ligne |
-| 2 | Projection Lot 4 | Projection minimale Lot 4 | 5 | HTTP 401, categorie `AUTH_OR_RLS`, 0 ligne |
-| 3 | Controle negatif RLS | `id,status,is_active` | 5 | HTTP 401, categorie `AUTH_OR_RLS`, 0 ligne |
+| 1 | Projection reelle Lot 4L | 14 colonnes reelles | 5 | HTTP 200, categorie `NONE`, 5 lignes |
 
 Resultats agreges:
 
-- requete 1: aucune ligne retournee; aucune violation des filtres constatee, mais lecture non validee;
-- requete 2: aucune colonne confirmee; 0 projection acceptee; 0 projection mise en quarantaine;
-- requete 3: 0 ligne non publiable observee; controle RLS non valide car la lecture a echoue
-  avant resultat HTTP exploitable.
+- colonnes presentes: 14/14;
+- projections acceptees: 4;
+- projections mises en quarantaine: 1;
+- accessibilites produites: 4 `UNKNOWN`;
+- aucune donnee brute, aucun nom, aucun identifiant et aucune coordonnee n'ont ete affiches.
 
 ## Schema reellement confirme
 
-Aucun schema live n'a ete confirme pendant ce lot. Les trois lectures ont atteint la Data API mais
-ont ete refusees avec HTTP 401 avant toute donnee exploitable.
+Schema live confirme pour `public.merchants`:
+
+`id,name,status,is_active,city,latitude,longitude,google_rating,category,opening_hours,est_ess,est_bio,artisan_rm,est_societe_mission`
+
+Colonne absente du schema reel: `is_accessible`.
+
+Aucune colonne alternative d'accessibilite publique n'est certifiee pour ce lot.
 
 ## Ecarts avec l'adaptateur Lot 4
 
-Aucun ecart live n'a pu etre constate.
-Aucune correction de projection, de type ou d'adaptateur n'est justifiee sans preuve live.
+Ecart live constate: la projection Lot 4 initiale demandait `is_accessible`, absente du schema reel.
+
+Correction appliquee:
+
+- projection Supabase reduite aux 14 colonnes reelles;
+- `select("*")` reste interdit;
+- aucune lecture de `is_accessible`;
+- l'accessibilite issue de Supabase est toujours projetee en `UNKNOWN`;
+- aucune affirmation PMR certaine n'est produite sans colonne probante;
+- services et equipements restent des tableaux vides;
+- les quatre engagements officiels restent structures et valides par booleens.
 
 ## Controle RLS
 
-Controle negatif RLS tente en troisieme requete. Aucune ligne non publiable n'a ete observee,
-mais le controle n'est pas valide car la tentative a ete refusee avec HTTP 401 avant resultat
-exploitable.
+Controle negatif RLS Lot 4K: HTTP 200, 0 ligne non publiable visible.
 
 ## Corrections locales
 
-Aucune correction fonctionnelle.
-Seul ce rapport anonymise Lot 4B est ajoute.
+Corrections fonctionnelles limitees au perimetre YootChat Supabase read adapter:
+
+- `src/features/yootchat/readPort.ts`;
+- `src/features/yootchat/supabaseReadAdapter.ts`;
+- `src/features/yootchat/supabaseReadAdapter.test.ts`;
+- ce rapport anonymise.
 
 ## Tests executes
 
 - Tests YootChat cibles pre-branche: 159 reussis.
-- Tests adaptateur: 31 reussis.
-- Tests YootChat cibles finaux: 159 reussis.
-- Suite complete: 898 reussis, 6 ignores, 0 echec.
+- Tests adaptateur: 34 reussis.
+- Tests YootChat cibles finaux: 162 reussis.
+- Suite complete: 901 reussis, 6 ignores, 0 echec.
 - TypeScript cible YootChat: 0 erreur.
 - ESLint cible YootChat: 0 erreur.
 - `git diff --check`: 0 erreur.
@@ -113,10 +143,9 @@ Seul ce rapport anonymise Lot 4B est ajoute.
 
 ## Verdict
 
-SUPABASE_LIVE_VALIDATION_BLOCKED
+SUPABASE_READ_ADAPTER_CERTIFIED_WITH_ACCESSIBILITY_UNKNOWN
 
 ## Recommandation suivante
 
-Verifier dans Supabase que la cle publishable locale est autorisee pour le projet cible et que
-la Data API accepte les appels publics attendus. Aucune nouvelle lecture ne doit etre lancee sans
-une nouvelle fenetre explicitement autorisee.
+Poursuivre le Lot 5 avec l'accessibilite consideree comme inconnue tant qu'aucune colonne publique
+probante n'est ajoutee au schema.

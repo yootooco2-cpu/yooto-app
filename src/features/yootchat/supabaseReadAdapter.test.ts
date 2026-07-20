@@ -115,7 +115,6 @@ const validRow = (overrides: Record<string, unknown> = {}) => ({
   google_rating: 4.5,
   category: 'Boulangerie',
   opening_hours: { open_now: true },
-  is_accessible: null,
   est_ess: null,
   est_bio: true,
   artisan_rm: null,
@@ -201,6 +200,32 @@ describe('YootChat Supabase read adapter Lot 4', () => {
     expect(client.operations).toContainEqual(['select', YOOTCHAT_SUPABASE_MERCHANT_SELECT]);
   });
 
+  test('requests exactly the 14 live-confirmed merchant columns', () => {
+    const columns = YOOTCHAT_SUPABASE_MERCHANT_SELECT.split(',');
+
+    expect(columns).toHaveLength(14);
+    expect(columns).toEqual([
+      'id',
+      'name',
+      'status',
+      'is_active',
+      'city',
+      'latitude',
+      'longitude',
+      'google_rating',
+      'category',
+      'opening_hours',
+      'est_ess',
+      'est_bio',
+      'artisan_rm',
+      'est_societe_mission',
+    ]);
+  });
+
+  test('never requests the absent accessibility column', () => {
+    expect(YOOTCHAT_SUPABASE_MERCHANT_SELECT).not.toContain('is_accessible');
+  });
+
   test('never uses select star', async () => {
     expect(YOOTCHAT_SUPABASE_MERCHANT_SELECT).not.toContain('*');
   });
@@ -255,13 +280,24 @@ describe('YootChat Supabase read adapter Lot 4', () => {
     expect(result.quarantined[0].reason).toBe('UNKNOWN_PROPERTY');
   });
 
-  test('keeps accessibility unknown unless positively structured', async () => {
-    const { adapter } = adapterFor({ data: [validRow({ is_accessible: false })], error: null });
+  test('accepts a live-shaped row without accessibility and keeps accessibility unknown', async () => {
+    const { adapter } = adapterFor({ data: [validRow()], error: null });
     const result = await adapter.read();
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.records[0].accessibility).toBe('UNKNOWN');
+    expect(result.candidates[0].facts.accessibility).toBe('UNKNOWN');
+  });
+
+  test('does not infer certain accessibility from Supabase rows', async () => {
+    const { adapter } = adapterFor({ data: [validRow()], error: null });
+    const result = await adapter.read();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.records[0].accessibility).not.toBe('VERIFIED_ACCESSIBLE');
+    expect(result.records[0].accessibility).not.toBe('VERIFIED_NOT_ACCESSIBLE');
   });
 
   test('quarantines an official commitment without official boolean proof', async () => {

@@ -204,10 +204,6 @@ function projectRow(row: unknown): { readonly ok: true; readonly value: SourceMe
   const openNow = readOpenNow(typed.opening_hours);
   if (openNow === 'INVALID') return { ok: false, quarantine: { id, reason: 'INVALID_OPENING_HOURS' } };
 
-  if (typed.is_accessible !== true && typed.is_accessible !== false && typed.is_accessible !== null && typed.is_accessible !== undefined) {
-    return { ok: false, quarantine: { id, reason: 'INVALID_ACCESSIBILITY' } };
-  }
-
   const commitments = officialCommitments(typed);
   if (commitments === 'INVALID') return { ok: false, quarantine: { id, reason: 'INVALID_OFFICIAL_COMMITMENT' } };
 
@@ -224,7 +220,7 @@ function projectRow(row: unknown): { readonly ok: true; readonly value: SourceMe
       longitude: hasLongitude ? typed.longitude as number : null,
       rating: typed.google_rating === undefined ? null : typed.google_rating as number | null,
       openNow,
-      accessibility: typed.is_accessible === true ? 'VERIFIED_ACCESSIBLE' : 'UNKNOWN',
+      accessibility: 'UNKNOWN',
       services: [],
       equipment: [],
       officialCommitments: commitments,
