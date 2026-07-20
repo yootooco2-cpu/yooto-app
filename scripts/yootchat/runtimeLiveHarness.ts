@@ -49,13 +49,15 @@ export interface YootChatRuntimeHarnessResult {
 }
 
 export interface YootChatRuntimeHarnessOptions {
-  readonly client: ReadOnlySupabaseClient;
+  readonly client?: ReadOnlySupabaseClient;
+  readonly createClient?: () => ReadOnlySupabaseClient;
   readonly request?: YootChatRequest;
   readonly filters?: YootChatReadFilters;
   readonly adapterTimeoutMs?: number;
   readonly harnessTimeoutMs?: number;
   readonly now?: () => number;
   readonly createAbortSignal?: (timeoutMs: number) => AbortSignal;
+  readonly onStage?: (stage: YootChatRuntimeHarnessStage) => void;
 }
 
 export type OfflineScenario =
@@ -63,6 +65,7 @@ export type OfflineScenario =
   | 'RLS_ERROR'
   | 'NETWORK_ERROR'
   | 'TIMEOUT'
+  | 'HANG'
   | 'MALFORMED_RESPONSE'
   | 'PARTIAL_QUARANTINE'
   | 'ENGINE_UNCERTIFIABLE';
@@ -84,10 +87,15 @@ interface OfflineClient extends ReadOnlySupabaseClient {
 
 const DEFAULT_HARNESS_TIMEOUT_MS = 3_000;
 
-const defaultRequest: YootChatRequest = {
+export const dryRunHarnessRequest: YootChatRequest = {
   message: 'Find local test merchants',
   language: 'en',
   city: 'Harness City',
+};
+
+export const futureLiveHarnessRequest: YootChatRequest = {
+  message: 'Trouve-moi des commerces locaux',
+  language: 'fr',
 };
 
 const emptyAggregate = (terminalStage: YootChatRuntimeHarnessStage, readErrorCode: string | null): YootChatRuntimeHarnessAggregate => ({
@@ -121,14 +129,26 @@ const bucketFromElapsed = (elapsedMs: number) => {
   return '1001+';
 };
 
-const pushStage = (stages: YootChatRuntimeHarnessStage[], stage: YootChatRuntimeHarnessStage) => {
+const pushStage = (
+  stages: YootChatRuntimeHarnessStage[],
+  stage: YootChatRuntimeHarnessStage,
+  onStage: ((stage: YootChatRuntimeHarnessStage) => void) | undefined,
+) => {
   stages.push(stage);
+  onStage?.(stage);
 };
 
-const withHarnessTimeout = async <T>(promise: Promise<T>, timeoutMs: number): Promise<T | 'HARNESS_TIMEOUT'> => {
+const withHarnessTimeout = async <T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  onTimeout: () => void,
+): Promise<T | 'HARNESS_TIMEOUT'> => {
   let timer: ReturnType<typeof setTimeout> | null = null;
   const timeout = new Promise<'HARNESS_TIMEOUT'>((resolve) => {
-    timer = setTimeout(() => resolve('HARNESS_TIMEOUT'), timeoutMs);
+    timer = setTimeout(() => {
+      onTimeout();
+      resolve('HARNESS_TIMEOUT');
+    }, timeoutMs);
   });
   const result = await Promise.race([promise, timeout]);
   if (timer) clearTimeout(timer);
@@ -141,16 +161,35 @@ export async function runYootChatRuntimeHarness(options: YootChatRuntimeHarnessO
   let readStarted = false;
   let readSettled = false;
   const started = Date.now();
+  const harnessAbortController = new AbortController();
+  const createAbortSignal = options.createAbortSignal ?? (() => harnessAbortController.signal);
 
-  pushStage(stages, 'HARNESS_PRECHECK_START');
-  pushStage(stages, 'HARNESS_PRECHECK_OK');
-  pushStage(stages, 'HARNESS_CLIENT_READY');
+  pushStage(stages, 'HARNESS_PRECHECK_START', options.onStage);
+  pushStage(stages, 'HARNESS_PRECHECK_OK', options.onStage);
+
+  let client: ReadOnlySupabaseClient;
+  try {
+    if (options.createClient) client = options.createClient();
+    else if (options.client) client = options.client;
+    else throw new Error('client missing');
+  } catch {
+    pushStage(stages, 'HARNESS_BLOCKED', options.onStage);
+    return {
+      stages,
+      aggregate: {
+        ...emptyAggregate('HARNESS_BLOCKED', 'HARNESS_BLOCKED'),
+        durationBucketMs: bucketFromElapsed(Date.now() - started),
+      },
+      adapterEventCounts: {},
+    };
+  }
+  pushStage(stages, 'HARNESS_CLIENT_READY', options.onStage);
 
   const observer = (event: YootChatReadObservation) => {
     adapterEvents.push(event);
     if (event.code === 'YOOTCHAT_SUPABASE_READ_START' && !readStarted) {
       readStarted = true;
-      pushStage(stages, 'HARNESS_READ_STARTED');
+      pushStage(stages, 'HARNESS_READ_STARTED', options.onStage);
     }
     if (
       !readSettled &&
@@ -164,25 +203,30 @@ export async function runYootChatRuntimeHarness(options: YootChatRuntimeHarnessO
       ].includes(event.code)
     ) {
       readSettled = true;
-      pushStage(stages, 'HARNESS_READ_SETTLED');
+      pushStage(stages, 'HARNESS_READ_SETTLED', options.onStage);
     }
   };
 
   const runtime = createYootChatRuntime({
-    client: options.client,
+    client,
     observer,
     timeoutMs: options.adapterTimeoutMs,
     now: options.now,
-    createAbortSignal: options.createAbortSignal,
+    createAbortSignal,
   });
-  pushStage(stages, 'HARNESS_RUNTIME_READY');
-  pushStage(stages, 'HARNESS_EXECUTE_START');
+  pushStage(stages, 'HARNESS_RUNTIME_READY', options.onStage);
+  pushStage(stages, 'HARNESS_EXECUTE_START', options.onStage);
 
   try {
-    const executed = runtime.execute(options.request ?? defaultRequest, { limit: 5, ...options.filters });
-    const result = await withHarnessTimeout(executed, options.harnessTimeoutMs ?? DEFAULT_HARNESS_TIMEOUT_MS);
+    const executed = runtime.execute(options.request ?? dryRunHarnessRequest, { limit: 5, ...options.filters });
+    executed.catch(() => undefined);
+    const result = await withHarnessTimeout(
+      executed,
+      options.harnessTimeoutMs ?? DEFAULT_HARNESS_TIMEOUT_MS,
+      () => harnessAbortController.abort(),
+    );
     if (result === 'HARNESS_TIMEOUT') {
-      pushStage(stages, 'HARNESS_TIMEOUT');
+      pushStage(stages, 'HARNESS_TIMEOUT', options.onStage);
       return {
         stages,
         aggregate: {
@@ -194,8 +238,8 @@ export async function runYootChatRuntimeHarness(options: YootChatRuntimeHarnessO
       };
     }
 
-    if (!readSettled) pushStage(stages, 'HARNESS_READ_SETTLED');
-    pushStage(stages, 'HARNESS_ENGINE_SETTLED');
+    if (!readSettled) pushStage(stages, 'HARNESS_READ_SETTLED', options.onStage);
+    pushStage(stages, 'HARNESS_ENGINE_SETTLED', options.onStage);
 
     const quarantineReasons = result.read.quarantined.map((item) => item.reason);
     const aggregate: YootChatRuntimeHarnessAggregate = {
@@ -216,11 +260,11 @@ export async function runYootChatRuntimeHarness(options: YootChatRuntimeHarnessO
       terminalStage: 'HARNESS_COMPLETED',
     };
 
-    pushStage(stages, 'HARNESS_AGGREGATE_READY');
-    pushStage(stages, 'HARNESS_COMPLETED');
+    pushStage(stages, 'HARNESS_AGGREGATE_READY', options.onStage);
+    pushStage(stages, 'HARNESS_COMPLETED', options.onStage);
     return { stages, aggregate, adapterEventCounts: count(adapterEvents.map((event) => event.code)) };
   } catch {
-    pushStage(stages, 'HARNESS_BLOCKED');
+    pushStage(stages, 'HARNESS_BLOCKED', options.onStage);
     return {
       stages,
       aggregate: {
@@ -252,9 +296,12 @@ const testRow = (id: string, overrides: Record<string, unknown> = {}) => ({
 });
 
 class OfflineBuilder implements PromiseLike<QueryResponse> {
+  private signal: AbortSignal | null = null;
+
   constructor(
     private readonly response: QueryResponse | Error,
     private readonly operations: RecordedOperation[],
+    private readonly scenario: OfflineScenario,
   ) {}
 
   eq(column: string, value: unknown) {
@@ -293,6 +340,7 @@ class OfflineBuilder implements PromiseLike<QueryResponse> {
   }
 
   abortSignal(signal: AbortSignal) {
+    this.signal = signal;
     this.operations.push(['abortSignal', signal.aborted]);
     return this;
   }
@@ -301,6 +349,22 @@ class OfflineBuilder implements PromiseLike<QueryResponse> {
     onfulfilled?: ((value: QueryResponse) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): PromiseLike<TResult1 | TResult2> {
+    if (this.scenario === 'HANG') {
+      const promise = new Promise<QueryResponse>((_resolve, reject) => {
+        const abort = () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+        this.operations.push(['pending', true]);
+        if (this.signal?.aborted) {
+          this.operations.push(['abortObserved', true]);
+          abort();
+          return;
+        }
+        this.signal?.addEventListener('abort', () => {
+          this.operations.push(['abortObserved', true]);
+          abort();
+        }, { once: true });
+      });
+      return promise.then(onfulfilled, onrejected);
+    }
     const promise = this.response instanceof Error ? Promise.reject(this.response) : Promise.resolve(this.response);
     return promise.then(onfulfilled, onrejected);
   }
@@ -312,6 +376,7 @@ export function createOfflineSupabaseClient(scenario: OfflineScenario = 'SUCCESS
     if (scenario === 'RLS_ERROR') return { data: null, error: { code: '42501', message: 'permission denied' } };
     if (scenario === 'NETWORK_ERROR') return new Error('network unavailable');
     if (scenario === 'TIMEOUT') return Object.assign(new Error('aborted'), { name: 'AbortError' });
+    if (scenario === 'HANG') return { data: [], error: null };
     if (scenario === 'MALFORMED_RESPONSE') return { data: { malformed: true }, error: null };
     if (scenario === 'PARTIAL_QUARANTINE') return { data: [testRow('harness-1'), testRow('harness-2', { unexpected: true })], error: null };
     if (scenario === 'ENGINE_UNCERTIFIABLE') return { data: [testRow('harness-1')], error: null };
@@ -325,7 +390,7 @@ export function createOfflineSupabaseClient(scenario: OfflineScenario = 'SUCCESS
       return {
         select(columns: string) {
           operations.push(['select', columns]);
-          return new OfflineBuilder(responseFor(), operations);
+          return new OfflineBuilder(responseFor(), operations, scenario);
         },
       };
     },

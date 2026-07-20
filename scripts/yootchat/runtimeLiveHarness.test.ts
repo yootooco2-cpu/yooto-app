@@ -3,10 +3,11 @@ import { readFileSync } from 'node:fs';
 import {
   createOfflineSupabaseClient,
   expectedHarnessSelect,
+  futureLiveHarnessRequest,
   runYootChatRuntimeHarness,
   YOOTCHAT_RUNTIME_HARNESS_STAGES,
 } from './runtimeLiveHarness';
-import { prepareRuntimeManualConfig } from './runtime-live.manual';
+import { createRuntimeManualRequest, prepareRuntimeManualConfig } from './runtime-live.manual';
 
 const cleanEnv = {
   YOOTCHAT_RUNTIME_MODE: undefined,
@@ -19,6 +20,11 @@ const cleanEnv = {
 const fakeSupabaseUrl = `https://${'project-ref'}.supabase.co`;
 const fakePublishableKey = ['sb', 'publishable', 'test'].join('_');
 const forbiddenSecretKey = ['sb', 'secret', 'forbidden'].join('_');
+const fakeAnonJwt = [
+  Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url'),
+  Buffer.from(JSON.stringify({ role: 'anon', ref: 'local-test' })).toString('base64url'),
+  'signature',
+].join('.');
 
 const publicLiveEnv = {
   YOOTCHAT_RUNTIME_MODE: 'LIVE',
@@ -80,6 +86,16 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     })).toEqual({ ok: false, reason: 'KEY_FORBIDDEN' });
   });
 
+  test('requires a publishable key for future live mode and refuses legacy anon', () => {
+    expect(prepareRuntimeManualConfig({
+      ...cleanEnv,
+      YOOTCHAT_RUNTIME_MODE: 'LIVE',
+      YOOTCHAT_LIVE_CONFIRM: 'YES',
+      EXPO_PUBLIC_SUPABASE_URL: fakeSupabaseUrl,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: fakeAnonJwt,
+    })).toEqual({ ok: false, reason: 'KEY_MISSING' });
+  });
+
   test('uses a fake client for exactly one read', async () => {
     const client = createOfflineSupabaseClient('SUCCESS');
     const result = await runYootChatRuntimeHarness({ client });
@@ -103,6 +119,13 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     expect(client.operations).toContainEqual(['limit', 5]);
   });
 
+  test('uses the future live request without synthetic city or business filters', () => {
+    expect(createRuntimeManualRequest('LIVE')).toEqual(futureLiveHarnessRequest);
+    expect(createRuntimeManualRequest('LIVE')).not.toHaveProperty('city');
+    expect(createRuntimeManualRequest('LIVE')).not.toHaveProperty('location');
+    expect(createRuntimeManualRequest('LIVE')).not.toHaveProperty('filters');
+  });
+
   test('does not retry after a network error', async () => {
     const client = createOfflineSupabaseClient('NETWORK_ERROR');
     const result = await runYootChatRuntimeHarness({ client });
@@ -115,6 +138,47 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     const result = await runYootChatRuntimeHarness({ client: createOfflineSupabaseClient('SUCCESS') });
 
     expect(result.stages).toEqual(expectedSuccessStages);
+  });
+
+  test('streams stages once and keeps the final list in the same order', async () => {
+    const streamed: string[] = [];
+    const result = await runYootChatRuntimeHarness({
+      client: createOfflineSupabaseClient('SUCCESS'),
+      onStage: (stage) => streamed.push(stage),
+    });
+
+    expect(streamed).toEqual(result.stages);
+    expect(streamed).toEqual(expectedSuccessStages);
+  });
+
+  test('makes pre-wait stages observable before a delayed client settles', async () => {
+    const streamed: string[] = [];
+    const promise = runYootChatRuntimeHarness({
+      client: createOfflineSupabaseClient('HANG'),
+      harnessTimeoutMs: 25,
+      onStage: (stage) => streamed.push(stage),
+    });
+
+    expect(streamed).toEqual([
+      'HARNESS_PRECHECK_START',
+      'HARNESS_PRECHECK_OK',
+      'HARNESS_CLIENT_READY',
+      'HARNESS_RUNTIME_READY',
+      'HARNESS_EXECUTE_START',
+      'HARNESS_READ_STARTED',
+    ]);
+
+    const result = await promise;
+    expect(result.aggregate.terminalStage).toBe('HARNESS_TIMEOUT');
+  });
+
+  test('aborts the pending read when the harness timeout fires', async () => {
+    const client = createOfflineSupabaseClient('HANG');
+    const result = await runYootChatRuntimeHarness({ client, harnessTimeoutMs: 25 });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(result.aggregate.readErrorCode).toBe('HARNESS_TIMEOUT');
+    expect(client.operations).toContainEqual(['abortObserved', true]);
   });
 
   test('returns a bounded success aggregate offline', async () => {
@@ -240,18 +304,94 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     expect(`${child.stdout}\n${child.stderr}`).not.toContain('--forceExit');
   });
 
+  test('watchdog lets a normal child finish with a controlled exit code', () => {
+    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        YOOTCHAT_WATCHDOG_TEST_CHILD: 'EXIT_0',
+        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
+      },
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"watchdog":"COMPLETED"');
+    expect(child.stdout).toContain('HARNESS_COMPLETED');
+  });
+
+  test('watchdog terminates a blocked child and returns 124 with the last stage', () => {
+    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        YOOTCHAT_WATCHDOG_TEST_CHILD: 'HANG',
+        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '50',
+      },
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+
+    expect(child.status).toBe(124);
+    expect(child.stdout).toContain('"watchdog":"TIMEOUT"');
+    expect(child.stdout).toContain('"childTerminated":true');
+    expect(child.stdout).toContain('"lastStage":"HARNESS_EXECUTE_START"');
+  });
+
+  test('watchdog filters sensitive-looking child output', () => {
+    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        YOOTCHAT_WATCHDOG_TEST_CHILD: 'LEAK_EXIT',
+        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
+      },
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).not.toContain('sb_publishable');
+    expect(child.stdout).toContain('HARNESS_COMPLETED');
+  });
+
+  test('dry-run completes through the watchdog without Supabase configuration', () => {
+    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        YOOTCHAT_RUNTIME_MODE: 'DRY_RUN',
+        YOOTCHAT_LIVE_CONFIRM: 'NO',
+        EXPO_PUBLIC_SUPABASE_URL: '',
+        EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: '',
+        EXPO_PUBLIC_SUPABASE_ANON_KEY: '',
+        YOOTCHAT_MANUAL_JEST_ENTRY: '1',
+        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '10000',
+      },
+      encoding: 'utf8',
+      timeout: 15_000,
+    });
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('HARNESS_COMPLETED');
+    expect(child.stdout).not.toContain('Trouve-moi des commerces locaux');
+  });
+
   test('does not use direct fetch in the harness files', () => {
     const harness = readFileSync('scripts/yootchat/runtimeLiveHarness.ts', 'utf8');
     const manual = readFileSync('scripts/yootchat/runtime-live.manual.ts', 'utf8');
+    const watchdog = readFileSync('scripts/yootchat/runtime-live-watchdog.mjs', 'utf8');
 
-    expect(`${harness}\n${manual}`).not.toMatch(/\bfetch\s*\(/);
+    expect(`${harness}\n${manual}\n${watchdog}`).not.toMatch(/\bfetch\s*\(/);
   });
 
   test('does not define writes or RPC in the harness files', () => {
     const harness = readFileSync('scripts/yootchat/runtimeLiveHarness.ts', 'utf8');
     const manual = readFileSync('scripts/yootchat/runtime-live.manual.ts', 'utf8');
+    const watchdog = readFileSync('scripts/yootchat/runtime-live-watchdog.mjs', 'utf8');
 
-    expect(`${harness}\n${manual}`).not.toMatch(/\.(insert|update|upsert|delete|rpc)\s*\(/);
+    expect(`${harness}\n${manual}\n${watchdog}`).not.toMatch(/\.(insert|update|upsert|delete|rpc)\s*\(/);
   });
 
   test('manual entry is not discovered by the normal Jest suite pattern', () => {

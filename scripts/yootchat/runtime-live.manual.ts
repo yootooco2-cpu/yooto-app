@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { resolveYootChatPublicSupabaseKey, type ReadOnlySupabaseClient } from '../../src/features/yootchat';
 import {
   createOfflineSupabaseClient,
+  futureLiveHarnessRequest,
   runYootChatRuntimeHarness,
   type YootChatRuntimeHarnessResult,
 } from './runtimeLiveHarness';
@@ -44,6 +45,10 @@ const isValidSupabaseUrl = (value: string) => {
   }
 };
 
+export function createRuntimeManualRequest(mode: RuntimeManualMode) {
+  return mode === 'LIVE' ? futureLiveHarnessRequest : undefined;
+}
+
 export function prepareRuntimeManualConfig(env: NodeJS.ProcessEnv): RuntimeManualConfigResult {
   const mode = cleanEnvValue(env.YOOTCHAT_RUNTIME_MODE);
   if (!mode) return { ok: false, reason: 'MODE_MISSING' };
@@ -56,13 +61,10 @@ export function prepareRuntimeManualConfig(env: NodeJS.ProcessEnv): RuntimeManua
   if (!url) return { ok: false, reason: 'URL_MISSING' };
   if (!isValidSupabaseUrl(url)) return { ok: false, reason: 'URL_INVALID' };
 
-  const resolved = resolveYootChatPublicSupabaseKey({
-    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-    EXPO_PUBLIC_SUPABASE_ANON_KEY: env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-  });
-  if (!resolved.ok && resolved.reason === 'MISSING') return { ok: false, reason: 'KEY_MISSING' };
-  if (!resolved.ok && resolved.reason === 'FORBIDDEN') return { ok: false, reason: 'KEY_FORBIDDEN' };
-  if (!resolved.ok) return { ok: false, reason: 'KEY_UNKNOWN' };
+  const publishable = cleanEnvValue(env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
+  if (!publishable) return { ok: false, reason: 'KEY_MISSING' };
+  if (publishable.startsWith('sb_secret_') || /service_role/i.test(publishable)) return { ok: false, reason: 'KEY_FORBIDDEN' };
+  if (!publishable.startsWith('sb_publishable_')) return { ok: false, reason: 'KEY_UNKNOWN' };
   return { ok: true, mode, clientKind: 'SUPABASE' };
 }
 
@@ -76,20 +78,19 @@ export async function runRuntimeManualHarness(
     return config;
   }
 
-  let client: ReadOnlySupabaseClient;
+  let createHarnessClient: () => ReadOnlySupabaseClient;
   if (config.mode === 'DRY_RUN') {
-    client = createOfflineSupabaseClient('SUCCESS');
+    createHarnessClient = () => createOfflineSupabaseClient('SUCCESS');
   } else {
     const url = cleanEnvValue(env.EXPO_PUBLIC_SUPABASE_URL);
     const resolved = resolveYootChatPublicSupabaseKey({
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-      EXPO_PUBLIC_SUPABASE_ANON_KEY: env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     });
     if (!resolved.ok) {
       writeLine(JSON.stringify({ terminalStage: 'HARNESS_BLOCKED', reason: 'KEY_UNKNOWN' }));
       return { ok: false, reason: 'KEY_UNKNOWN' };
     }
-    client = createSupabaseReadOnlyClient(url, resolved.key, {
+    createHarnessClient = () => createSupabaseReadOnlyClient(url, resolved.key, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
@@ -105,10 +106,11 @@ export async function runRuntimeManualHarness(
   }
 
   const result = await runYootChatRuntimeHarness({
-    client,
+    createClient: createHarnessClient,
+    request: createRuntimeManualRequest(config.mode),
     harnessTimeoutMs: 3_000,
+    onStage: (stage) => writeLine(JSON.stringify({ stage })),
   });
-  for (const stage of result.stages) writeLine(JSON.stringify({ stage }));
   writeLine(JSON.stringify({ aggregate: result.aggregate }));
   return result;
 }
@@ -116,9 +118,7 @@ export async function runRuntimeManualHarness(
 if (process.env.YOOTCHAT_MANUAL_JEST_ENTRY === '1') {
   describe('YootChat runtime live manual harness entry', () => {
     test('executes the selected guarded mode', async () => {
-      const lines: string[] = [];
-      const result = await runRuntimeManualHarness(process.env, (line) => lines.push(line));
-      expect(lines.length).toBeGreaterThan(0);
+      const result = await runRuntimeManualHarness(process.env);
       if ('stages' in result) expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
       else expect(result.ok).toBe(false);
     });
