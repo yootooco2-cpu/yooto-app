@@ -287,6 +287,7 @@ const childArgsFor = () => {
       INVALID_AGGREGATE_ACCEPTED_GT_ROW: "rowCount:1,acceptedCount:2",
       INVALID_AGGREGATE_QUARANTINE_SUM: "quarantinedCount:2,quarantineReasonCounts:{UNKNOWN_PROPERTY:1}",
       INVALID_AGGREGATE_RECOMMENDATION_COUNT: "recommendationCount:4",
+      INVALID_AGGREGATE_READOK_ERROR: "readOk:true,readErrorCode:'SUPABASE_UNAVAILABLE'",
     };
     const patch = patches[process.env.YOOTCHAT_WATCHDOG_TEST_CHILD];
     return [process.execPath, ['-e', `const aggregate={requestCount:1,readOk:true,readErrorCode:null,rowCount:2,acceptedCount:2,quarantinedCount:0,quarantineReasonCounts:{},engineOk:true,topic:'DISCOVER_LOCAL',messageTemplate:'RESULTS_FOUND',recommendationCount:2,limitationCodes:[],interfaceActionCount:2,durationBucketMs:'0-50',terminalStage:'HARNESS_COMPLETED'}; Object.assign(aggregate,{${patch}}); console.log(JSON.stringify({aggregate}));`]];
@@ -308,6 +309,9 @@ const childArgsFor = () => {
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'REMAINDER_INVALID_EXIT') {
     return [process.execPath, ['-e', "process.stdout.write(JSON.stringify({stage:'HARNESS_COMPLETED',extra:'SAFE_BUT_FORBIDDEN'}));"]];
   }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'STDERR_REMAINDER_VALID_EXIT') {
+    return [process.execPath, ['-e', "process.stderr.write(JSON.stringify({stage:'HARNESS_COMPLETED'}));"]];
+  }
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'FRAGMENTED_STDOUT_EXIT') {
     return [process.execPath, ['-e', "const line=JSON.stringify({transport:{logicalCallCount:1,physicalCallCount:1,retryBlocked:false,firstOutcome:'HTTP_RESPONSE',firstHttpStatus:200,firstHttpStatusClass:'HTTP_2XX'}}); process.stdout.write(line.slice(0,20)); process.stdout.write(line.slice(20));"]];
   }
@@ -323,8 +327,20 @@ const childArgsFor = () => {
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'INVALID_JSON_STAGE_EXIT') {
     return [process.execPath, ['-e', "console.log('HARNESS_COMPLETED but not json');"]];
   }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'TRUNCATED_JSON_EXIT') {
+    return [process.execPath, ['-e', "process.stdout.write('{\"stage\":\"HARNESS_COMPLETED\"');"]];
+  }
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'ARRAY_JSON_EXIT') {
     return [process.execPath, ['-e', "console.log(JSON.stringify([{stage:'HARNESS_COMPLETED'}]));"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'NOISE_BEFORE_JSON_EXIT') {
+    return [process.execPath, ['-e', "console.log('noise before json'); console.log(JSON.stringify({stage:'HARNESS_COMPLETED'}));"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'NOISE_AFTER_JSON_EXIT') {
+    return [process.execPath, ['-e', "console.log(JSON.stringify({stage:'HARNESS_COMPLETED'})); console.log('noise after json');"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'CONCURRENT_JSON_LINE_EXIT') {
+    return [process.execPath, ['-e', "process.stdout.write(JSON.stringify({stage:'HARNESS_COMPLETED'}) + JSON.stringify({transport:{logicalCallCount:1,physicalCallCount:1,retryBlocked:false,firstOutcome:'HTTP_RESPONSE',firstHttpStatus:200,firstHttpStatusClass:'HTTP_2XX'}}));"]];
   }
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'HANG') {
     return [process.execPath, ['-e', "console.log(JSON.stringify({stage:'HARNESS_EXECUTE_START'})); setInterval(()=>{}, 1000);"]];
