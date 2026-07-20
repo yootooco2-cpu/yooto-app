@@ -24,11 +24,13 @@ interface SupabaseQueryError {
   readonly code?: string;
   readonly message?: string;
   readonly name?: string;
+  readonly status?: number;
 }
 
 interface SupabaseQueryResponse {
   readonly data: unknown;
   readonly error: SupabaseQueryError | null;
+  readonly status?: number;
 }
 
 interface ReadOnlyPostgrestBuilder extends PromiseLike<SupabaseQueryResponse> {
@@ -257,10 +259,32 @@ function toCandidate(record: SourceMerchantRecord, origin?: YootChatReadFilters[
 const isQuarantine = (value: MerchantCandidate | SourceMerchantQuarantine): value is SourceMerchantQuarantine =>
   'reason' in value;
 
-const classifyQueryError = (error: SupabaseQueryError): YootChatSupabaseErrorCode => {
-  if (error.name === 'AbortError' || error.code === 'ABORT_ERR') return 'SUPABASE_TIMEOUT';
-  if (error.code === '42501' || /rls|permission denied/i.test(error.message ?? '')) return 'SUPABASE_RLS_DENIED';
-  return 'SUPABASE_NETWORK_ERROR';
+const schemaErrorCodes = new Set(['42703', '42P01', 'PGRST200', 'PGRST204']);
+
+const classifyQueryError = (
+  error: SupabaseQueryError | TypeError,
+  responseStatus?: number,
+  signal?: AbortSignal,
+): YootChatSupabaseErrorCode => {
+  const code = 'code' in error ? error.code : undefined;
+  const status = responseStatus ?? ('status' in error ? error.status : undefined);
+
+  if (signal?.aborted || error.name === 'AbortError' || code === 'ABORT_ERR') return 'SUPABASE_TIMEOUT';
+
+  if (status === 401 || code === 'PGRST301') return 'SUPABASE_AUTH_REJECTED';
+  if (status === 403 || code === '42501') return 'SUPABASE_RLS_DENIED';
+  if (code && schemaErrorCodes.has(code)) return 'SCHEMA_INCOMPATIBLE';
+  if (error instanceof TypeError) return 'SUPABASE_NETWORK_ERROR';
+
+  return 'SUPABASE_UNAVAILABLE';
+};
+
+const eventCodeForError = (errorCode: YootChatSupabaseErrorCode): YootChatReadObservation['code'] => {
+  if (errorCode === 'SUPABASE_TIMEOUT') return 'YOOTCHAT_SUPABASE_READ_TIMEOUT';
+  if (errorCode === 'SUPABASE_AUTH_REJECTED') return 'YOOTCHAT_SUPABASE_READ_AUTH_ERROR';
+  if (errorCode === 'SUPABASE_RLS_DENIED') return 'YOOTCHAT_SUPABASE_READ_RLS_ERROR';
+  if (errorCode === 'SCHEMA_INCOMPATIBLE') return 'YOOTCHAT_SUPABASE_SCHEMA_ERROR';
+  return 'YOOTCHAT_SUPABASE_READ_NETWORK_ERROR';
 };
 
 function applyFilters(builder: ReadOnlyPostgrestBuilder, filters: YootChatReadFilters | undefined, limit: number) {
@@ -310,19 +334,23 @@ export function createYootChatSupabaseReadAdapter(options: YootChatSupabaseReadA
       emit(options.observer, { code: 'YOOTCHAT_SUPABASE_READ_START' });
 
       let response: SupabaseQueryResponse;
+      let querySignal: AbortSignal | undefined;
       try {
         let query = options.client
           .from(YOOTCHAT_SUPABASE_TABLE)
           .select(YOOTCHAT_SUPABASE_MERCHANT_SELECT);
         query = applyFilters(query, request?.filters, limit);
-        if (query.abortSignal) query = query.abortSignal(createAbortSignal(timeoutMs));
+        if (query.abortSignal) {
+          querySignal = createAbortSignal(timeoutMs);
+          query = query.abortSignal(querySignal);
+        }
         response = await query;
       } catch (error) {
-        const errorCode = classifyQueryError(error as SupabaseQueryError);
+        const errorCode = classifyQueryError(error as SupabaseQueryError | TypeError, undefined, querySignal);
         const bucket = durationBucket(now() - started);
         const failure = fallbackFailure(errorCode, [], 0, 0, bucket);
         emit(options.observer, {
-          code: errorCode === 'SUPABASE_TIMEOUT' ? 'YOOTCHAT_SUPABASE_READ_TIMEOUT' : 'YOOTCHAT_SUPABASE_READ_NETWORK_ERROR',
+          code: eventCodeForError(errorCode),
           errorCode,
           durationBucketMs: bucket,
         });
@@ -332,10 +360,10 @@ export function createYootChatSupabaseReadAdapter(options: YootChatSupabaseReadA
 
       const bucket = durationBucket(now() - started);
       if (response.error) {
-        const errorCode = classifyQueryError(response.error);
+        const errorCode = classifyQueryError(response.error, response.status, querySignal);
         const failure = fallbackFailure(errorCode, [], 0, 0, bucket);
         emit(options.observer, {
-          code: errorCode === 'SUPABASE_RLS_DENIED' ? 'YOOTCHAT_SUPABASE_READ_RLS_ERROR' : 'YOOTCHAT_SUPABASE_READ_NETWORK_ERROR',
+          code: eventCodeForError(errorCode),
           errorCode,
           durationBucketMs: bucket,
         });

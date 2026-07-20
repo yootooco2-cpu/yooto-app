@@ -1,10 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { YOOTCHAT_SUPABASE_MERCHANT_SELECT, type ReadOnlySupabaseClient } from '../../src/features/yootchat';
 import {
+  createOfflineSupabaseClient,
   futureLiveHarnessRequest,
   runYootChatRuntimeHarness,
   type YootChatRuntimeHarnessResult,
 } from './runtimeLiveHarness';
+import { createSinglePhysicalFetchGuard, type SinglePhysicalFetchGuard } from './runtime-live.manual';
 
 type DiagnosticScenario =
   | 'HTTP_200_MINIMAL'
@@ -12,6 +14,7 @@ type DiagnosticScenario =
   | 'HTTP_401_JWT'
   | 'HTTP_403_42501'
   | 'HTTP_400_SCHEMA'
+  | 'HTTP_UNKNOWN'
   | 'NETWORK_TYPE_ERROR'
   | 'ABORT_TIMEOUT';
 
@@ -111,6 +114,7 @@ function createDiagnosticFetch(scenario: DiagnosticScenario) {
     if (scenario === 'HTTP_401_KEY_REFUSED') return jsonResponse(401, { message: 'invalid api key' });
     if (scenario === 'HTTP_401_JWT') return jsonResponse(401, { code: 'PGRST301', message: 'JWT invalid' });
     if (scenario === 'HTTP_403_42501') return jsonResponse(403, { code: '42501', message: 'permission denied' });
+    if (scenario === 'HTTP_UNKNOWN') return jsonResponse(418, { code: 'PGRST999', message: 'unknown supabase failure' });
     return jsonResponse(400, { code: '42703', message: 'column not found' });
   };
 
@@ -144,24 +148,47 @@ const createSdkClient = (fakeFetch: typeof fetch) => createClient(fakeSupabaseUr
 async function runScenario(scenario: DiagnosticScenario): Promise<{
   readonly result: YootChatRuntimeHarnessResult;
   readonly requests: readonly RecordedRequest[];
+  readonly logicalCallCount: number;
+  readonly physicalCallCount: number;
 }> {
   const diagnostic = createDiagnosticFetch(scenario);
+  const guard = createSinglePhysicalFetchGuard(diagnostic.fakeFetch);
   const result = await runYootChatRuntimeHarness({
-    client: createSdkClient(diagnostic.fakeFetch),
+    client: createSdkClient(guard.fetch),
     request: futureLiveHarnessRequest,
-    adapterTimeoutMs: scenario === 'ABORT_TIMEOUT' ? 20 : 1_500,
-    harnessTimeoutMs: 500,
+    adapterTimeoutMs: scenario === 'ABORT_TIMEOUT' ? 20 : 2_000,
+    harnessTimeoutMs: scenario === 'NETWORK_TYPE_ERROR' ? 2_500 : 500,
   });
-  return { result, requests: diagnostic.requests };
+  return {
+    result,
+    requests: diagnostic.requests,
+    logicalCallCount: guard.getLogicalCallCount(),
+    physicalCallCount: guard.getPhysicalCallCount(),
+  };
 }
 
-describe('YootChat Supabase transport offline diagnostic Lot 5B-F', () => {
+async function runDirectScenario(scenario: 'NETWORK_TYPE_ERROR'): Promise<{
+  readonly result: YootChatRuntimeHarnessResult;
+  readonly logicalCallCount: number;
+  readonly physicalCallCount: number;
+}> {
+  const result = await runYootChatRuntimeHarness({
+    client: createOfflineSupabaseClient(scenario === 'NETWORK_TYPE_ERROR' ? 'NETWORK_ERROR' : 'SUCCESS'),
+    request: futureLiveHarnessRequest,
+    harnessTimeoutMs: 500,
+  });
+  return { result, logicalCallCount: 1, physicalCallCount: 0 };
+}
+
+describe('YootChat Supabase transport offline diagnostic Lot 5B-G', () => {
   test('constructs exactly one bounded merchants request through supabase-js', async () => {
-    const { result, requests } = await runScenario('HTTP_200_MINIMAL');
+    const { result, requests, logicalCallCount, physicalCallCount } = await runScenario('HTTP_200_MINIMAL');
     const request = requests[0];
 
     expect(requests).toHaveLength(1);
     expect(result.aggregate.requestCount).toBe(1);
+    expect(logicalCallCount).toBe(1);
+    expect(physicalCallCount).toBe(1);
     expect(request.method).toBe('GET');
     expect(request.pathname).toBe('/rest/v1/merchants');
     expect(request.headers.has('apikey')).toBe(true);
@@ -180,42 +207,60 @@ describe('YootChat Supabase transport offline diagnostic Lot 5B-F', () => {
   });
 
   test.each([
-    ['HTTP_401_KEY_REFUSED', 401, 'SUPABASE_NETWORK_ERROR', 'SERVICE_UNAVAILABLE'],
-    ['HTTP_401_JWT', 401, 'SUPABASE_NETWORK_ERROR', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_401_KEY_REFUSED', 401, 'SUPABASE_AUTH_REJECTED', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_401_JWT', 401, 'SUPABASE_AUTH_REJECTED', 'SERVICE_UNAVAILABLE'],
     ['HTTP_403_42501', 403, 'SUPABASE_RLS_DENIED', 'SERVICE_UNAVAILABLE'],
-    ['HTTP_400_SCHEMA', 400, 'SUPABASE_NETWORK_ERROR', 'SERVICE_UNAVAILABLE'],
-    ['ABORT_TIMEOUT', null, 'SUPABASE_NETWORK_ERROR', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_400_SCHEMA', 400, 'SCHEMA_INCOMPATIBLE', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_UNKNOWN', 418, 'SUPABASE_UNAVAILABLE', 'SERVICE_UNAVAILABLE'],
+    ['ABORT_TIMEOUT', null, 'SUPABASE_TIMEOUT', 'SERVICE_UNAVAILABLE'],
   ] as const)('normalizes synthetic %s without retry', async (scenario, _status, adapterCategory, fallback) => {
-    const { result, requests } = await runScenario(scenario);
+    const { result, requests, logicalCallCount, physicalCallCount } = await runScenario(scenario);
 
     expect(requests).toHaveLength(1);
     expect(result.aggregate.requestCount).toBe(1);
+    expect(logicalCallCount).toBe(1);
+    expect(physicalCallCount).toBe(1);
     expect(result.aggregate.readOk).toBe(false);
     expect(result.aggregate.readErrorCode).toBe(adapterCategory);
     expect(result.aggregate.messageTemplate).toBe(fallback);
     expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
   });
 
-  test('network TypeError enters the SDK retry window and is cut by the harness timeout', async () => {
-    const { result, requests } = await runScenario('NETWORK_TYPE_ERROR');
+  test('normalizes a direct TypeError transport failure as network without physical transport', async () => {
+    const { result, logicalCallCount, physicalCallCount } = await runDirectScenario('NETWORK_TYPE_ERROR');
+
+    expect(result.aggregate.requestCount).toBe(1);
+    expect(logicalCallCount).toBe(1);
+    expect(physicalCallCount).toBe(0);
+    expect(result.aggregate.readOk).toBe(false);
+    expect(result.aggregate.readErrorCode).toBe('SUPABASE_NETWORK_ERROR');
+    expect(result.aggregate.messageTemplate).toBe('SERVICE_UNAVAILABLE');
+    expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
+  });
+
+  test('single-physical-call guard blocks an internal SDK retry locally', async () => {
+    const { result, requests, logicalCallCount, physicalCallCount } = await runScenario('NETWORK_TYPE_ERROR');
 
     expect(requests).toHaveLength(1);
     expect(result.aggregate.requestCount).toBe(1);
+    expect(logicalCallCount).toBe(2);
+    expect(physicalCallCount).toBe(1);
     expect(result.aggregate.readOk).toBe(false);
-    expect(result.aggregate.readErrorCode).toBe('HARNESS_TIMEOUT');
-    expect(result.aggregate.terminalStage).toBe('HARNESS_TIMEOUT');
+    expect(result.aggregate.readErrorCode).toBe('SUPABASE_UNAVAILABLE');
+    expect(result.aggregate.messageTemplate).toBe('SERVICE_UNAVAILABLE');
+    expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
   });
 
-  test('proves the current classifier gap for non-42501 PostgREST errors and SDK aborts', async () => {
-    const keyRefused = await runScenario('HTTP_401_KEY_REFUSED');
-    const jwtRejected = await runScenario('HTTP_401_JWT');
-    const schemaRejected = await runScenario('HTTP_400_SCHEMA');
-    const sdkAbort = await runScenario('ABORT_TIMEOUT');
+  test('keeps guarded retry counters bounded without leaking request details', async () => {
+    const guard: SinglePhysicalFetchGuard = createSinglePhysicalFetchGuard(async () => {
+      throw new TypeError('first transport failure');
+    });
 
-    expect(keyRefused.result.aggregate.readErrorCode).toBe('SUPABASE_NETWORK_ERROR');
-    expect(jwtRejected.result.aggregate.readErrorCode).toBe('SUPABASE_NETWORK_ERROR');
-    expect(schemaRejected.result.aggregate.readErrorCode).toBe('SUPABASE_NETWORK_ERROR');
-    expect(sdkAbort.result.aggregate.readErrorCode).toBe('SUPABASE_NETWORK_ERROR');
-    expect(keyRefused.result.aggregate.readErrorCode).toBe(schemaRejected.result.aggregate.readErrorCode);
+    await expect(guard.fetch(fakeSupabaseUrl)).rejects.toBeInstanceOf(TypeError);
+    const blocked = await guard.fetch(fakeSupabaseUrl);
+
+    expect(blocked.status).toBe(599);
+    expect(guard.getLogicalCallCount()).toBe(2);
+    expect(guard.getPhysicalCallCount()).toBe(1);
   });
 });

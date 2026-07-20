@@ -417,12 +417,14 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     expect(child.stdout).not.toContain('Trouve-moi des commerces locaux');
   });
 
-  test('does not use direct fetch in the harness files', () => {
+  test('does not use direct unguarded fetch in the harness files', () => {
     const harness = readFileSync('scripts/yootchat/runtimeLiveHarness.ts', 'utf8');
     const manual = readFileSync('scripts/yootchat/runtime-live.manual.ts', 'utf8');
     const watchdog = readFileSync('scripts/yootchat/runtime-live-watchdog.mjs', 'utf8');
 
-    expect(`${harness}\n${manual}\n${watchdog}`).not.toMatch(/\bfetch\s*\(/);
+    expect(`${harness}\n${watchdog}`).not.toMatch(/\bfetch\s*\(/);
+    expect(manual).toContain('createSinglePhysicalFetchGuard');
+    expect(manual).toContain('fetch: transportGuard.fetch');
   });
 
   test('does not define writes or RPC in the harness files', () => {

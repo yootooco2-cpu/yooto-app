@@ -36,6 +36,33 @@ const createSupabaseReadOnlyClient = createClient as unknown as (
   options: Record<string, unknown>,
 ) => ReadOnlySupabaseClient;
 
+export interface SinglePhysicalFetchGuard {
+  readonly fetch: typeof fetch;
+  readonly getLogicalCallCount: () => number;
+  readonly getPhysicalCallCount: () => number;
+}
+
+export function createSinglePhysicalFetchGuard(transport: typeof fetch = fetch): SinglePhysicalFetchGuard {
+  let logicalCallCount = 0;
+  let physicalCallCount = 0;
+
+  return {
+    async fetch(input, init) {
+      logicalCallCount += 1;
+      if (logicalCallCount > 1) {
+        return new Response(JSON.stringify({ code: 'YOOTCHAT_RETRY_BLOCKED' }), {
+          status: 599,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      physicalCallCount += 1;
+      return transport(input, init);
+    },
+    getLogicalCallCount: () => logicalCallCount,
+    getPhysicalCallCount: () => physicalCallCount,
+  };
+}
+
 const isValidSupabaseUrl = (value: string) => {
   try {
     const parsed = new URL(value);
@@ -92,6 +119,7 @@ export async function runRuntimeManualHarness(
       writeLine(JSON.stringify({ terminalStage: 'HARNESS_BLOCKED', reason: 'KEY_UNKNOWN' }));
       return { ok: false, reason: 'KEY_UNKNOWN' };
     }
+    const transportGuard = createSinglePhysicalFetchGuard();
     createHarnessClient = () => createSupabaseReadOnlyClient(url, resolved.key, {
       auth: {
         persistSession: false,
@@ -99,6 +127,7 @@ export async function runRuntimeManualHarness(
         detectSessionInUrl: false,
       },
       global: {
+        fetch: transportGuard.fetch,
         headers: {
           Accept: 'application/json',
           'Accept-Profile': 'public',

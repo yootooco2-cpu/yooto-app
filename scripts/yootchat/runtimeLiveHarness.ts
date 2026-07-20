@@ -228,6 +228,7 @@ export async function runYootChatRuntimeHarness(options: YootChatRuntimeHarnessO
       [
         'YOOTCHAT_SUPABASE_READ_SUCCESS',
         'YOOTCHAT_SUPABASE_READ_TIMEOUT',
+        'YOOTCHAT_SUPABASE_READ_AUTH_ERROR',
         'YOOTCHAT_SUPABASE_READ_RLS_ERROR',
         'YOOTCHAT_SUPABASE_READ_NETWORK_ERROR',
         'YOOTCHAT_SUPABASE_SCHEMA_ERROR',
@@ -406,7 +407,7 @@ export function createOfflineSupabaseClient(scenario: OfflineScenario = 'SUCCESS
   const operations: RecordedOperation[] = [];
   const responseFor = (): QueryResponse | Error => {
     if (scenario === 'RLS_ERROR') return { data: null, error: { code: '42501', message: 'permission denied' } };
-    if (scenario === 'NETWORK_ERROR') return new Error('network unavailable');
+    if (scenario === 'NETWORK_ERROR') return new TypeError('network unavailable');
     if (scenario === 'TIMEOUT') return Object.assign(new Error('aborted'), { name: 'AbortError' });
     if (scenario === 'HANG') return { data: [], error: null };
     if (scenario === 'MALFORMED_RESPONSE') return { data: { malformed: true }, error: null };

@@ -11,7 +11,11 @@ import {
 } from './index';
 
 type Operation = readonly [string, ...unknown[]];
-type QueryResponse = { readonly data: unknown; readonly error: null | { readonly code?: string; readonly message?: string; readonly name?: string } };
+type QueryResponse = {
+  readonly data: unknown;
+  readonly error: null | { readonly code?: string; readonly message?: string; readonly name?: string; readonly status?: number };
+  readonly status?: number;
+};
 
 class FakeBuilder implements PromiseLike<QueryResponse> {
   readonly operations: Operation[];
@@ -325,20 +329,44 @@ describe('YootChat Supabase read adapter Lot 4', () => {
     expect(result.ok ? null : result.fallback.message.template).toBe('SERVICE_UNAVAILABLE');
   });
 
-  test('returns a network fallback', async () => {
-    const { adapter } = adapterFor(new Error('network'));
+  test('returns a network fallback for TypeError transport failures', async () => {
+    const { adapter } = adapterFor(new TypeError('network'));
     const result = await adapter.read();
 
     expect(result.ok).toBe(false);
     expect(result.ok ? null : result.code).toBe('SUPABASE_NETWORK_ERROR');
   });
 
+  test('returns an auth fallback for rejected credentials', async () => {
+    const { adapter } = adapterFor({ data: null, error: { code: 'PGRST301' }, status: 401 });
+    const result = await adapter.read();
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.code).toBe('SUPABASE_AUTH_REJECTED');
+  });
+
   test('returns an RLS fallback', async () => {
-    const { adapter } = adapterFor({ data: null, error: { code: '42501', message: 'permission denied' } });
+    const { adapter } = adapterFor({ data: null, error: { code: '42501' }, status: 403 });
     const result = await adapter.read();
 
     expect(result.ok).toBe(false);
     expect(result.ok ? null : result.code).toBe('SUPABASE_RLS_DENIED');
+  });
+
+  test('returns a schema fallback for live-proven schema errors', async () => {
+    const { adapter } = adapterFor({ data: null, error: { code: '42703' }, status: 400 });
+    const result = await adapter.read();
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.code).toBe('SCHEMA_INCOMPATIBLE');
+  });
+
+  test('returns an unavailable fallback for unknown Supabase failures', async () => {
+    const { adapter } = adapterFor({ data: null, error: { code: 'PGRST999' }, status: 418 });
+    const result = await adapter.read();
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.code).toBe('SUPABASE_UNAVAILABLE');
   });
 
   test('returns a malformed response fallback', async () => {

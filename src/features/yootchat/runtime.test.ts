@@ -10,7 +10,11 @@ import {
 } from './index';
 
 type Operation = readonly [string, ...unknown[]];
-type QueryResponse = { readonly data: unknown; readonly error: null | { readonly code?: string; readonly message?: string; readonly name?: string } };
+type QueryResponse = {
+  readonly data: unknown;
+  readonly error: null | { readonly code?: string; readonly message?: string; readonly name?: string; readonly status?: number };
+  readonly status?: number;
+};
 
 class FakeBuilder implements PromiseLike<QueryResponse> {
   constructor(
@@ -202,11 +206,14 @@ describe('YootChat runtime Lot 5A', () => {
     expect(result.engine.response.message.template).toBe('NO_RESULT');
   });
 
-  test('maps timeout, RLS, network and malformed responses to typed fallbacks', async () => {
+  test('maps Supabase failures to typed deterministic fallbacks', async () => {
     const cases: readonly [QueryResponse | Error, string][] = [
       [Object.assign(new Error('aborted'), { name: 'AbortError' }), 'SUPABASE_TIMEOUT'],
-      [{ data: null, error: { code: '42501', message: 'permission denied' } }, 'SUPABASE_RLS_DENIED'],
-      [new Error('network'), 'SUPABASE_NETWORK_ERROR'],
+      [{ data: null, error: { code: 'PGRST301' }, status: 401 }, 'SUPABASE_AUTH_REJECTED'],
+      [{ data: null, error: { code: '42501' }, status: 403 }, 'SUPABASE_RLS_DENIED'],
+      [{ data: null, error: { code: '42703' }, status: 400 }, 'SCHEMA_INCOMPATIBLE'],
+      [new TypeError('network'), 'SUPABASE_NETWORK_ERROR'],
+      [{ data: null, error: { code: 'PGRST999' }, status: 418 }, 'SUPABASE_UNAVAILABLE'],
       [{ data: { id: 1 }, error: null }, 'MALFORMED_RESPONSE'],
     ];
 
