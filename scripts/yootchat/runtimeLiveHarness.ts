@@ -58,6 +58,7 @@ export interface YootChatRuntimeHarnessOptions {
   readonly now?: () => number;
   readonly createAbortSignal?: (timeoutMs: number) => AbortSignal;
   readonly onStage?: (stage: YootChatRuntimeHarnessStage) => void;
+  readonly skipPrecheckStages?: boolean;
 }
 
 export type OfflineScenario =
@@ -138,6 +139,31 @@ const pushStage = (
   onStage?.(stage);
 };
 
+const createTimedAbortSignal = (timeoutMs: number) => {
+  if (typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) {
+    return AbortSignal.timeout(timeoutMs);
+  }
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  timer.unref?.();
+  return controller.signal;
+};
+
+const composeAbortSignals = (signals: readonly AbortSignal[]) => {
+  if (signals.some((signal) => signal.aborted)) {
+    const controller = new AbortController();
+    controller.abort();
+    return controller.signal;
+  }
+  if (typeof AbortSignal !== 'undefined' && 'any' in AbortSignal) {
+    return AbortSignal.any([...signals]);
+  }
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  for (const signal of signals) signal.addEventListener('abort', abort, { once: true });
+  return controller.signal;
+};
+
 const withHarnessTimeout = async <T>(
   promise: Promise<T>,
   timeoutMs: number,
@@ -162,10 +188,16 @@ export async function runYootChatRuntimeHarness(options: YootChatRuntimeHarnessO
   let readSettled = false;
   const started = Date.now();
   const harnessAbortController = new AbortController();
-  const createAbortSignal = options.createAbortSignal ?? (() => harnessAbortController.signal);
+  const createAdapterAbortSignal = options.createAbortSignal ?? createTimedAbortSignal;
+  const createAbortSignal = (timeoutMs: number) => composeAbortSignals([
+    createAdapterAbortSignal(timeoutMs),
+    harnessAbortController.signal,
+  ]);
 
-  pushStage(stages, 'HARNESS_PRECHECK_START', options.onStage);
-  pushStage(stages, 'HARNESS_PRECHECK_OK', options.onStage);
+  if (!options.skipPrecheckStages) {
+    pushStage(stages, 'HARNESS_PRECHECK_START', options.onStage);
+    pushStage(stages, 'HARNESS_PRECHECK_OK', options.onStage);
+  }
 
   let client: ReadOnlySupabaseClient;
   try {

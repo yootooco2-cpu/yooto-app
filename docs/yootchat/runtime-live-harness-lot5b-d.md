@@ -11,6 +11,8 @@ Date: 2026-07-20
 - Branche locale du lot: `test/yootchat-runtime-live-harness`
 - Branche corrective D2: `fix/yootchat-runtime-live-harness-streaming`
 - Commit source D2: `a7afe2e5f6207b0b1ad653bb59723380a32936d6`
+- Branche corrective D3: `fix/yootchat-runtime-live-harness-timeouts`
+- Commit source D3: `7e255a2d6540fc16f5534391c177e6067efb99b8`
 - Verdict Lot 5A conserve: `YOOTCHAT_RUNTIME_ORCHESTRATION_READY`
 - Verdict Lot 5B conserve: `YOOTCHAT_RUNTIME_LIVE_BLOCKED`
 
@@ -134,8 +136,17 @@ Le point d'entree manuel refuse:
 - cle inconnue.
 
 Le mode `DRY_RUN` ne necessite aucune variable Supabase.
-Le mode `LIVE` D2 exige uniquement `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` avec prefixe public
+Le mode `LIVE` D3 exige uniquement `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` avec prefixe public
 publishable. La cle anon legacy n'est pas acceptee par ce runner live.
+
+Avant une future execution live, les controles requis restent:
+
+- `.env.local` ignore par Git;
+- URL presente et structurellement valide;
+- exactement une cle publishable;
+- prefixe `sb_publishable_`;
+- aucune cle anon utilisee par ce runner;
+- aucune cle privilegiee.
 
 La future demande live est bornee:
 
@@ -159,8 +170,16 @@ Le chemin auditable distingue:
 - non-fermeture du processus, controlee par une execution enfant hors ligne sans `--forceExit`.
 - watchdog exterieur, code de sortie `124` en cas de depassement de duree totale.
 
-Le timeout superieur du harnais declenche un `AbortController` partage avec l'adaptateur lorsque
-le signal n'est pas fourni par l'appelant. Le faux client bloque certifie l'observation de cet abort.
+D3 separe les signaux:
+
+- signal adaptateur cree avec la duree recue par l'adaptateur;
+- signal d'annulation harnais cree avec la duree superieure;
+- composition via `AbortSignal.any` lorsque disponible;
+- fallback deterministe de composition lorsque `AbortSignal.any` est absent.
+
+Si le timeout adaptateur expire avant le timeout harnais, le runtime se termine avec le fallback
+`SUPABASE_TIMEOUT` et le terminal harnais reste `HARNESS_COMPLETED`. Si le timeout harnais expire
+avant la fin du runtime, le terminal est `HARNESS_TIMEOUT`.
 
 ## Preuve de fin du processus
 
@@ -171,15 +190,17 @@ conserve la derniere etape recue avant arret.
 
 ## Resultats des tests
 
-Resultats executes apres D2:
+Resultats executes apres D3:
 
 - Installation verrouillee: `npm ci --ignore-scripts`, sans variables Supabase transmises a npm.
-- Tests correctifs du harnais: 35 reussis.
+- Tests correctifs du harnais: 38 reussis.
 - Commande DRY_RUN manuelle via watchdog: terminee avec code `0`.
 - Scenario watchdog bloque simule: termine avec code `124`.
+- Timeout adaptateur simule: `SUPABASE_TIMEOUT`, terminal `HARNESS_COMPLETED`.
+- Timeout harnais simule: `HARNESS_TIMEOUT`, terminal `HARNESS_TIMEOUT`.
 - Tests runtime Lot 5A: 18 reussis.
-- Tests YootChat cibles avec harnais: 215 reussis.
-- Suite complete: 954 reussis, 6 ignores.
+- Tests YootChat cibles avec harnais: 218 reussis.
+- Suite complete: 957 reussis, 6 ignores.
 - TypeScript cible harnais: reussi.
 - ESLint cible harnais: reussi.
 - `git diff --check`: reussi.
@@ -202,7 +223,7 @@ Commande executee pour certification locale:
 
 Commande preparee pour un lot ulterieur explicitement autorise:
 
-`YOOTCHAT_RUNTIME_MODE=LIVE YOOTCHAT_LIVE_CONFIRM=YES YOOTCHAT_MANUAL_JEST_ENTRY=1 YOOTCHAT_WATCHDOG_TIMEOUT_MS=10000 node scripts/yootchat/runtime-live-watchdog.mjs`
+`YOOTCHAT_RUNTIME_MODE=LIVE YOOTCHAT_LIVE_CONFIRM=YES YOOTCHAT_MANUAL_JEST_ENTRY=1 YOOTCHAT_WATCHDOG_TIMEOUT_MS=10000 node --env-file=.env.local scripts/yootchat/runtime-live-watchdog.mjs`
 
 Cette commande n'a pas ete executee dans ce lot.
 
@@ -225,4 +246,4 @@ etapes en temps reel et l'agregat borne comme seules preuves publiees.
 
 ## Verdict
 
-`YOOTCHAT_LIVE_HARNESS_V2_READY`
+`YOOTCHAT_LIVE_HARNESS_V3_READY`

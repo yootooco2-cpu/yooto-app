@@ -72,11 +72,13 @@ export async function runRuntimeManualHarness(
   env: NodeJS.ProcessEnv,
   writeLine: (line: string) => void = console.log,
 ): Promise<YootChatRuntimeHarnessResult | RuntimeManualConfigResult> {
+  writeLine(JSON.stringify({ stage: 'HARNESS_PRECHECK_START' }));
   const config = prepareRuntimeManualConfig(env);
   if (!config.ok) {
-    writeLine(JSON.stringify({ terminalStage: 'HARNESS_BLOCKED', reason: config.reason }));
+    writeLine(JSON.stringify({ stage: 'HARNESS_BLOCKED' }));
     return config;
   }
+  writeLine(JSON.stringify({ stage: 'HARNESS_PRECHECK_OK' }));
 
   let createHarnessClient: () => ReadOnlySupabaseClient;
   if (config.mode === 'DRY_RUN') {
@@ -110,6 +112,7 @@ export async function runRuntimeManualHarness(
     request: createRuntimeManualRequest(config.mode),
     harnessTimeoutMs: 3_000,
     onStage: (stage) => writeLine(JSON.stringify({ stage })),
+    skipPrecheckStages: true,
   });
   writeLine(JSON.stringify({ aggregate: result.aggregate }));
   return result;

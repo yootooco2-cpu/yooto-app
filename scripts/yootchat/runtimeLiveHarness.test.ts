@@ -7,7 +7,7 @@ import {
   runYootChatRuntimeHarness,
   YOOTCHAT_RUNTIME_HARNESS_STAGES,
 } from './runtimeLiveHarness';
-import { createRuntimeManualRequest, prepareRuntimeManualConfig } from './runtime-live.manual';
+import { createRuntimeManualRequest, prepareRuntimeManualConfig, runRuntimeManualHarness } from './runtime-live.manual';
 
 const cleanEnv = {
   YOOTCHAT_RUNTIME_MODE: undefined,
@@ -57,6 +57,18 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
 
   test('refuses a missing mode before client creation', () => {
     expect(prepareRuntimeManualConfig(cleanEnv)).toEqual({ ok: false, reason: 'MODE_MISSING' });
+  });
+
+  test('manual precheck starts before configuration and blocks without leaking values', async () => {
+    const lines: string[] = [];
+    const result = await runRuntimeManualHarness(cleanEnv, (line) => lines.push(line));
+
+    expect(result).toEqual({ ok: false, reason: 'MODE_MISSING' });
+    expect(lines).toEqual([
+      JSON.stringify({ stage: 'HARNESS_PRECHECK_START' }),
+      JSON.stringify({ stage: 'HARNESS_BLOCKED' }),
+    ]);
+    expect(JSON.stringify(lines)).not.toContain('MODE_MISSING');
   });
 
   test('refuses an unknown mode before client creation', () => {
@@ -178,6 +190,33 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(result.aggregate.readErrorCode).toBe('HARNESS_TIMEOUT');
+    expect(client.operations).toContainEqual(['abortObserved', true]);
+  });
+
+  test('adapter timeout shorter than harness timeout returns SUPABASE_TIMEOUT and completes', async () => {
+    const client = createOfflineSupabaseClient('HANG');
+    const result = await runYootChatRuntimeHarness({
+      client,
+      adapterTimeoutMs: 25,
+      harnessTimeoutMs: 500,
+    });
+
+    expect(result.aggregate.readErrorCode).toBe('SUPABASE_TIMEOUT');
+    expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
+    expect(client.operations).toContainEqual(['abortObserved', true]);
+  });
+
+  test('harness timeout shorter than adapter timeout returns HARNESS_TIMEOUT', async () => {
+    const client = createOfflineSupabaseClient('HANG');
+    const result = await runYootChatRuntimeHarness({
+      client,
+      adapterTimeoutMs: 500,
+      harnessTimeoutMs: 25,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(result.aggregate.readErrorCode).toBe('HARNESS_TIMEOUT');
+    expect(result.aggregate.terminalStage).toBe('HARNESS_TIMEOUT');
     expect(client.operations).toContainEqual(['abortObserved', true]);
   });
 
