@@ -46,6 +46,17 @@ const expectedSuccessStages = [
   'HARNESS_COMPLETED',
 ];
 
+const runWatchdogTestChild = (testChild: string) => spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
+  cwd: process.cwd(),
+  env: {
+    ...process.env,
+    YOOTCHAT_WATCHDOG_TEST_CHILD: testChild,
+    YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
+  },
+  encoding: 'utf8',
+  timeout: 5_000,
+});
+
 describe('YootChat runtime live harness Lot 5B-D', () => {
   test('accepts valid dry-run preconditions without Supabase variables', () => {
     expect(prepareRuntimeManualConfig({ ...cleanEnv, YOOTCHAT_RUNTIME_MODE: 'DRY_RUN' })).toEqual({
@@ -390,16 +401,7 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
   });
 
   test('watchdog lets a normal child finish with a controlled exit code', () => {
-    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        YOOTCHAT_WATCHDOG_TEST_CHILD: 'EXIT_0',
-        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
-      },
-      encoding: 'utf8',
-      timeout: 5_000,
-    });
+    const child = runWatchdogTestChild('EXIT_0');
 
     expect(child.status).toBe(0);
     expect(child.stdout).toContain('"watchdog":"COMPLETED"');
@@ -425,16 +427,7 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
   });
 
   test('watchdog filters sensitive-looking child output', () => {
-    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        YOOTCHAT_WATCHDOG_TEST_CHILD: 'LEAK_EXIT',
-        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
-      },
-      encoding: 'utf8',
-      timeout: 5_000,
-    });
+    const child = runWatchdogTestChild('LEAK_EXIT');
 
     expect(child.status).toBe(0);
     expect(child.stdout).not.toContain('sb_publishable');
@@ -442,22 +435,47 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
   });
 
   test('watchdog forwards the bounded transport envelope', () => {
-    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        YOOTCHAT_WATCHDOG_TEST_CHILD: 'TRANSPORT_EXIT',
-        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
-      },
-      encoding: 'utf8',
-      timeout: 5_000,
-    });
+    const child = runWatchdogTestChild('TRANSPORT_EXIT');
 
     expect(child.status).toBe(0);
     expect(child.stdout).toContain('"transport"');
     expect(child.stdout).toContain('"firstHttpStatus":200');
     expect(child.stdout).not.toContain('supabase.co');
     expect(child.stdout).not.toContain('Bearer');
+  });
+
+  test('watchdog reconstructs transport JSON instead of forwarding original lines', () => {
+    const child = runWatchdogTestChild('TRANSPORT_REORDERED_EXIT');
+    const expected = JSON.stringify({
+      transport: {
+        logicalCallCount: 1,
+        physicalCallCount: 1,
+        retryBlocked: false,
+        firstOutcome: 'HTTP_RESPONSE',
+        firstHttpStatus: 200,
+        firstHttpStatusClass: 'HTTP_2XX',
+      },
+    });
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain(`${expected}\n`);
+    expect(child.stdout).not.toContain('{"transport":{"firstHttpStatusClass"');
+  });
+
+  test.each([
+    'STAGE_WITH_EXTRA_EXIT',
+    'TRANSPORT_WITH_EXTRA_EXIT',
+    'INVALID_JSON_STAGE_EXIT',
+    'ARRAY_JSON_EXIT',
+  ])('watchdog rejects non-closed JSON child output for %s', (testChild) => {
+    const child = runWatchdogTestChild(testChild);
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"watchdog":"COMPLETED"');
+    expect(child.stdout).toContain('"lastStage":null');
+    expect(child.stdout).not.toContain('SAFE_BUT_FORBIDDEN');
+    expect(child.stdout).not.toContain('"stage":"HARNESS_COMPLETED"');
+    expect(child.stdout).not.toContain('"transport"');
   });
 
   test('dry-run completes through the watchdog without Supabase configuration', () => {
