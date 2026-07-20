@@ -478,6 +478,69 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     expect(child.stdout).not.toContain('"transport"');
   });
 
+  test.each([
+    'INVALID_AGGREGATE_REQUEST_COUNT',
+    'INVALID_AGGREGATE_ROW_COUNT',
+    'INVALID_AGGREGATE_ACCEPTED_GT_ROW',
+    'INVALID_AGGREGATE_QUARANTINE_SUM',
+    'INVALID_AGGREGATE_RECOMMENDATION_COUNT',
+  ])('watchdog rejects out-of-bounds aggregate output for %s', (testChild) => {
+    const child = runWatchdogTestChild(testChild);
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"watchdog":"COMPLETED"');
+    expect(child.stdout).toContain('"lastStage":null');
+    expect(child.stdout).not.toContain('"aggregate"');
+  });
+
+  test.each([
+    'INVALID_TRANSPORT_LOGICAL_LT_PHYSICAL',
+    'INVALID_TRANSPORT_RETRY_INCOHERENT',
+    'INVALID_TRANSPORT_STATUS_ZERO',
+    'INVALID_TRANSPORT_HTTP_RESPONSE_NULL',
+    'INVALID_TRANSPORT_TYPE_ERROR_WITH_STATUS',
+  ])('watchdog rejects incoherent transport output for %s', (testChild) => {
+    const child = runWatchdogTestChild(testChild);
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"watchdog":"COMPLETED"');
+    expect(child.stdout).toContain('"lastStage":null');
+    expect(child.stdout).not.toContain('"transport"');
+  });
+
+  test('watchdog flushes a valid stdout JSON remainder on close', () => {
+    const child = runWatchdogTestChild('REMAINDER_VALID_EXIT');
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain(`${JSON.stringify({ stage: 'HARNESS_COMPLETED' })}\n`);
+    expect(child.stdout).toContain('"lastStage":"HARNESS_COMPLETED"');
+  });
+
+  test('watchdog rejects an invalid stdout JSON remainder on close', () => {
+    const child = runWatchdogTestChild('REMAINDER_INVALID_EXIT');
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"lastStage":null');
+    expect(child.stdout).not.toContain('SAFE_BUT_FORBIDDEN');
+    expect(child.stdout).not.toContain('"stage":"HARNESS_COMPLETED"');
+  });
+
+  test('watchdog reconstructs fragmented stdout JSON from its own buffer', () => {
+    const child = runWatchdogTestChild('FRAGMENTED_STDOUT_EXIT');
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"transport":{"logicalCallCount":1');
+    expect(child.stdout).toContain('"firstHttpStatus":200');
+  });
+
+  test('watchdog reconstructs fragmented stderr JSON from a separate buffer', () => {
+    const child = runWatchdogTestChild('FRAGMENTED_STDERR_EXIT');
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain(`${JSON.stringify({ stage: 'HARNESS_COMPLETED' })}\n`);
+    expect(child.stdout).toContain('"lastStage":"HARNESS_COMPLETED"');
+  });
+
   test('dry-run completes through the watchdog without Supabase configuration', () => {
     const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
       cwd: process.cwd(),

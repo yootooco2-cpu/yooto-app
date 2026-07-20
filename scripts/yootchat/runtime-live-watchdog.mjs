@@ -91,6 +91,7 @@ const exactKeys = (value, keys) => {
 
 const isRecord = (value) => typeof value === 'object' && value !== null && !Array.isArray(value);
 const isNonNegativeInteger = (value) => Number.isInteger(value) && value >= 0;
+const isBoundedInteger = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
 const oneOf = (value, allowed) => allowed.includes(value);
 
 const validateReasonCounts = (value) => {
@@ -112,6 +113,8 @@ const validateStringArray = (value, allowed, maxLength) => {
   }
   return result;
 };
+
+const sumValues = (value) => Object.values(value).reduce((total, count) => total + count, 0);
 
 const statusClass = (status) => {
   if (status === null) return 'NONE';
@@ -153,20 +156,26 @@ const sanitizeAggregate = (value) => {
   const topic = aggregate.topic;
   const messageTemplate = aggregate.messageTemplate;
   const durationBucketMs = aggregate.durationBucketMs;
+  const readOkErrorConsistent = aggregate.readOk
+    ? readErrorCode === null
+    : readErrorCode !== null && oneOf(readErrorCode, allowedReadErrorCodes);
   if (
-    !isNonNegativeInteger(aggregate.requestCount) ||
+    !isBoundedInteger(aggregate.requestCount, 0, 1) ||
     typeof aggregate.readOk !== 'boolean' ||
-    !(readErrorCode === null || oneOf(readErrorCode, allowedReadErrorCodes)) ||
-    !isNonNegativeInteger(aggregate.rowCount) ||
-    !isNonNegativeInteger(aggregate.acceptedCount) ||
-    !isNonNegativeInteger(aggregate.quarantinedCount) ||
+    !readOkErrorConsistent ||
+    !isBoundedInteger(aggregate.rowCount, 0, 5) ||
+    !isBoundedInteger(aggregate.acceptedCount, 0, 5) ||
+    aggregate.acceptedCount > aggregate.rowCount ||
+    !isBoundedInteger(aggregate.quarantinedCount, 0, 5) ||
+    aggregate.quarantinedCount > aggregate.rowCount ||
     quarantineReasonCounts === null ||
+    sumValues(quarantineReasonCounts) !== aggregate.quarantinedCount ||
     typeof aggregate.engineOk !== 'boolean' ||
     !(topic === null || oneOf(topic, allowedTopics)) ||
     !(messageTemplate === null || oneOf(messageTemplate, allowedMessageTemplates)) ||
-    !isNonNegativeInteger(aggregate.recommendationCount) ||
+    !isBoundedInteger(aggregate.recommendationCount, 0, 3) ||
     limitationCodes === null ||
-    !isNonNegativeInteger(aggregate.interfaceActionCount) ||
+    !isBoundedInteger(aggregate.interfaceActionCount, 0, 3) ||
     !(durationBucketMs === null || oneOf(durationBucketMs, allowedDurationBuckets)) ||
     !oneOf(aggregate.terminalStage, allowedStages)
   ) {
@@ -208,11 +217,15 @@ const sanitizeTransport = (value) => {
   const firstHttpStatus = transport.firstHttpStatus;
   if (
     !isNonNegativeInteger(transport.logicalCallCount) ||
-    !isNonNegativeInteger(transport.physicalCallCount) ||
-    transport.physicalCallCount > 1 ||
+    !isBoundedInteger(transport.physicalCallCount, 0, 1) ||
+    transport.logicalCallCount < transport.physicalCallCount ||
     typeof transport.retryBlocked !== 'boolean' ||
+    transport.retryBlocked !== (transport.logicalCallCount > transport.physicalCallCount) ||
     !oneOf(transport.firstOutcome, allowedTransportOutcomes) ||
-    !(firstHttpStatus === null || (Number.isInteger(firstHttpStatus) && firstHttpStatus >= 0 && firstHttpStatus <= 599)) ||
+    !(firstHttpStatus === null || isBoundedInteger(firstHttpStatus, 100, 599)) ||
+    (transport.firstOutcome === 'HTTP_RESPONSE') !== (firstHttpStatus !== null) ||
+    (transport.physicalCallCount === 0 && transport.firstOutcome !== 'NONE') ||
+    (transport.physicalCallCount === 1 && transport.firstOutcome === 'NONE') ||
     !oneOf(transport.firstHttpStatusClass, allowedTransportStatusClasses) ||
     statusClass(firstHttpStatus) !== transport.firstHttpStatusClass
   ) {
@@ -264,6 +277,43 @@ const childArgsFor = () => {
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'TRANSPORT_REORDERED_EXIT') {
     return [process.execPath, ['-e', "console.log(JSON.stringify({transport:{firstHttpStatusClass:'HTTP_2XX',firstHttpStatus:200,firstOutcome:'HTTP_RESPONSE',retryBlocked:false,physicalCallCount:1,logicalCallCount:1}}));"]];
   }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'AGGREGATE_EXIT') {
+    return [process.execPath, ['-e', "console.log(JSON.stringify({aggregate:{requestCount:1,readOk:true,readErrorCode:null,rowCount:2,acceptedCount:2,quarantinedCount:0,quarantineReasonCounts:{},engineOk:true,topic:'DISCOVER_LOCAL',messageTemplate:'RESULTS_FOUND',recommendationCount:2,limitationCodes:[],interfaceActionCount:2,durationBucketMs:'0-50',terminalStage:'HARNESS_COMPLETED'}}));"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD?.startsWith('INVALID_AGGREGATE_')) {
+    const patches = {
+      INVALID_AGGREGATE_REQUEST_COUNT: "requestCount:2",
+      INVALID_AGGREGATE_ROW_COUNT: "rowCount:6",
+      INVALID_AGGREGATE_ACCEPTED_GT_ROW: "rowCount:1,acceptedCount:2",
+      INVALID_AGGREGATE_QUARANTINE_SUM: "quarantinedCount:2,quarantineReasonCounts:{UNKNOWN_PROPERTY:1}",
+      INVALID_AGGREGATE_RECOMMENDATION_COUNT: "recommendationCount:4",
+    };
+    const patch = patches[process.env.YOOTCHAT_WATCHDOG_TEST_CHILD];
+    return [process.execPath, ['-e', `const aggregate={requestCount:1,readOk:true,readErrorCode:null,rowCount:2,acceptedCount:2,quarantinedCount:0,quarantineReasonCounts:{},engineOk:true,topic:'DISCOVER_LOCAL',messageTemplate:'RESULTS_FOUND',recommendationCount:2,limitationCodes:[],interfaceActionCount:2,durationBucketMs:'0-50',terminalStage:'HARNESS_COMPLETED'}; Object.assign(aggregate,{${patch}}); console.log(JSON.stringify({aggregate}));`]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD?.startsWith('INVALID_TRANSPORT_')) {
+    const patches = {
+      INVALID_TRANSPORT_LOGICAL_LT_PHYSICAL: "logicalCallCount:0,physicalCallCount:1",
+      INVALID_TRANSPORT_RETRY_INCOHERENT: "logicalCallCount:2,physicalCallCount:1,retryBlocked:false",
+      INVALID_TRANSPORT_STATUS_ZERO: "firstHttpStatus:0,firstHttpStatusClass:'NONE'",
+      INVALID_TRANSPORT_HTTP_RESPONSE_NULL: "firstOutcome:'HTTP_RESPONSE',firstHttpStatus:null,firstHttpStatusClass:'NONE'",
+      INVALID_TRANSPORT_TYPE_ERROR_WITH_STATUS: "firstOutcome:'TYPE_ERROR',firstHttpStatus:500,firstHttpStatusClass:'HTTP_5XX'",
+    };
+    const patch = patches[process.env.YOOTCHAT_WATCHDOG_TEST_CHILD];
+    return [process.execPath, ['-e', `const transport={logicalCallCount:1,physicalCallCount:1,retryBlocked:false,firstOutcome:'HTTP_RESPONSE',firstHttpStatus:200,firstHttpStatusClass:'HTTP_2XX'}; Object.assign(transport,{${patch}}); console.log(JSON.stringify({transport}));`]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'REMAINDER_VALID_EXIT') {
+    return [process.execPath, ['-e', "process.stdout.write(JSON.stringify({stage:'HARNESS_COMPLETED'}));"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'REMAINDER_INVALID_EXIT') {
+    return [process.execPath, ['-e', "process.stdout.write(JSON.stringify({stage:'HARNESS_COMPLETED',extra:'SAFE_BUT_FORBIDDEN'}));"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'FRAGMENTED_STDOUT_EXIT') {
+    return [process.execPath, ['-e', "const line=JSON.stringify({transport:{logicalCallCount:1,physicalCallCount:1,retryBlocked:false,firstOutcome:'HTTP_RESPONSE',firstHttpStatus:200,firstHttpStatusClass:'HTTP_2XX'}}); process.stdout.write(line.slice(0,20)); process.stdout.write(line.slice(20));"]];
+  }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'FRAGMENTED_STDERR_EXIT') {
+    return [process.execPath, ['-e', "const line=JSON.stringify({stage:'HARNESS_COMPLETED'}); process.stderr.write(line.slice(0,10)); process.stderr.write(line.slice(10));"]];
+  }
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'STAGE_WITH_EXTRA_EXIT') {
     return [process.execPath, ['-e', "console.log(JSON.stringify({stage:'HARNESS_COMPLETED',extra:'SAFE_BUT_FORBIDDEN'}));"]];
   }
@@ -296,18 +346,30 @@ const childArgsFor = () => {
 
 const createSafeForwarder = () => {
   let pending = '';
-  return (chunk) => {
+  const forwardLine = (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const sanitized = sanitizeJsonLine(trimmed);
+    if (sanitized === null) return;
+    if ('stage' in sanitized) {
+      lastStage = sanitized.stage;
+    }
+    process.stdout.write(`${JSON.stringify(sanitized)}\n`);
+  };
+
+  return {
+    push(chunk) {
     const lines = `${pending}${chunk.toString('utf8')}`.split(/\r?\n/);
     pending = lines.pop() ?? '';
     for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line) continue;
-      const sanitized = sanitizeJsonLine(line);
-      if (sanitized === null) continue;
-      if ('stage' in sanitized) {
-        lastStage = sanitized.stage;
+        forwardLine(rawLine);
       }
-      process.stdout.write(`${JSON.stringify(sanitized)}\n`);
+    },
+    flush() {
+      if (!pending) return;
+      const line = pending;
+      pending = '';
+      forwardLine(line);
     }
   };
 };
@@ -319,8 +381,11 @@ const child = spawn(command, args, {
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 
-child.stdout.on('data', createSafeForwarder());
-child.stderr.on('data', createSafeForwarder());
+const stdoutForwarder = createSafeForwarder();
+const stderrForwarder = createSafeForwarder();
+
+child.stdout.on('data', (chunk) => stdoutForwarder.push(chunk));
+child.stderr.on('data', (chunk) => stderrForwarder.push(chunk));
 
 const timer = setTimeout(() => {
   timedOut = true;
@@ -333,6 +398,8 @@ const timer = setTimeout(() => {
 child.on('close', (code, signal) => {
   closed = true;
   clearTimeout(timer);
+  stdoutForwarder.flush();
+  stderrForwarder.flush();
   if (timedOut) {
     process.stdout.write(JSON.stringify({
       watchdog: 'TIMEOUT',
