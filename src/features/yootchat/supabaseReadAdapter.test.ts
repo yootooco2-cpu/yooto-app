@@ -337,6 +337,15 @@ describe('YootChat Supabase read adapter Lot 4', () => {
     expect(result.ok ? null : result.code).toBe('SUPABASE_NETWORK_ERROR');
   });
 
+  test('returns a retry-blocked fallback for guarded SDK retries', async () => {
+    const { adapter } = adapterFor({ data: null, error: { code: 'YOOTCHAT_RETRY_BLOCKED' }, status: 599 });
+    const result = await adapter.read();
+
+    expect(result.ok).toBe(false);
+    expect(result.ok ? null : result.code).toBe('SUPABASE_RETRY_BLOCKED');
+    expect(result.ok ? null : result.fallback.message.template).toBe('SERVICE_UNAVAILABLE');
+  });
+
   test('returns an auth fallback for rejected credentials', async () => {
     const { adapter } = adapterFor({ data: null, error: { code: 'PGRST301' }, status: 401 });
     const result = await adapter.read();

@@ -6,7 +6,11 @@ import {
   runYootChatRuntimeHarness,
   type YootChatRuntimeHarnessResult,
 } from './runtimeLiveHarness';
-import { createSinglePhysicalFetchGuard, type SinglePhysicalFetchGuard } from './runtime-live.manual';
+import {
+  createSinglePhysicalFetchGuard,
+  type SafeTransportObservation,
+  type SinglePhysicalFetchGuard,
+} from './runtime-live.manual';
 
 type DiagnosticScenario =
   | 'HTTP_200_MINIMAL'
@@ -150,6 +154,7 @@ async function runScenario(scenario: DiagnosticScenario): Promise<{
   readonly requests: readonly RecordedRequest[];
   readonly logicalCallCount: number;
   readonly physicalCallCount: number;
+  readonly transport: SafeTransportObservation;
 }> {
   const diagnostic = createDiagnosticFetch(scenario);
   const guard = createSinglePhysicalFetchGuard(diagnostic.fakeFetch);
@@ -164,6 +169,7 @@ async function runScenario(scenario: DiagnosticScenario): Promise<{
     requests: diagnostic.requests,
     logicalCallCount: guard.getLogicalCallCount(),
     physicalCallCount: guard.getPhysicalCallCount(),
+    transport: guard.getObservation(),
   };
 }
 
@@ -180,15 +186,23 @@ async function runDirectScenario(scenario: 'NETWORK_TYPE_ERROR'): Promise<{
   return { result, logicalCallCount: 1, physicalCallCount: 0 };
 }
 
-describe('YootChat Supabase transport offline diagnostic Lot 5B-G', () => {
+describe('YootChat Supabase transport offline diagnostic Lot 5B-I', () => {
   test('constructs exactly one bounded merchants request through supabase-js', async () => {
-    const { result, requests, logicalCallCount, physicalCallCount } = await runScenario('HTTP_200_MINIMAL');
+    const { result, requests, logicalCallCount, physicalCallCount, transport } = await runScenario('HTTP_200_MINIMAL');
     const request = requests[0];
 
     expect(requests).toHaveLength(1);
     expect(result.aggregate.requestCount).toBe(1);
     expect(logicalCallCount).toBe(1);
     expect(physicalCallCount).toBe(1);
+    expect(transport).toEqual({
+      logicalCallCount: 1,
+      physicalCallCount: 1,
+      retryBlocked: false,
+      firstOutcome: 'HTTP_RESPONSE',
+      firstHttpStatus: 200,
+      firstHttpStatusClass: 'HTTP_2XX',
+    });
     expect(request.method).toBe('GET');
     expect(request.pathname).toBe('/rest/v1/merchants');
     expect(request.headers.has('apikey')).toBe(true);
@@ -207,22 +221,50 @@ describe('YootChat Supabase transport offline diagnostic Lot 5B-G', () => {
   });
 
   test.each([
-    ['HTTP_401_KEY_REFUSED', 401, 'SUPABASE_AUTH_REJECTED', 'SERVICE_UNAVAILABLE'],
-    ['HTTP_401_JWT', 401, 'SUPABASE_AUTH_REJECTED', 'SERVICE_UNAVAILABLE'],
-    ['HTTP_403_42501', 403, 'SUPABASE_RLS_DENIED', 'SERVICE_UNAVAILABLE'],
-    ['HTTP_400_SCHEMA', 400, 'SCHEMA_INCOMPATIBLE', 'SERVICE_UNAVAILABLE'],
-    ['HTTP_UNKNOWN', 418, 'SUPABASE_UNAVAILABLE', 'SERVICE_UNAVAILABLE'],
-    ['ABORT_TIMEOUT', null, 'SUPABASE_TIMEOUT', 'SERVICE_UNAVAILABLE'],
-  ] as const)('normalizes synthetic %s without retry', async (scenario, _status, adapterCategory, fallback) => {
-    const { result, requests, logicalCallCount, physicalCallCount } = await runScenario(scenario);
+    ['HTTP_401_KEY_REFUSED', 401, 'HTTP_4XX', 'SUPABASE_AUTH_REJECTED', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_401_JWT', 401, 'HTTP_4XX', 'SUPABASE_AUTH_REJECTED', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_403_42501', 403, 'HTTP_4XX', 'SUPABASE_RLS_DENIED', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_400_SCHEMA', 400, 'HTTP_4XX', 'SCHEMA_INCOMPATIBLE', 'SERVICE_UNAVAILABLE'],
+    ['HTTP_UNKNOWN', 418, 'HTTP_4XX', 'SUPABASE_UNAVAILABLE', 'SERVICE_UNAVAILABLE'],
+  ] as const)('normalizes synthetic %s without retry', async (scenario, status, statusClassValue, adapterCategory, fallback) => {
+    const { result, requests, logicalCallCount, physicalCallCount, transport } = await runScenario(scenario);
 
     expect(requests).toHaveLength(1);
     expect(result.aggregate.requestCount).toBe(1);
     expect(logicalCallCount).toBe(1);
     expect(physicalCallCount).toBe(1);
+    expect(transport).toEqual({
+      logicalCallCount: 1,
+      physicalCallCount: 1,
+      retryBlocked: false,
+      firstOutcome: 'HTTP_RESPONSE',
+      firstHttpStatus: status,
+      firstHttpStatusClass: statusClassValue,
+    });
     expect(result.aggregate.readOk).toBe(false);
     expect(result.aggregate.readErrorCode).toBe(adapterCategory);
     expect(result.aggregate.messageTemplate).toBe(fallback);
+    expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
+  });
+
+  test('normalizes SDK status 0 with an interrupted signal as timeout', async () => {
+    const { result, requests, logicalCallCount, physicalCallCount, transport } = await runScenario('ABORT_TIMEOUT');
+
+    expect(requests).toHaveLength(1);
+    expect(result.aggregate.requestCount).toBe(1);
+    expect(logicalCallCount).toBe(1);
+    expect(physicalCallCount).toBe(1);
+    expect(transport).toEqual({
+      logicalCallCount: 1,
+      physicalCallCount: 1,
+      retryBlocked: false,
+      firstOutcome: 'ABORTED',
+      firstHttpStatus: null,
+      firstHttpStatusClass: 'NONE',
+    });
+    expect(result.aggregate.readOk).toBe(false);
+    expect(result.aggregate.readErrorCode).toBe('SUPABASE_TIMEOUT');
+    expect(result.aggregate.messageTemplate).toBe('SERVICE_UNAVAILABLE');
     expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
   });
 
@@ -239,14 +281,22 @@ describe('YootChat Supabase transport offline diagnostic Lot 5B-G', () => {
   });
 
   test('single-physical-call guard blocks an internal SDK retry locally', async () => {
-    const { result, requests, logicalCallCount, physicalCallCount } = await runScenario('NETWORK_TYPE_ERROR');
+    const { result, requests, logicalCallCount, physicalCallCount, transport } = await runScenario('NETWORK_TYPE_ERROR');
 
     expect(requests).toHaveLength(1);
     expect(result.aggregate.requestCount).toBe(1);
     expect(logicalCallCount).toBe(2);
     expect(physicalCallCount).toBe(1);
+    expect(transport).toEqual({
+      logicalCallCount: 2,
+      physicalCallCount: 1,
+      retryBlocked: true,
+      firstOutcome: 'TYPE_ERROR',
+      firstHttpStatus: null,
+      firstHttpStatusClass: 'NONE',
+    });
     expect(result.aggregate.readOk).toBe(false);
-    expect(result.aggregate.readErrorCode).toBe('SUPABASE_UNAVAILABLE');
+    expect(result.aggregate.readErrorCode).toBe('SUPABASE_RETRY_BLOCKED');
     expect(result.aggregate.messageTemplate).toBe('SERVICE_UNAVAILABLE');
     expect(result.aggregate.terminalStage).toBe('HARNESS_COMPLETED');
   });
@@ -262,5 +312,13 @@ describe('YootChat Supabase transport offline diagnostic Lot 5B-G', () => {
     expect(blocked.status).toBe(599);
     expect(guard.getLogicalCallCount()).toBe(2);
     expect(guard.getPhysicalCallCount()).toBe(1);
+    expect(guard.getObservation()).toEqual({
+      logicalCallCount: 2,
+      physicalCallCount: 1,
+      retryBlocked: true,
+      firstOutcome: 'TYPE_ERROR',
+      firstHttpStatus: null,
+      firstHttpStatusClass: 'NONE',
+    });
   });
 });

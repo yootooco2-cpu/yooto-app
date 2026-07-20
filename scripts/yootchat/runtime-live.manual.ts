@@ -9,6 +9,18 @@ import {
 
 export type RuntimeManualMode = 'DRY_RUN' | 'LIVE';
 
+export type TransportFirstOutcome = 'HTTP_RESPONSE' | 'TYPE_ERROR' | 'ABORTED' | 'OTHER_ERROR' | 'NONE';
+export type TransportHttpStatusClass = 'HTTP_2XX' | 'HTTP_4XX' | 'HTTP_5XX' | 'HTTP_OTHER' | 'NONE';
+
+export interface SafeTransportObservation {
+  readonly logicalCallCount: number;
+  readonly physicalCallCount: number;
+  readonly retryBlocked: boolean;
+  readonly firstOutcome: TransportFirstOutcome;
+  readonly firstHttpStatus: number | null;
+  readonly firstHttpStatusClass: TransportHttpStatusClass;
+}
+
 export type RuntimeManualConfigResult =
   | {
       readonly ok: true;
@@ -40,26 +52,65 @@ export interface SinglePhysicalFetchGuard {
   readonly fetch: typeof fetch;
   readonly getLogicalCallCount: () => number;
   readonly getPhysicalCallCount: () => number;
+  readonly getObservation: () => SafeTransportObservation;
 }
+
+const statusClass = (status: number | null): TransportHttpStatusClass => {
+  if (status === null) return 'NONE';
+  if (status >= 200 && status <= 299) return 'HTTP_2XX';
+  if (status >= 400 && status <= 499) return 'HTTP_4XX';
+  if (status >= 500 && status <= 599) return 'HTTP_5XX';
+  return 'HTTP_OTHER';
+};
+
+const errorOutcome = (error: unknown, signal: AbortSignal | null): TransportFirstOutcome => {
+  if (signal?.aborted) return 'ABORTED';
+  if (typeof error === 'object' && error !== null) {
+    const maybe = error as { readonly name?: unknown; readonly code?: unknown };
+    if (maybe.name === 'AbortError' || maybe.code === 'ABORT_ERR') return 'ABORTED';
+  }
+  if (error instanceof TypeError) return 'TYPE_ERROR';
+  return 'OTHER_ERROR';
+};
 
 export function createSinglePhysicalFetchGuard(transport: typeof fetch = fetch): SinglePhysicalFetchGuard {
   let logicalCallCount = 0;
   let physicalCallCount = 0;
+  let retryBlocked = false;
+  let firstOutcome: TransportFirstOutcome = 'NONE';
+  let firstHttpStatus: number | null = null;
 
   return {
     async fetch(input, init) {
       logicalCallCount += 1;
       if (logicalCallCount > 1) {
+        retryBlocked = true;
         return new Response(JSON.stringify({ code: 'YOOTCHAT_RETRY_BLOCKED' }), {
           status: 599,
           headers: { 'content-type': 'application/json' },
         });
       }
       physicalCallCount += 1;
-      return transport(input, init);
+      try {
+        const response = await transport(input, init);
+        firstOutcome = 'HTTP_RESPONSE';
+        firstHttpStatus = response.status;
+        return response;
+      } catch (error) {
+        firstOutcome = errorOutcome(error, init?.signal ?? (input instanceof Request ? input.signal : null));
+        throw error;
+      }
     },
     getLogicalCallCount: () => logicalCallCount,
     getPhysicalCallCount: () => physicalCallCount,
+    getObservation: () => ({
+      logicalCallCount,
+      physicalCallCount,
+      retryBlocked,
+      firstOutcome,
+      firstHttpStatus,
+      firstHttpStatusClass: statusClass(firstHttpStatus),
+    }),
   };
 }
 
@@ -108,6 +159,7 @@ export async function runRuntimeManualHarness(
   writeLine(JSON.stringify({ stage: 'HARNESS_PRECHECK_OK' }));
 
   let createHarnessClient: () => ReadOnlySupabaseClient;
+  let transportGuard: SinglePhysicalFetchGuard | null = null;
   if (config.mode === 'DRY_RUN') {
     createHarnessClient = () => createOfflineSupabaseClient('SUCCESS');
   } else {
@@ -119,7 +171,8 @@ export async function runRuntimeManualHarness(
       writeLine(JSON.stringify({ terminalStage: 'HARNESS_BLOCKED', reason: 'KEY_UNKNOWN' }));
       return { ok: false, reason: 'KEY_UNKNOWN' };
     }
-    const transportGuard = createSinglePhysicalFetchGuard();
+    const guard = createSinglePhysicalFetchGuard();
+    transportGuard = guard;
     createHarnessClient = () => createSupabaseReadOnlyClient(url, resolved.key, {
       auth: {
         persistSession: false,
@@ -127,7 +180,7 @@ export async function runRuntimeManualHarness(
         detectSessionInUrl: false,
       },
       global: {
-        fetch: transportGuard.fetch,
+        fetch: guard.fetch,
         headers: {
           Accept: 'application/json',
           'Accept-Profile': 'public',
@@ -144,6 +197,8 @@ export async function runRuntimeManualHarness(
     skipPrecheckStages: true,
   });
   writeLine(JSON.stringify({ aggregate: result.aggregate }));
+  const guardedTransport = transportGuard;
+  if (guardedTransport !== null) writeLine(JSON.stringify({ transport: guardedTransport.getObservation() }));
   return result;
 }
 

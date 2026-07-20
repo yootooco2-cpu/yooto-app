@@ -34,6 +34,9 @@ const childArgsFor = () => {
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'LEAK_EXIT') {
     return [process.execPath, ['-e', "console.log(['sb','publishable','forbidden'].join('_')); console.log(JSON.stringify({stage:'HARNESS_COMPLETED'}));"]];
   }
+  if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'TRANSPORT_EXIT') {
+    return [process.execPath, ['-e', "console.log(JSON.stringify({stage:'HARNESS_COMPLETED'})); console.log(JSON.stringify({transport:{logicalCallCount:1,physicalCallCount:1,retryBlocked:false,firstOutcome:'HTTP_RESPONSE',firstHttpStatus:200,firstHttpStatusClass:'HTTP_2XX'}}));"]];
+  }
   if (process.env.YOOTCHAT_WATCHDOG_TEST_CHILD === 'HANG') {
     return [process.execPath, ['-e', "console.log(JSON.stringify({stage:'HARNESS_EXECUTE_START'})); setInterval(()=>{}, 1000);"]];
   }
@@ -62,7 +65,9 @@ const sanitizeAndForward = (chunk) => {
       process.stdout.write(`${line}\n`);
       continue;
     }
-    if (line.includes('"aggregate"') && !forbiddenOutput.test(line)) process.stdout.write(`${line}\n`);
+    if ((line.includes('"aggregate"') || line.includes('"transport"')) && !forbiddenOutput.test(line)) {
+      process.stdout.write(`${line}\n`);
+    }
   }
 };
 

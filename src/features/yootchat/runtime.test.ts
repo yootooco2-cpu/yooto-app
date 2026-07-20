@@ -213,6 +213,7 @@ describe('YootChat runtime Lot 5A', () => {
       [{ data: null, error: { code: '42501' }, status: 403 }, 'SUPABASE_RLS_DENIED'],
       [{ data: null, error: { code: '42703' }, status: 400 }, 'SCHEMA_INCOMPATIBLE'],
       [new TypeError('network'), 'SUPABASE_NETWORK_ERROR'],
+      [{ data: null, error: { code: 'YOOTCHAT_RETRY_BLOCKED' }, status: 599 }, 'SUPABASE_RETRY_BLOCKED'],
       [{ data: null, error: { code: 'PGRST999' }, status: 418 }, 'SUPABASE_UNAVAILABLE'],
       [{ data: { id: 1 }, error: null }, 'MALFORMED_RESPONSE'],
     ];

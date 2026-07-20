@@ -271,6 +271,7 @@ const classifyQueryError = (
 
   if (signal?.aborted || error.name === 'AbortError' || code === 'ABORT_ERR') return 'SUPABASE_TIMEOUT';
 
+  if (status === 599 || code === 'YOOTCHAT_RETRY_BLOCKED') return 'SUPABASE_RETRY_BLOCKED';
   if (status === 401 || code === 'PGRST301') return 'SUPABASE_AUTH_REJECTED';
   if (status === 403 || code === '42501') return 'SUPABASE_RLS_DENIED';
   if (code && schemaErrorCodes.has(code)) return 'SCHEMA_INCOMPATIBLE';

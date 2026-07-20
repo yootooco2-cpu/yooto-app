@@ -138,6 +138,52 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     expect(createRuntimeManualRequest('LIVE')).not.toHaveProperty('filters');
   });
 
+  test('manual live mode emits a bounded transport envelope after the aggregate', async () => {
+    const originalFetch = globalThis.fetch;
+    const lines: string[] = [];
+    globalThis.fetch = (async () => new Response(JSON.stringify([{
+      id: 1,
+      name: 'Manual Harness Merchant',
+      status: 'active',
+      is_active: true,
+      city: 'Manual City',
+      latitude: null,
+      longitude: null,
+      google_rating: 4,
+      category: 'Manual Category',
+      opening_hours: { open_now: true },
+      est_ess: false,
+      est_bio: false,
+      artisan_rm: false,
+      est_societe_mission: false,
+    }]), { status: 200, headers: { 'content-type': 'application/json' } })) as typeof fetch;
+
+    try {
+      const result = await runRuntimeManualHarness(publicLiveEnv, (line) => lines.push(line));
+      expect('stages' in result ? result.aggregate.readOk : false).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    const aggregateIndex = lines.findIndex((line) => line.includes('"aggregate"'));
+    const transportIndex = lines.findIndex((line) => line.includes('"transport"'));
+    expect(aggregateIndex).toBeGreaterThan(-1);
+    expect(transportIndex).toBeGreaterThan(aggregateIndex);
+    expect(JSON.parse(lines[transportIndex])).toEqual({
+      transport: {
+        logicalCallCount: 1,
+        physicalCallCount: 1,
+        retryBlocked: false,
+        firstOutcome: 'HTTP_RESPONSE',
+        firstHttpStatus: 200,
+        firstHttpStatusClass: 'HTTP_2XX',
+      },
+    });
+    expect(JSON.stringify(lines)).not.toContain(fakeSupabaseUrl);
+    expect(JSON.stringify(lines)).not.toContain(fakePublishableKey);
+    expect(JSON.stringify(lines)).not.toContain('Manual Harness Merchant');
+  });
+
   test('does not retry after a network error', async () => {
     const client = createOfflineSupabaseClient('NETWORK_ERROR');
     const result = await runYootChatRuntimeHarness({ client });
@@ -395,6 +441,25 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
     expect(child.stdout).toContain('HARNESS_COMPLETED');
   });
 
+  test('watchdog forwards the bounded transport envelope', () => {
+    const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        YOOTCHAT_WATCHDOG_TEST_CHILD: 'TRANSPORT_EXIT',
+        YOOTCHAT_WATCHDOG_TIMEOUT_MS: '1000',
+      },
+      encoding: 'utf8',
+      timeout: 5_000,
+    });
+
+    expect(child.status).toBe(0);
+    expect(child.stdout).toContain('"transport"');
+    expect(child.stdout).toContain('"firstHttpStatus":200');
+    expect(child.stdout).not.toContain('supabase.co');
+    expect(child.stdout).not.toContain('Bearer');
+  });
+
   test('dry-run completes through the watchdog without Supabase configuration', () => {
     const child = spawnSync(process.execPath, ['scripts/yootchat/runtime-live-watchdog.mjs'], {
       cwd: process.cwd(),
@@ -424,7 +489,7 @@ describe('YootChat runtime live harness Lot 5B-D', () => {
 
     expect(`${harness}\n${watchdog}`).not.toMatch(/\bfetch\s*\(/);
     expect(manual).toContain('createSinglePhysicalFetchGuard');
-    expect(manual).toContain('fetch: transportGuard.fetch');
+    expect(manual).toContain('fetch: guard.fetch');
   });
 
   test('does not define writes or RPC in the harness files', () => {
